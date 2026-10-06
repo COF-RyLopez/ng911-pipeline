@@ -226,3 +226,92 @@ models:
       - name: Cal_OES_Readiness_Status
         tests:
           - not_null
+
+  - name: mart_nena3_discrpag
+    description: "NENA v3.0 Relational Discrepancy Agency (ng911.DiscrpAg) registry."
+    columns:
+      - name: ID
+        tests:
+          - not_null
+          - unique
+      - name: DiscrpAgID
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_nena3_serviceurn
+    description: "NENA v3.0 Relational Service URN (ng911.ServiceURN) standardized lookup table."
+    columns:
+      - name: ID
+        tests:
+          - not_null
+          - unique
+      - name: ServiceURN
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_nena3_completestnam
+    description: "NENA v3.0 Relational Complete Street Name (ng911.CompleteStNam) normalized lookup."
+    columns:
+      - name: CompleteStNam_ID
+        tests:
+          - not_null
+          - unique
+      - name: St_Name
+        tests:
+          - not_null
+
+  - name: mart_nena3_completeadnum
+    description: "NENA v3.0 Relational Complete Address Number (ng911.CompleteAdNum) normalized lookup."
+    columns:
+      - name: CompleteAdNum_ID
+        tests:
+          - not_null
+          - unique
+      - name: Add_Number
+        tests:
+          - not_null
+
+  - name: mart_nena3_adpt
+    description: "NENA v3.0 Relational Site/Structure Address Point (ng911.AdPt) table."
+    columns:
+      - name: ID
+        tests:
+          - not_null
+          - unique
+      - name: NGUID
+        tests:
+          - not_null
+      - name: GEOMETRY
+        tests:
+          - not_null
+
+  - name: mart_nena3_stseg
+    description: "NENA v3.0 Relational Street Segment (ng911.StSeg) table."
+    columns:
+      - name: ID
+        tests:
+          - not_null
+          - unique
+      - name: NGUID
+        tests:
+          - not_null
+      - name: GEOMETRY
+        tests:
+          - not_null
+
+  - name: mart_nena3_serviceboundary
+    description: "NENA v3.0 Relational Service Boundary (ng911.ServiceBoundary) table."
+    columns:
+      - name: ID
+        tests:
+          - not_null
+          - unique
+      - name: NGUID
+        tests:
+          - not_null
+      - name: GEOMETRY
+        tests:
+          - not_null
+

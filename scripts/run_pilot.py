@@ -168,6 +168,28 @@ def main():
     conn.sql(f"COPY mart_ng911_qa_readiness_audit TO '{audit_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Cal OES Readiness Audit Mart: {audit_parquet}")
 
+    # Export NENA v3.0 Relational Data Model (3NF) Tables
+    nena_v3_dir = os.path.join(OUTPUT_DIR, "nena_v3")
+    os.makedirs(nena_v3_dir, exist_ok=True)
+    nena3_tables = [
+        "mart_nena3_adpt",
+        "mart_nena3_stseg",
+        "mart_nena3_serviceboundary",
+        "mart_nena3_completestnam",
+        "mart_nena3_completeadnum",
+        "mart_nena3_discrpag",
+        "mart_nena3_serviceurn"
+    ]
+    for tbl in nena3_tables:
+        nena_out = os.path.join(nena_v3_dir, f"{tbl}.parquet")
+        conn.sql(f"COPY {tbl} TO '{nena_out}' (FORMAT PARQUET)")
+    print(f"  -> Exported NENA v3.0 Relational Enterprise Model: {len(nena3_tables)} tables in {nena_v3_dir}")
+
+    # Export Regional Central Valley Addresses (Fresno, Kings, Tulare)
+    regional_parquet = os.path.join(OUTPUT_DIR, "regional_central_valley_addresses.parquet")
+    conn.sql(f"COPY stg_regional_addresses TO '{regional_parquet}' (FORMAT PARQUET)")
+    print(f"  -> Exported Regional Multi-County Addresses: {regional_parquet}")
+
     # Export GeoLibre project file (.geolibre and .geolibre.json)
     gen_proj_script = os.path.join(PROJECT_DIR, "scripts", "generate_geolibre_project.py")
     subprocess.run([sys.executable, gen_proj_script], cwd=PROJECT_DIR, check=True)
@@ -207,15 +229,22 @@ def main():
     # Cal OES Readiness Audit
     audit_row = conn.sql("SELECT * FROM mart_ng911_qa_readiness_audit").df().to_dict('records')[0]
 
+    # Regional & NENA v3 Metrics
+    reg_county_counts = conn.sql("SELECT county, count(*) FROM stg_regional_addresses GROUP BY county ORDER BY count(*) DESC").fetchall()
+    total_reg_addr = conn.sql("SELECT count(*) FROM stg_regional_addresses").fetchone()[0]
+    nena3_adpt_cnt = conn.sql("SELECT count(*) FROM mart_nena3_adpt").fetchone()[0]
+    nena3_stseg_cnt = conn.sql("SELECT count(*) FROM mart_nena3_stseg").fetchone()[0]
+    nena3_stnam_cnt = conn.sql("SELECT count(*) FROM mart_nena3_completestnam").fetchone()[0]
+
     print("\n" + "=" * 75)
     print("                       PILOT EVALUATION SCORECARD")
     print("=" * 75)
-    print(f"  Jurisdiction:             County of Fresno, California (FIPS 06019)")
-    print(f"  Authoritative Source:     Fresno County ArcGIS Hub (cofgisonline)")
+    print(f"  Jurisdiction:             Central Valley Region (Fresno, Kings, Tulare Counties)")
+    print(f"  Authoritative Sources:    Fresno Co. Hub, Kings Co. REST, Tulare Co. Open Data")
     print(f"  Reference Source:         Overture Maps Foundation (S3 GeoParquet)")
     print(f"  Licensing Integrity:      100% County Geometry Preserved (Zero ODbL)")
     print("-" * 75)
-    print(f"  LAYER 1: SITE/STRUCTURE ADDRESS POINTS (SSAP):")
+    print(f"  LAYER 1: SITE/STRUCTURE ADDRESS POINTS (SSAP - FRESNO PILOT):")
     print(f"  - Total Points:           {total_addr:,}")
     print(f"  - Conflated (Both):       {conflated_cnt:,} ({conflated_cnt/total_addr*100:.1f}%)")
     print(f"  - Authoritative County:   {county_only_cnt:,} ({county_only_cnt/total_addr*100:.1f}%)")
@@ -251,9 +280,23 @@ def main():
     print(f"  - Inverted Ranges (= 0):   {audit_row['Road_Range_Inversions']} -> {'[PASS]' if audit_row['Zero_Range_Inversions_Passed'] else '[FAIL]'}")
     print(f"  - Cal OES Readiness:       {audit_row['Cal_OES_Readiness_Status']}")
     print("-" * 75)
+    print(f"  MULTI-COUNTY REGIONAL EXPANSION (CENTRAL VALLEY):")
+    print(f"  - Total Regional SSAP:    {total_reg_addr:,} addresses across 3 counties")
+    for cname, ccnt in reg_county_counts:
+        print(f"    * {cname.title()} County:     {ccnt:,} authoritative points")
+    print("-" * 75)
+    print(f"  OFFICIAL NENA v3.0 RELATIONAL MODEL (NENA-STA-006.3-2026):")
+    print(f"  - ng911.AdPt:             {nena3_adpt_cnt:,} normalized address point records")
+    print(f"  - ng911.StSeg:            {nena3_stseg_cnt:,} road centerlines with 3NF foreign keys")
+    print(f"  - ng911.CompleteStNam:    {nena3_stnam_cnt:,} unique parsed street names")
+    print(f"  - ng911.DiscrpAg:         3 authority domains (fresnocountyca.gov, kingscountyca.gov, tularecountyca.gov)")
+    print(f"  - ng911.ServiceURN:       4 IETF emergency service types (sos, sos.fire, sos.police, sos.ambulance)")
+    print(f"  - Deliverables:           data/output/nena_v3/*.parquet (3NF Relational Data Model)")
+    print("-" * 75)
     print(f"  Deliverables Generated:   SSAP (Parquet/GeoJSON), RCL (Parquet/GeoJSON),")
     print(f"                            ESB (Parquet/GeoJSON), Fishbones (Parquet/GeoJSON),")
-    print(f"                            QA (Parquet), Readiness Audit (Parquet)")
+    print(f"                            QA (Parquet), Readiness Audit (Parquet),")
+    print(f"                            Regional Addresses (Parquet), NENA v3.0 Tables (Parquet)")
     print(f"  GeoLibre Project:         data/output/fresno_ng911_pilot.geolibre (.json)")
     print(f"  GeoLibre 1-Click URL:     https://web.geolibre.app/?url=https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/fresno_ng911_pilot.geolibre.json")
     print("=" * 75 + "\n")
