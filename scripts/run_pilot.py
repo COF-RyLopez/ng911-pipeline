@@ -213,10 +213,15 @@ def main():
     build_tiles_script = os.path.join(PROJECT_DIR, "scripts", "build_pmtiles.py")
     subprocess.run([sys.executable, build_tiles_script], cwd=PROJECT_DIR, check=True)
 
-    # Export GeoLibre project file (.geolibre and .geolibre.json)
+    # Export GeoLibre project files (.geolibre and .geolibre.json)
     gen_proj_script = os.path.join(PROJECT_DIR, "scripts", "generate_geolibre_project.py")
     subprocess.run([sys.executable, gen_proj_script], cwd=PROJECT_DIR, check=True)
-    print(f"  -> Exported GeoLibre Project: {os.path.join(OUTPUT_DIR, 'fresno_ng911_pilot.geolibre')}")
+    print(f"  -> Exported GeoLibre Master Project: {os.path.join(OUTPUT_DIR, 'fresno_ng911_pilot.geolibre')}")
+
+    gen_comp_script = os.path.join(PROJECT_DIR, "scripts", "generate_comparison_geolibre_project.py")
+    subprocess.run([sys.executable, gen_comp_script], cwd=PROJECT_DIR, check=True)
+    print(f"  -> Exported GeoLibre QA/QC Comparison Project: {os.path.join(OUTPUT_DIR, 'ng911_address_comparison.geolibre')}")
+
 
 
     total_addr = conn.sql("SELECT count(*) FROM mart_ng911_addresses").fetchone()[0]
