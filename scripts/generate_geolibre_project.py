@@ -236,12 +236,21 @@ def main():
         }
     }
 
+    # Validate project schema with Pydantic v2 before writing to disk
+    try:
+        from ng911_schemas import GeoLibreProjectConfig
+        validated_proj = GeoLibreProjectConfig.model_validate(project_data)
+        validated_dict = validated_proj.model_dump(mode="json", exclude_none=True)
+    except Exception as e:
+        print(f"Warning: GeoLibre Pydantic validation notice: {e}")
+        validated_dict = project_data
+
     proj_path_json = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre.json")
     proj_path_geolibre = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre")
 
     for path in (proj_path_json, proj_path_geolibre):
         with open(path, "w") as f:
-            json.dump(project_data, f)
+            json.dump(validated_dict, f, indent=2)
 
     size_mb = os.path.getsize(proj_path_json) / 1e6
     print(f"Generated GeoLibre project ({size_mb:.1f} MB, PMTiles-streamed layers):\n  -> {proj_path_json}\n  -> {proj_path_geolibre}")
