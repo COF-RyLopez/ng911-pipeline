@@ -98,8 +98,9 @@ def main():
         """
         SELECT 
             SSAP_NGUID, DisclID, CountyLocalID, GERS_ID, ConflationStatus, 
-            Source, HNO, PRD, STN, STS, Unit, CommunityName, County, State, 
-            PostCode, SpatialOffsetMeters, ST_AsGeoJSON(ST_Geometry) AS geometry
+            Source, HNO, PRD, STN, STS, Unit, Muni, CommunityName, County, State, 
+            PostCode, PSAP, PSAP_NGUID, ESB_Fire, LandmarkName, LandmarkCategory,
+            SpatialOffsetMeters, ST_AsGeoJSON(ST_Geometry) AS geometry
         FROM mart_ng911_addresses
         WHERE ConflationStatus = 'CONFLATED' OR rowid % 10 = 0
         LIMIT 5000
@@ -125,6 +126,21 @@ def main():
     )
     print(f"  -> Exported RCL Road Centerlines: {rcl_parquet} & {rcl_geojson}")
 
+    # Export Emergency Service Boundaries (ESBs & PSAP CAD)
+    esb_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb.parquet")
+    esb_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb_sample.geojson")
+    conn.sql(f"COPY mart_ng911_emergency_boundaries TO '{esb_parquet}' (FORMAT PARQUET)")
+    export_geojson_feature_collection(
+        """
+        SELECT 
+            DisclID, ESB_NGUID, Agency_Type, Agency_Name, Agency_Code,
+            ServiceNum, Area_Code, ST_AsGeoJSON(ST_Geometry) AS geometry
+        FROM mart_ng911_emergency_boundaries
+        """,
+        esb_geojson
+    )
+    print(f"  -> Exported Emergency Service Boundaries: {esb_parquet} & {esb_geojson}")
+
     # Export QA Discrepancies
     qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_qa_discrepancies.parquet")
     conn.sql(f"COPY mart_ng911_qa_discrepancies TO '{qa_parquet}' (FORMAT PARQUET)")
@@ -147,10 +163,16 @@ def main():
     )
     print(f"  -> Exported QA Fishbone Vectors: {fishbone_parquet} & {fishbone_geojson}")
 
+    # Export Cal OES 98% Readiness Audit Mart
+    audit_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_readiness_audit.parquet")
+    conn.sql(f"COPY mart_ng911_qa_readiness_audit TO '{audit_parquet}' (FORMAT PARQUET)")
+    print(f"  -> Exported Cal OES Readiness Audit Mart: {audit_parquet}")
+
     # Export GeoLibre project file (.geolibre and .geolibre.json)
     gen_proj_script = os.path.join(PROJECT_DIR, "scripts", "generate_geolibre_project.py")
     subprocess.run([sys.executable, gen_proj_script], cwd=PROJECT_DIR, check=True)
     print(f"  -> Exported GeoLibre Project: {os.path.join(OUTPUT_DIR, 'fresno_ng911_pilot.geolibre')}")
+
 
     total_addr = conn.sql("SELECT count(*) FROM mart_ng911_addresses").fetchone()[0]
     addr_metrics = conn.sql("""
@@ -182,6 +204,9 @@ def main():
     missing_roads_cnt = next((m[1] for m in qa_metrics if m[0] == "POTENTIAL_MISSING_ROAD"), 0)
     name_mismatches_cnt = next((m[1] for m in qa_metrics if m[0] == "NAME_MISMATCH"), 0)
 
+    # Cal OES Readiness Audit
+    audit_row = conn.sql("SELECT * FROM mart_ng911_qa_readiness_audit").df().to_dict('records')[0]
+
     print("\n" + "=" * 75)
     print("                       PILOT EVALUATION SCORECARD")
     print("=" * 75)
@@ -196,27 +221,43 @@ def main():
     print(f"  - Authoritative County:   {county_only_cnt:,} ({county_only_cnt/total_addr*100:.1f}%)")
     print(f"  - Overture Unverified:    {overture_only_cnt:,} ({overture_only_cnt/total_addr*100:.1f}%)")
     print(f"  - Mean Spatial Offset:    {avg_offset} meters")
+    print(f"  - With Landmark/POI Alias:{audit_row['SSAP_With_Landmark_Alias']:,} authoritative POIs matched")
     print("-" * 75)
     print(f"  LAYER 2: ROAD CENTERLINES (RCL):")
     print(f"  - Centerline Segments:    {total_roads:,}")
     print(f"  - Range Synthesized:      {mapped_roads:,} segments mapped with From/To ranges")
     print(f"  - Geometry Attribution:   100% Fresno County REGIONAL_STREETS_VW")
     print("-" * 75)
-    print(f"  LAYER 3: NENA QA/QC FISHBONE VALIDATION:")
+    print(f"  LAYER 3: EMERGENCY SERVICE BOUNDARIES (ESB & CAD/PSAP):")
+    esb_counts = conn.sql("SELECT Agency_Type, count(*) FROM mart_ng911_emergency_boundaries GROUP BY Agency_Type").fetchall()
+    for atype, acnt in esb_counts:
+        print(f"  - {atype} Polygons:       {acnt:,}")
+    print(f"  - SSAP with PSAP Bound:   {audit_row['SSAP_With_PSAP']:,} ({audit_row['Pct_PSAP_Attributed']}%)")
+    print(f"  - SSAP with Fire ESB:     {audit_row['SSAP_With_Fire_ESB']:,} ({audit_row['Pct_Fire_Attributed']}%)")
+    print("-" * 75)
+    print(f"  LAYER 4: NENA QA/QC FISHBONE VALIDATION:")
     print(f"  - Fishbone Vectors:       {fishbone_metrics[0]:,} addresses snapped to centerlines")
     print(f"  - Mean Offset to Road:    {fishbone_metrics[1]} meters")
-    print(f"  - Points within 50m:      {fishbone_metrics[0] - fishbone_metrics[2]:,} ({(fishbone_metrics[0] - fishbone_metrics[2])/max(fishbone_metrics[0], 1)*100:.1f}%)")
+    print(f"  - Snapped within 50m:     {audit_row['SSAP_Snapped_Within_50m']:,} ({audit_row['Pct_SSAP_Snapped_Within_50m']}%)")
     print(f"  - Excessive Offsets (>50m):{fishbone_metrics[2]:,} flagged for analyst review")
     print("-" * 75)
-    print(f"  LAYER 4: QA/QC DISCREPANCY AUDITING:")
+    print(f"  LAYER 5: QA/QC DISCREPANCY AUDITING:")
     print(f"  - Potential Missing Roads:{missing_roads_cnt:,} (Overture roads absent from County GIS)")
     print(f"  - Street Name Mismatches: {name_mismatches_cnt:,} (Spelling / alias discrepancies)")
     print("-" * 75)
-    print(f"  dbt Data Quality Tests:   37 / 37 PASSED (100%)")
+    print(f"  CAL OES 98% NG911 TRANSITION READINESS SCORECARD:")
+    print(f"  - RCL Snapping (>= 98%):   {audit_row['Pct_SSAP_Snapped_Within_50m']}% -> {'[PASS]' if audit_row['Snapping_Threshold_Passed'] else '[FAIL]'}")
+    print(f"  - PSAP Coverage (>= 98%):  {audit_row['Pct_PSAP_Attributed']}% -> {'[PASS]' if audit_row['PSAP_Coverage_Passed'] else '[FAIL]'}")
+    print(f"  - Inverted Ranges (= 0):   {audit_row['Road_Range_Inversions']} -> {'[PASS]' if audit_row['Zero_Range_Inversions_Passed'] else '[FAIL]'}")
+    print(f"  - Cal OES Readiness:       {audit_row['Cal_OES_Readiness_Status']}")
+    print("-" * 75)
     print(f"  Deliverables Generated:   SSAP (Parquet/GeoJSON), RCL (Parquet/GeoJSON),")
-    print(f"                            Fishbones (Parquet/GeoJSON), QA (Parquet)")
-    print(f"  GeoLibre Compatibility:   Ready for 1-click loading into https://geolibre.app/")
+    print(f"                            ESB (Parquet/GeoJSON), Fishbones (Parquet/GeoJSON),")
+    print(f"                            QA (Parquet), Readiness Audit (Parquet)")
+    print(f"  GeoLibre Project:         data/output/fresno_ng911_pilot.geolibre (.json)")
+    print(f"  GeoLibre 1-Click URL:     https://web.geolibre.app/?url=https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/fresno_ng911_pilot.geolibre.json")
     print("=" * 75 + "\n")
+
 
 if __name__ == "__main__":
     main()

@@ -35,6 +35,38 @@ models:
         tests:
           - not_null
 
+  - name: stg_county_boundaries
+    description: "Authoritative Emergency Service Boundaries (ESBs) and CAD/PSAP boundaries from Fresno County."
+    columns:
+      - name: esb_nguid
+        tests:
+          - not_null
+      - name: agency_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PSAP', 'FIRE', 'MUNICIPAL']
+      - name: agency_name
+        tests:
+          - not_null
+      - name: geom
+        tests:
+          - not_null
+
+  - name: stg_overture_places
+    description: "Authoritative Landmark / POI locations from Overture Maps scoped to pilot extent."
+    columns:
+      - name: place_id
+        tests:
+          - not_null
+      - name: place_name
+        tests:
+          - not_null
+      - name: geom
+        tests:
+          - not_null
+
   - name: stg_overture_addresses
     description: "Global open address GeoParquet points from Overture Maps scoped to the pilot extent."
     columns:
@@ -67,8 +99,19 @@ models:
               arguments:
                 values: ['CONFLATED', 'COUNTY_ONLY', 'OVERTURE_ONLY']
 
+  - name: int_address_landmarks
+    description: "Spatial proximity join matching address points to authoritative landmark POIs within 60m."
+    columns:
+      - name: addr_uid
+        tests:
+          - not_null
+          - unique
+      - name: landmark_name
+        tests:
+          - not_null
+
   - name: mart_ng911_addresses
-    description: "NENA-STA-010 compliant Site/Structure Address Point (SSAP) data mart for Next Generation 911 dispatch."
+    description: "NENA-STA-010 compliant Site/Structure Address Point (SSAP) data mart with automated ESB dispatch attribution and landmark conflation."
     columns:
       - name: SSAP_NGUID
         description: "NENA Globally Unique Identifier formatted as urn:emergency:uid:gis:SSAP:<id>:<domain>."
@@ -115,6 +158,26 @@ models:
         tests:
           - not_null
 
+  - name: mart_ng911_emergency_boundaries
+    description: "NENA-STA-010 compliant Emergency Service Boundaries (ESBs: Fire, Law/CAD, Municipal)."
+    columns:
+      - name: ESB_NGUID
+        tests:
+          - not_null
+          - unique
+      - name: DisclID
+        tests:
+          - not_null
+      - name: Agency_Type
+        tests:
+          - not_null
+      - name: Agency_Name
+        tests:
+          - not_null
+      - name: ST_Geometry
+        tests:
+          - not_null
+
   - name: mart_ng911_road_centerlines
     description: "NENA-STA-010 compliant Road Centerline (RCL) data mart with synthesized address ranges."
     columns:
@@ -151,3 +214,15 @@ models:
         tests:
           - not_null
 
+  - name: mart_ng911_qa_readiness_audit
+    description: "Cal OES 98% NG911 Transition Readiness Audit scorecard evaluating spatial compliance and boundary coverage."
+    columns:
+      - name: Jurisdiction
+        tests:
+          - not_null
+      - name: Total_SSAP_Addresses
+        tests:
+          - not_null
+      - name: Cal_OES_Readiness_Status
+        tests:
+          - not_null
