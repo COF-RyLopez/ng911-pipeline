@@ -32,7 +32,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
-          uv pip install --system dbt-duckdb duckdb pydantic overture-schema pyarrow pandas requests
+          uv pip install --system dbt-duckdb duckdb pydantic overture-schema pyarrow pandas requests fastapi uvicorn httpx
 
       - name: Validate Overture Maps Schema v2
         run: |
@@ -41,6 +41,10 @@ jobs:
       - name: Ingest & Cache Pilot Data
         run: |
           python scripts/fetch_pilot_data.py
+
+      - name: Test NENA STA-005.1.2 ECRF/LVF Microservice
+        run: |
+          python scripts/test_nena_service.py
 
       - name: Execute dbt Transformations
         run: |
