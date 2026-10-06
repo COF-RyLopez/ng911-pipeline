@@ -22,7 +22,8 @@ SELECT
     longitude,
     latitude,
     ST_Point(longitude, latitude) AS geom,
-    coalesce(source_agency, 'County of Fresno') AS source_agency
+    coalesce(source_agency, 'County of Fresno') AS source_agency,
+    coalesce(nullif(upper(trim(address_status)), ''), 'ACTIVE') AS address_status
 FROM raw_county
 WHERE house_number IS NOT NULL 
   AND street_name IS NOT NULL

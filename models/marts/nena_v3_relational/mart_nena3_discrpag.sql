@@ -4,10 +4,11 @@
 
 -- NENA v3.0 Relational Data Model: ng911.DiscrpAg (Discrepancy Agency)
 WITH agencies AS (
-    SELECT DISTINCT
+    SELECT 
         agency_domain AS DiscrpAgID,
-        source_agency AS Agency_Name
+        max(source_agency) AS Agency_Name
     FROM {{ ref('stg_regional_addresses') }}
+    GROUP BY agency_domain
 )
 
 SELECT
