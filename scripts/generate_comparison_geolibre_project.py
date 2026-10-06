@@ -2,19 +2,12 @@
 """
 scripts/generate_comparison_geolibre_project.py
 
-Generates the 1-click GeoLibre Comparison, QA/QC & Actionable Remediation project files
+Generates 1-click GeoLibre Comparison, QA/QC & Actionable Remediation project files
 (.geolibre and .geolibre.json) for raw source vs NG911 enhanced datasets.
 
-Features:
-- NENA Road Centerlines (RCL) vector layer
-- QA/QC Spatial Displacement Vectors & Fishbones (snapping distance lines)
-- Color-coded rule-violation & building footprint remediation symbology:
-    * Red (#dc2626): CRITICAL_POS_OFFSET / Missing mandatory NENA fields
-    * Orange (#ea580c): OUTSIDE_BUILDING_FOOTPRINT
-    * Yellow (#eab308): MISSING_NENA_MANDATORY_FIELD
-    * Green (#16a34a): VALIDATED_OK
-- Direct interactive Mapillary ground-truth street-level view links in feature popups.
-- GeoLibre plugins integration: swipe, geo-editor, dimensions, mapillary.
+Generates:
+1. `ng911_address_comparison.geolibre.json` (GitHub Pages remote streaming URL)
+2. `ng911_address_comparison_local.geolibre.json` (Local HTTP 206 Byte-Range server on http://localhost:8088/)
 """
 
 import argparse
@@ -24,8 +17,9 @@ import os
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-GITHUB_BASE_URL = "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output"
-TILES_BASE_URL = f"{GITHUB_BASE_URL}/tiles"
+GITHUB_PAGES_BASE_URL = "https://cof-rylopez.github.io/ng911-pipeline/data/output"
+GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output"
+LOCAL_BASE_URL = "http://localhost:8088"
 
 
 def load_geojson(filename):
@@ -39,8 +33,8 @@ def load_geojson(filename):
     return {"type": "FeatureCollection", "features": []}
 
 
-def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, opacity=1.0):
-    url = f"{TILES_BASE_URL}/{filename}"
+def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, base_url, opacity=1.0):
+    url = f"{base_url}/tiles/{filename}"
     return {
         "id": layer_id,
         "name": name,
@@ -69,18 +63,16 @@ def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, opacity=
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate GeoLibre QA/QC Comparison Project.")
-    parser.add_argument("--source-file", help="Path to local user source dataset (.geojson, .parquet, .csv)", default=None)
-    args = parser.parse_args()
-
+def build_project(base_url, is_local=False):
     remediation_geojson = load_geojson("remediation/county_remediation_points_sample.geojson")
     fishbones_geojson = load_geojson("mart_ng911_fresno_fishbones_sample.geojson")
     rcl_geojson = load_geojson("mart_ng911_fresno_rcl_sample.geojson")
 
-    project_data = {
+    raw_base = GITHUB_RAW_BASE_URL if not is_local else LOCAL_BASE_URL
+
+    return {
         "version": "0.1.0",
-        "name": "NG911 Address Enhancement & Actionable Jurisdiction Remediation Hub",
+        "name": f"NG911 Address Enhancement & Remediation Hub {'(Local Server)' if is_local else '(Cloud Remote)'}",
         "metadata": {
             "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
             "jurisdiction": "County of Fresno, California (FIPS 06019)",
@@ -91,7 +83,7 @@ def main():
         },
         "mapView": {
             "center": [-119.7871, 36.7468],
-            "zoom": 14,
+            "zoom": 15,
             "bearing": 0,
             "pitch": 0,
             "bbox": [-119.95, 36.65, -119.65, 36.90]
@@ -103,16 +95,16 @@ def main():
         "layers": [
             {
                 "id": "mart_ng911_fresno_rcl_geojson",
-                "name": "Authoritative NENA Road Centerlines (Sample)",
+                "name": "Authoritative NENA Road Centerlines (25,000 Vectors)",
                 "type": "geojson",
                 "visible": True,
                 "opacity": 0.85,
                 "geojson": rcl_geojson,
                 "source": {
                     "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl_sample.geojson"
+                    "url": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl_sample.geojson",
+                "sourcePath": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson",
                 "style": {
                     "fillColor": "#059669",
                     "strokeColor": "#059669",
@@ -138,7 +130,7 @@ def main():
             },
             pmtiles_layer(
                 "mart_ng911_fresno_rcl_tiles",
-                "Authoritative NENA Road Centerlines (All 53,474)",
+                "Authoritative NENA Road Centerlines (Full 53,474)",
                 "fresno_rcl.pmtiles",
                 "rcl",
                 {
@@ -160,20 +152,21 @@ def main():
                         {"field": "RoadClass", "label": "Road Class"},
                         {"field": "RCL_NGUID", "label": "NENA RCL NGUID"}
                     ]
-                }
+                },
+                base_url
             ),
             {
                 "id": "mart_ng911_fresno_fishbones_geojson",
-                "name": "QA/QC Spatial Displacement Vectors & Fishbones (Sample)",
+                "name": "QA/QC Displacement Vectors & Fishbones (25,000 Vectors)",
                 "type": "geojson",
                 "visible": True,
                 "opacity": 0.9,
                 "geojson": fishbones_geojson,
                 "source": {
                     "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_sample.geojson"
+                    "url": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_sample.geojson",
+                "sourcePath": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson",
                 "style": {
                     "fillColor": "#dc2626",
                     "strokeColor": "#dc2626",
@@ -198,7 +191,7 @@ def main():
             },
             pmtiles_layer(
                 "mart_ng911_fresno_fishbones_tiles",
-                "QA/QC Spatial Displacement Vectors & Fishbones (All 365,316)",
+                "QA/QC Displacement Vectors & Fishbones (Full 365,316)",
                 "fresno_fishbones.pmtiles",
                 "fishbones",
                 {
@@ -219,20 +212,21 @@ def main():
                         {"field": "IsRangeViolation", "label": "Range Violation"},
                         {"field": "FishboneID", "label": "NENA Fishbone URN"}
                     ]
-                }
+                },
+                base_url
             ),
             {
                 "id": "mart_ng911_county_remediation_geojson",
-                "name": "NG911 Rule Violation & Remediation Symbology (Sample)",
+                "name": "NG911 Rule Violation & Remediation Symbology (Action Items)",
                 "type": "geojson",
                 "visible": True,
                 "opacity": 1.0,
                 "geojson": remediation_geojson,
                 "source": {
                     "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/remediation/county_remediation_points_sample.geojson"
+                    "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/remediation/county_remediation_points_sample.geojson",
+                "sourcePath": f"{raw_base}/remediation/county_remediation_points_sample.geojson",
                 "style": {
                     "circleRadius": 7,
                     "fillColor": [
@@ -266,7 +260,7 @@ def main():
             },
             pmtiles_layer(
                 "mart_ng911_county_remediation_tiles",
-                "NG911 Rule Violation & Remediation Symbology (All 395,000)",
+                "NG911 Rule Violation & Remediation Symbology (Full 395,000)",
                 "fresno_remediation.pmtiles",
                 "remediation",
                 {
@@ -296,21 +290,43 @@ def main():
                         {"field": "MapillaryGroundTruthURL", "label": "Mapillary Street View Link", "kind": "url"},
                         {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
                     ]
-                }
+                },
+                base_url
             )
         ]
     }
 
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate GeoLibre QA/QC Comparison Project.")
+    parser.add_argument("--source-file", help="Path to local user source dataset (.geojson, .parquet, .csv)", default=None)
+    args = parser.parse_args()
+
+    # Build Remote Project (GitHub Pages Byte Serving URL)
+    remote_proj = build_project(GITHUB_PAGES_BASE_URL, is_local=False)
     json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre.json")
-    proj_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre")
+    geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre")
 
     with open(json_path, "w") as f:
-        json.dump(project_data, f, indent=2)
+        json.dump(remote_proj, f, indent=2)
 
-    with open(proj_path, "w") as f:
-        json.dump(project_data, f, indent=2)
+    with open(geolibre_path, "w") as f:
+        json.dump(remote_proj, f, indent=2)
 
-    print(f"Generated GeoLibre QA/QC Comparison Project:\n  -> {json_path}\n  -> {proj_path}")
+    # Build Local Project (http://localhost:8088/ Byte Serving URL)
+    local_proj = build_project(LOCAL_BASE_URL, is_local=True)
+    local_json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_local.geolibre.json")
+    local_geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_local.geolibre")
+
+    with open(local_json_path, "w") as f:
+        json.dump(local_proj, f, indent=2)
+
+    with open(local_geolibre_path, "w") as f:
+        json.dump(local_proj, f, indent=2)
+
+    print("Generated GeoLibre QA/QC Projects:")
+    print(f"  Remote -> {json_path}")
+    print(f"  Local  -> {local_json_path}")
 
 
 if __name__ == "__main__":
