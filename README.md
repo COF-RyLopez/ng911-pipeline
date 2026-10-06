@@ -98,21 +98,21 @@ To execute the entire pilot end-to-end (ingest, dbt transformation, 83 data qual
 
 | County | Authoritative Address Count | Ingestion Method | Status |
 | :--- | :--- | :--- | :--- |
-| **Fresno County** | **164,448** (238,110 total SSAP) | ArcGIS Hub REST / VW | Verified Authoritative |
+| **Fresno County** | **395,107** (466,751 total SSAP) | ArcGIS Hub `REGIONAL_ADDRESS_VW` (Active + Current + Pending) | Verified Authoritative |
 | **Tulare County** | **170,483** | Open Data FeatureServer | Verified Authoritative |
 | **Kings County** | **51,877** | Parallel REST Server | Verified Authoritative |
-| **Total Central Valley** | **386,808 addresses** | High-Speed Stream Ingest | **100% Authoritative** |
+| **Total Central Valley** | **617,467 addresses** | High-Speed Stream Ingest | **100% Authoritative** |
 
 ---
 
 ## Official NENA v3.0 Relational Model (`NENA-STA-006.3-2026`)
 
 Deliverables exported to `data/output/nena_v3/`:
-- **`mart_nena3_adpt.parquet` (387,214 rows, 16.8 MB)**: Normalized 3NF address points linking foreign keys to `DiscrpAg_ID`, `CompleteStNam_ID`, and `CompleteAdNum_ID`.
-- **`mart_nena3_stseg.parquet` (53,506 rows, 6.5 MB)**: Street centerline segments with 3NF foreign keys to `CompleteStNam_ID` and `DiscrpAg_ID`.
+- **`mart_nena3_adpt.parquet` (618,633 rows, 26.0 MB)**: Normalized 3NF address points linking foreign keys to `DiscrpAg_ID`, `CompleteStNam_ID`, and `CompleteAdNum_ID`.
+- **`mart_nena3_stseg.parquet` (53,576 rows, 6.6 MB)**: Street centerline segments with 3NF foreign keys to `CompleteStNam_ID` and `DiscrpAg_ID`.
 - **`mart_nena3_serviceboundary.parquet` (80 rows, 1.0 MB)**: MultiPolygon emergency service boundaries referencing `ServiceURN_ID` and `DiscrpAg_ID`.
-- **`mart_nena3_completestnam.parquet` (12,671 rows)**: Normalized street components (`St_PreDir`, `St_Name`, `St_Typ`, `St_PosDir`).
-- **`mart_nena3_completeadnum.parquet` (36,963 rows)**: Normalized address numbers (`Add_Number`, `AddNum_Suf`).
+- **`mart_nena3_completestnam.parquet` (12,708 rows)**: Normalized street components (`St_PreDir`, `St_Name`, `St_Typ`, `St_PosDir`).
+- **`mart_nena3_completeadnum.parquet` (37,249 rows)**: Normalized address numbers (`Add_Number`, `AddNum_Suf`).
 - **`mart_nena3_discrpag.parquet` (3 rows)**: Authority registry (`fresnocountyca.gov`, `kingscountyca.gov`, `tularecountyca.gov`).
 - **`mart_nena3_serviceurn.parquet` (4 rows)**: RFC 5031 service identifiers (`sos`, `sos.fire`, `sos.police`, `sos.ambulance`).
 

@@ -38,20 +38,21 @@ def fetch_fresno_county_addresses():
     print(f"\n[1/6] Fetching all Fresno County addresses from ArcGIS FeatureServer...")
     
     base_url = "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/REGIONAL_ADDRESS_VW/FeatureServer/1/query"
+    where_filter = "(ADDRESS_STATUS IN ('ACTIVE', 'C', 'PENDING', 'P') OR ADDRESS_STATUS IS NULL) AND ADDRESS_NUMBER IS NOT NULL"
     req = urllib.request.Request(
-        f"{base_url}?where=ADDRESS_STATUS%3D%27ACTIVE%27+AND+ADDRESS_NUMBER+IS+NOT+NULL&returnCountOnly=true&f=json",
+        f"{base_url}?where={urllib.parse.quote(where_filter)}&returnCountOnly=true&f=json",
         headers={"User-Agent": "Fresno-NG911/1.0"}
     )
     with urllib.request.urlopen(req) as resp:
         total_count = json.loads(resp.read().decode("utf-8"))["count"]
-    print(f"  Target record count: {total_count:,} addresses")
+    print(f"  Target record count (Active + Current + Pending): {total_count:,} addresses")
 
     offsets = list(range(0, total_count, 2000))
 
     def fetch_page(offset):
         params = {
-            "where": "ADDRESS_STATUS='ACTIVE' AND ADDRESS_NUMBER IS NOT NULL",
-            "outFields": "OBJECTID,ADDRESS_NUMBER,ADDRESS_FRACTION,STREET_DIRECTION,STREET_NAME,STREET_TYPE,STREET_POST_DIRECTION,ADDRESS_UNIT,ADDRESS_ZIP5,ADDRESS_ZIPCITY,AGENCY_NAME",
+            "where": where_filter,
+            "outFields": "OBJECTID,ADDRESS_NUMBER,ADDRESS_FRACTION,STREET_DIRECTION,STREET_NAME,STREET_TYPE,STREET_POST_DIRECTION,ADDRESS_UNIT,ADDRESS_ZIP5,ADDRESS_ZIPCITY,AGENCY_NAME,AGENCY_CODE,ADDRESS_STATUS",
             "outSR": "4326",
             "resultOffset": offset,
             "resultRecordCount": 2000,
@@ -65,6 +66,12 @@ def fetch_fresno_county_addresses():
             for f in data.get("features", []):
                 attr = f.get("attributes", {})
                 geom = f.get("geometry", {})
+                agency_code = attr.get("AGENCY_CODE")
+                source_agency = attr.get("AGENCY_NAME") or (
+                    "City of Fresno" if agency_code == "FR" else (
+                        "City of Clovis" if agency_code == "CL" else "County of Fresno"
+                    )
+                )
                 records.append({
                     "county_id": str(attr.get("OBJECTID")),
                     "house_number": str(attr.get("ADDRESS_NUMBER") or ""),
@@ -78,7 +85,8 @@ def fetch_fresno_county_addresses():
                     "postcode": str(attr.get("ADDRESS_ZIP5") or ""),
                     "longitude": float(geom.get("x")) if geom.get("x") is not None else None,
                     "latitude": float(geom.get("y")) if geom.get("y") is not None else None,
-                    "source_agency": attr.get("AGENCY_NAME") or "County of Fresno"
+                    "source_agency": source_agency,
+                    "address_status": attr.get("ADDRESS_STATUS") or "ACTIVE"
                 })
             return records
 

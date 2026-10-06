@@ -18,8 +18,13 @@ WITH fresno AS (
         longitude,
         latitude,
         geom,
-        'fresnocountyca.gov' AS agency_domain,
-        source_agency
+        CASE 
+            WHEN source_agency = 'City of Fresno' THEN 'fresno.gov'
+            WHEN source_agency = 'City of Clovis' THEN 'cityofclovis.com'
+            ELSE 'fresnocountyca.gov'
+        END AS agency_domain,
+        source_agency,
+        address_status
     FROM {{ ref('stg_county_addresses') }}
 ),
 
@@ -42,7 +47,8 @@ kings AS (
         latitude,
         ST_Point(longitude, latitude) AS geom,
         'countyofkings.com' AS agency_domain,
-        'County of Kings' AS source_agency
+        'County of Kings' AS source_agency,
+        'ACTIVE' AS address_status
     FROM read_parquet('data/cache/kings_addresses.parquet')
     WHERE house_number IS NOT NULL AND street_name IS NOT NULL
 ),
@@ -66,7 +72,8 @@ tulare AS (
         latitude,
         ST_Point(longitude, latitude) AS geom,
         'tularecounty.ca.gov' AS agency_domain,
-        'County of Tulare' AS source_agency
+        'County of Tulare' AS source_agency,
+        'ACTIVE' AS address_status
     FROM read_parquet('data/cache/tulare_addresses.parquet')
     WHERE house_number IS NOT NULL AND street_name IS NOT NULL
 )
