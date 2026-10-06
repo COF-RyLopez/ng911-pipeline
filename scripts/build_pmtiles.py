@@ -30,7 +30,7 @@ OUTPUT_DIR = os.path.join(PROJECT_DIR, "data", "output")
 TILES_DIR = os.path.join(OUTPUT_DIR, "tiles")
 TMP_DIR = os.path.join(PROJECT_DIR, "data", "cache", "tiles_tmp")
 
-# layer name -> (parquet file, SELECT columns, tippecanoe args)
+# layer name -> (parquet file, SELECT columns, tippecanoe args, optional geom_col)
 LAYERS = {
     "ssap": (
         "mart_ng911_fresno_ssap.parquet",
@@ -39,6 +39,7 @@ LAYERS = {
            round(SpatialOffsetMeters, 2) AS SpatialOffsetMeters""",
         # Every point is kept from z13 up; lower zooms thin out for speed.
         ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
+        "ST_Geometry"
     ),
     "rcl": (
         "mart_ng911_fresno_rcl.parquet",
@@ -46,17 +47,34 @@ LAYERS = {
            Parity_L, Parity_R, RoadClass, SpeedLimit, OneWay""",
         ["-Z8", "-z15", "--no-line-simplification", "--no-tiny-polygon-reduction",
          "--drop-densest-as-needed"],
+        "ST_Geometry"
     ),
     "fishbones": (
         "mart_ng911_fresno_fishbones.parquet",
         """FishboneID, SSAP_NGUID, RCL_NGUID, HNO, STN,
            round(DistanceMeters, 1) AS DistanceMeters, IsExcessiveOffset, IsRangeViolation""",
         ["-Z11", "-z15", "-B13", "--drop-densest-as-needed"],
+        "ST_Geometry"
     ),
     "esb": (
         "mart_ng911_fresno_esb.parquet",
         "ESB_NGUID, Agency_Type, Agency_Name, Agency_Code, ServiceNum, Area_Code",
         ["-Z6", "-z14", "--no-tiny-polygon-reduction", "--detect-shared-borders"],
+        "ST_Geometry"
+    ),
+    "enhancements": (
+        "mart_ng911_fresno_enhancements.parquet",
+        """SSAP_NGUID, CountyLocalID, RawAddress, EnhancedAddress, PSAP, ESB_Fire,
+           LandmarkName, ConflationStatus, DisplacementMeters, EnhancementCategory""",
+        ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
+        "ST_Geometry"
+    ),
+    "diff_vectors": (
+        "mart_ng911_fresno_enhancements.parquet",
+        """SSAP_NGUID, CountyLocalID, RawAddress, EnhancedAddress,
+           DisplacementMeters, EnhancementCategory""",
+        ["-Z11", "-z15", "-B13", "--drop-densest-as-needed"],
+        "DiffLineGeom"
     ),
 }
 
@@ -72,8 +90,17 @@ def main():
     conn = duckdb.connect()
     conn.sql("INSTALL spatial; LOAD spatial;")
 
-    for name, (parquet, cols, tip_args) in LAYERS.items():
+    for name, item in LAYERS.items():
+        parquet = item[0]
+        cols = item[1]
+        tip_args = item[2]
+        geom_col = item[3] if len(item) > 3 else "ST_Geometry"
+
         src = os.path.join(OUTPUT_DIR, parquet)
+        if not os.path.exists(src):
+            print(f"Skipping tile build for {name}: {src} missing.")
+            continue
+
         seq = os.path.join(TMP_DIR, f"{name}.geojsonl")
         out = os.path.join(TILES_DIR, f"fresno_{name}.pmtiles")
         for p in (seq, out):
@@ -81,10 +108,10 @@ def main():
                 os.remove(p)
 
         conn.sql(f"""
-            COPY (SELECT {cols}, ST_Geometry AS geom FROM '{src}' WHERE ST_Geometry IS NOT NULL)
+            COPY (SELECT {cols}, {geom_col} AS geom FROM '{src}' WHERE {geom_col} IS NOT NULL)
             TO '{seq}' WITH (FORMAT GDAL, DRIVER 'GeoJSONSeq', LAYER_CREATION_OPTIONS 'COORDINATE_PRECISION=6')
         """)
-        n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE ST_Geometry IS NOT NULL").fetchone()[0]
+        n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE {geom_col} IS NOT NULL").fetchone()[0]
 
         cmd = ["tippecanoe", "-q", "-f", "-o", out, "-l", name,
                "--attribution", "County of Fresno (authoritative); Overture Maps Foundation"] + tip_args + [seq]
@@ -93,6 +120,7 @@ def main():
         print(f"  -> {out}  ({n:,} features, {os.path.getsize(out) / 1e6:.1f} MB)")
 
     shutil.rmtree(TMP_DIR, ignore_errors=True)
+
 
 
 if __name__ == "__main__":

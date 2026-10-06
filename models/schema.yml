@@ -332,3 +332,20 @@ models:
         tests:
           - not_null
 
+  - name: mart_ng911_address_enhancements
+    description: "NG911 Address Enhancements model categorizing spatial displacement, PSAP enrichment, and street normalization."
+    columns:
+      - name: SSAP_NGUID
+        tests:
+          - not_null
+      - name: EnhancementCategory
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SPATIAL_CORRECTION', 'LANDMARK_ALIASED', 'PSAP_ENRICHMENT', 'NENA_STREET_NORMALIZED', 'UNCHANGED']
+      - name: DisplacementMeters
+        tests:
+          - not_null
+
+
