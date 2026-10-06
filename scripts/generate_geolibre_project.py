@@ -36,9 +36,9 @@ def load_sample_geojson(filename):
     return {"type": "FeatureCollection", "features": []}
 
 def main():
-    fb_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson")
-    ssap_geojson = load_sample_geojson("mart_ng911_fresno_ssap_sample.geojson")
-    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson")
+    fb_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_metro.geojson")
+    ssap_geojson = load_sample_geojson("mart_ng911_fresno_ssap_metro.geojson")
+    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl.geojson")
     esb_geojson = load_sample_geojson("mart_ng911_fresno_esb_sample.geojson")
 
     project_data = {
@@ -107,9 +107,9 @@ def main():
                 "geojson": rcl_geojson,
                 "source": {
                     "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl_sample.geojson"
+                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl_sample.geojson",
+                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl.geojson",
                 "style": {
                     "strokeColor": "#059669",
                     "strokeWidth": 2.5,
@@ -141,9 +141,9 @@ def main():
                 "geojson": ssap_geojson,
                 "source": {
                     "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_ssap_sample.geojson"
+                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_ssap_metro.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_ssap_sample.geojson",
+                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_ssap_metro.geojson",
                 "style": {
                     "circleRadius": 5,
                     "fillColor": "#2563eb",
@@ -179,9 +179,9 @@ def main():
                 "geojson": fb_geojson,
                 "source": {
                     "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_sample.geojson"
+                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_metro.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_sample.geojson",
+                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_metro.geojson",
                 "style": {
                     "strokeColor": "#ef4444",
                     "strokeWidth": 2.5,
