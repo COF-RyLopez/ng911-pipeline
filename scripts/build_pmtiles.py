@@ -63,7 +63,8 @@ LAYERS = {
 
 def main():
     if not shutil.which("tippecanoe"):
-        sys.exit("tippecanoe not found. Install with: brew install tippecanoe")
+        print("[WARNING] tippecanoe not found in PATH. Skipping PMTiles vector tile build.")
+        return
 
     os.makedirs(TILES_DIR, exist_ok=True)
     os.makedirs(TMP_DIR, exist_ok=True)
