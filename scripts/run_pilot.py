@@ -168,6 +168,25 @@ def main():
     conn.sql(f"COPY mart_ng911_qa_readiness_audit TO '{audit_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Cal OES Readiness Audit Mart: {audit_parquet}")
 
+    # Export Address Enhancements & QA/QC Displacement Mart
+    enhancements_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_enhancements.parquet")
+    enhancements_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_enhancements_sample.geojson")
+    conn.sql(f"COPY mart_ng911_address_enhancements TO '{enhancements_parquet}' (FORMAT PARQUET)")
+    export_geojson_feature_collection(
+        """
+        SELECT 
+            SSAP_NGUID, CountyLocalID, RawAddress, EnhancedAddress,
+            PSAP, ESB_Fire, LandmarkName, ConflationStatus,
+            DisplacementMeters, EnhancementCategory,
+            ST_AsGeoJSON(ST_Geometry) AS geometry
+        FROM mart_ng911_address_enhancements
+        LIMIT 5000
+        """,
+        enhancements_geojson
+    )
+    print(f"  -> Exported Address Enhancements: {enhancements_parquet} & {enhancements_geojson}")
+
+
     # Export NENA v3.0 Relational Data Model (3NF) Tables
     nena_v3_dir = os.path.join(OUTPUT_DIR, "nena_v3")
     os.makedirs(nena_v3_dir, exist_ok=True)
