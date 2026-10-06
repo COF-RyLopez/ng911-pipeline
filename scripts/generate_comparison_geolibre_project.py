@@ -65,13 +65,14 @@ def main():
 
     project_data = {
         "version": "0.1.0",
-        "name": "NG911 Address Enhancement & Visual QA/QC Diff Hub",
+        "name": "NG911 Address Enhancement & Actionable Jurisdiction Remediation Hub",
         "metadata": {
             "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
             "jurisdiction": "County of Fresno, California (FIPS 06019)",
             "repository": "https://github.com/COF-RyLopez/ng911-pipeline",
             "standard": "NENA-STA-010-2021 & Cal OES NG911 GIS Guidelines",
-            "description": "Interactive visual diffing hub comparing raw municipal address points against NG911 remediated address points, showing spatial displacement vectors, PSAP attribution, and DuckDB WASM queries."
+            "description": "Interactive visual QA/QC and remediation hub comparing raw local address points against NG911 remediated address points, showing rule-violation symbology, building footprint intersections, spatial displacement vectors, and Mapillary street views.",
+            "plugins": ["swipe", "geo-editor", "dimensions", "mapillary"]
         },
         "mapView": {
             "center": [-119.7871, 36.7468],
@@ -111,22 +112,22 @@ def main():
             ),
             pmtiles_layer(
                 "mart_ng911_fresno_enhancements",
-                "NG911 Address Points (Color-Coded by Enhancement)",
+                "NG911 Rule Violation & Enhancement Symbology",
                 "fresno_enhancements.pmtiles",
                 "enhancements",
                 {
-                    "circleRadius": 5,
+                    "circleRadius": 6,
                     "circleColor": [
                         "match",
                         ["get", "EnhancementCategory"],
-                        "SPATIAL_CORRECTION", "#059669",
+                        "SPATIAL_CORRECTION", "#dc2626",
                         "PSAP_ENRICHMENT", "#2563eb",
                         "LANDMARK_ALIASED", "#7c3aed",
                         "NENA_STREET_NORMALIZED", "#d97706",
-                        "#6b7280"
+                        "#10b981"
                     ],
                     "strokeColor": "#ffffff",
-                    "strokeWidth": 1.0
+                    "strokeWidth": 1.5
                 },
                 {
                     "click": True,
@@ -135,7 +136,7 @@ def main():
                     "fields": [
                         {"field": "EnhancedAddress", "label": "Enhanced Address", "hover": True},
                         {"field": "RawAddress", "label": "Original Raw Address", "hover": True},
-                        {"field": "EnhancementCategory", "label": "Enhancement Type", "hover": True},
+                        {"field": "EnhancementCategory", "label": "Status / Category", "hover": True},
                         {"field": "DisplacementMeters", "label": "Displacement (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
                         {"field": "PSAP", "label": "Primary PSAP"},
                         {"field": "ESB_Fire", "label": "Fire District"},
@@ -146,6 +147,7 @@ def main():
             )
         ]
     }
+
 
     json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre.json")
     proj_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre")

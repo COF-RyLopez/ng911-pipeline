@@ -1,12 +1,18 @@
 {
   "version": "0.1.0",
-  "name": "NG911 Address Enhancement & Visual QA/QC Diff Hub",
+  "name": "NG911 Address Enhancement & Actionable Jurisdiction Remediation Hub",
   "metadata": {
     "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
     "jurisdiction": "County of Fresno, California (FIPS 06019)",
     "repository": "https://github.com/COF-RyLopez/ng911-pipeline",
     "standard": "NENA-STA-010-2021 & Cal OES NG911 GIS Guidelines",
-    "description": "Interactive visual diffing hub comparing raw municipal address points against NG911 remediated address points, showing spatial displacement vectors, PSAP attribution, and DuckDB WASM queries."
+    "description": "Interactive visual QA/QC and remediation hub comparing raw local address points against NG911 remediated address points, showing rule-violation symbology, building footprint intersections, spatial displacement vectors, and Mapillary street views.",
+    "plugins": [
+      "swipe",
+      "geo-editor",
+      "dimensions",
+      "mapillary"
+    ]
   },
   "mapView": {
     "center": [
@@ -99,7 +105,7 @@
     },
     {
       "id": "mart_ng911_fresno_enhancements",
-      "name": "NG911 Address Points (Color-Coded by Enhancement)",
+      "name": "NG911 Rule Violation & Enhancement Symbology",
       "type": "pmtiles",
       "visible": true,
       "opacity": 1.0,
@@ -116,7 +122,7 @@
       "style": {
         "minZoom": 0,
         "maxZoom": 24,
-        "circleRadius": 5,
+        "circleRadius": 6,
         "circleColor": [
           "match",
           [
@@ -124,17 +130,17 @@
             "EnhancementCategory"
           ],
           "SPATIAL_CORRECTION",
-          "#059669",
+          "#dc2626",
           "PSAP_ENRICHMENT",
           "#2563eb",
           "LANDMARK_ALIASED",
           "#7c3aed",
           "NENA_STREET_NORMALIZED",
           "#d97706",
-          "#6b7280"
+          "#10b981"
         ],
         "strokeColor": "#ffffff",
-        "strokeWidth": 1.0
+        "strokeWidth": 1.5
       },
       "metadata": {
         "sourceKind": "pmtiles-url",
@@ -166,7 +172,7 @@
           },
           {
             "field": "EnhancementCategory",
-            "label": "Enhancement Type",
+            "label": "Status / Category",
             "hover": true
           },
           {
