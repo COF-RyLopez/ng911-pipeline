@@ -220,7 +220,7 @@ models:
       - name: Jurisdiction
         tests:
           - not_null
-      - name: Total_SSAP_Addresses
+      - name: Authoritative_SSAP_Addresses
         tests:
           - not_null
       - name: Cal_OES_Readiness_Status

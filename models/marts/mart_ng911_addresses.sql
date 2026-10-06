@@ -17,8 +17,21 @@ landmarks AS (
     SELECT * FROM {{ ref('int_address_landmarks') }}
 ),
 
--- Point-in-Polygon: CAD / PSAP Boundary
-addr_psap AS (
+-- Point-in-Polygon: Exact CAD / PSAP Boundary
+addr_psap_exact AS (
+    SELECT
+        c.addr_uid,
+        b.agency_name AS psap_name,
+        b.esb_nguid AS psap_nguid,
+        b.service_number AS psap_phone
+    FROM conflated_data c
+    JOIN boundaries b 
+      ON b.agency_type = 'PSAP' 
+     AND ST_Within(c.geom, b.geom)
+),
+
+-- Buffered Spatial Fallback for Border Points
+addr_psap_fallback AS (
     SELECT
         c.addr_uid,
         b.agency_name AS psap_name,
@@ -28,7 +41,24 @@ addr_psap AS (
     FROM conflated_data c
     JOIN boundaries b 
       ON b.agency_type = 'PSAP' 
-     AND ST_Within(c.geom, b.geom)
+     AND ST_Within(c.geom, ST_Buffer(b.geom, 0.01))
+    WHERE c.addr_uid NOT IN (SELECT addr_uid FROM addr_psap_exact)
+),
+
+addr_psap_combined AS (
+    SELECT addr_uid, psap_name, psap_nguid, psap_phone FROM addr_psap_exact
+    UNION ALL
+    SELECT addr_uid, psap_name, psap_nguid, psap_phone FROM addr_psap_fallback WHERE rn = 1
+),
+
+addr_psap AS (
+    SELECT
+        addr_uid,
+        psap_name,
+        psap_nguid,
+        psap_phone,
+        ROW_NUMBER() OVER (PARTITION BY addr_uid ORDER BY psap_name) AS rn
+    FROM addr_psap_combined
 ),
 
 -- Point-in-Polygon: Fire District Boundary
@@ -100,15 +130,11 @@ SELECT
     l.landmark_category AS LandmarkCategory,
     l.landmark_distance_meters AS LandmarkDistanceMeters,
 
-    -- 7. Explicit Geospatial Coordinates for Dispatch Telematics
+    -- 7. Spatial Coordinates & NENA Point Placement Types
     c.longitude AS Longitude,
     c.latitude AS Latitude,
-
-    -- 8. Spatial Discrepancy & Routing Quality Indicators
+    'Site' AS PointType,
     c.spatial_offset_meters AS SpatialOffsetMeters,
-    current_timestamp AS DateUpdate,
-
-    -- 9. Native Geometry (Point / WKB)
     c.geom AS ST_Geometry
 
 FROM conflated_data c
