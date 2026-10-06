@@ -1,0 +1,21 @@
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# dbt artifacts and logs
+target/
+logs/
+dbt_packages/
+.user.yml
+
+# DuckDB local databases
+*.duckdb
+*.duckdb.wal
+
+# Raw cached data (re-downloadable via scripts/fetch_pilot_data.py)
+data/cache/
+
+# OS specific files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,10 @@
+ng911_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: 'ng911_database.duckdb'
+      extensions:
+        - spatial
+        - httpfs
+        - parquet

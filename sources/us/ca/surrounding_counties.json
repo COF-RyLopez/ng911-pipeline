@@ -1,0 +1,26 @@
+{
+  "regional_coverage": "Fresno Region (Central Valley)",
+  "counties": {
+    "madera": {
+      "geoid": "06039",
+      "name": "Madera County",
+      "agency_domain": "maderacounty.com",
+      "bbox": [-120.50, 36.75, -119.00, 37.85],
+      "data": "https://raw.githubusercontent.com/openaddresses/openaddresses/master/sources/us/ca/madera.json"
+    },
+    "kings": {
+      "geoid": "06031",
+      "name": "Kings County",
+      "agency_domain": "countyofkings.com",
+      "bbox": [-120.20, 35.80, -119.50, 36.45],
+      "data": "https://services3.arcgis.com/24gLq1DBBzDfd0cZ/ArcGIS/rest/services/Address_Kings_County/FeatureServer/4"
+    },
+    "tulare": {
+      "geoid": "06107",
+      "name": "Tulare County",
+      "agency_domain": "tularecounty.ca.gov",
+      "bbox": [-119.60, 35.80, -118.30, 36.80],
+      "data": "https://services2.arcgis.com/bYBANhmQGwSSLC0l/ArcGIS/rest/services/SiteStructureAddressPoints/FeatureServer/0"
+    }
+  }
+}

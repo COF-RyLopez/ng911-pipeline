@@ -1,0 +1,44 @@
+{
+  "coverage": {
+    "US Census": {
+      "geoid": "06019",
+      "name": "Fresno County",
+      "state": "California"
+    },
+    "country": "us",
+    "state": "ca",
+    "county": "Fresno"
+  },
+  "schema": 2,
+  "agency": {
+    "name": "County of Fresno",
+    "domain": "fresnocountyca.gov",
+    "department": "Public Works and Planning"
+  },
+  "layers": {
+    "addresses": [
+      {
+        "name": "county_regional_addresses",
+        "attribution": "County of Fresno",
+        "data": "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/REGIONAL_ADDRESS_VW/FeatureServer/1",
+        "website": "https://datasharing-cofgisonline.hub.arcgis.com/pages/our-data",
+        "protocol": "ESRI",
+        "conform": {
+          "format": "geojson",
+          "id": "OBJECTID",
+          "number": "ADDRESS_NUMBER",
+          "number_suffix": "ADDRESS_FRACTION",
+          "predirectional": "STREET_DIRECTION",
+          "street": "STREET_NAME",
+          "street_type": "STREET_TYPE",
+          "postdirectional": "STREET_POST_DIRECTION",
+          "unit": "ADDRESS_UNIT",
+          "city": "ADDRESS_ZIPCITY",
+          "postcode": "ADDRESS_ZIP5",
+          "lon": "geometry.x",
+          "lat": "geometry.y"
+        }
+      }
+    ]
+  }
+}
