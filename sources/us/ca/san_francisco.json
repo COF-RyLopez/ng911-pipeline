@@ -1,0 +1,25 @@
+{
+  "coverage": {
+    "US Census": {
+      "geoid": "06075",
+      "name": "City and County of San Francisco",
+      "state": "California"
+    },
+    "country": "us",
+    "state": "ca",
+    "county": "San Francisco"
+  },
+  "data": "https://data.sfgov.org/api/views/6q6g-5v47/rows.csv?accessType=DOWNLOAD",
+  "type": "http",
+  "compression": "csv",
+  "layers": {
+    "addresses": [
+      {
+        "name": "sf_addresses",
+        "number": "ADDR_NUM",
+        "street": "STREET_NAME",
+        "postcode": "POSTCODE"
+      }
+    ]
+  }
+}

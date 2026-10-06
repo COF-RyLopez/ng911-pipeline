@@ -1,0 +1,38 @@
+name: 'ng911_pipeline'
+version: '1.0.0'
+config-version: 2
+
+profile: 'ng911_pipeline'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  pilot_mode: true
+  pilot_county: "Fresno"
+  agency_domain: "fresnocountyca.gov"
+  agency_name: "County of Fresno"
+  use_cached_data: true
+  bbox_minx: -119.95
+  bbox_maxx: -119.65
+  bbox_miny: 36.65
+  bbox_maxy: 36.90
+  conflation_distance_degrees: 0.00015  # ~15 meters
+  include_surrounding_counties: false
+
+models:
+  ng911_pipeline:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table
