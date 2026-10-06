@@ -432,6 +432,38 @@ def fetch_overture_places():
     print(f"  -> Saved {count:,} Overture Places records to {output_parquet}")
     return count
 
+def fetch_overture_buildings():
+    output_parquet = os.path.join(CACHE_DIR, "overture_buildings.parquet")
+    print(f"\n[7/7] Fetching Overture Building Footprints for Fresno metro extent...")
+    try:
+        conn = duckdb.connect()
+        conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
+        query = f"""
+        COPY (
+            SELECT
+                id AS building_id,
+                height,
+                num_floors,
+                class AS building_class,
+                geometry AS geom
+            FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
+            WHERE bbox.xmin >= -119.95 AND bbox.xmax <= -119.60
+              AND bbox.ymin >= 36.60 AND bbox.ymax <= 36.95
+            LIMIT 150000
+        ) TO '{output_parquet}' (FORMAT PARQUET);
+        """
+        conn.execute(query)
+        count = conn.execute(f"SELECT count(*) FROM read_parquet('{output_parquet}')").fetchone()[0]
+        print(f"  -> Saved {count:,} Overture Building footprints to {output_parquet}")
+        return count
+    except Exception as e:
+        print(f"  [WARNING] Could not fetch Overture Buildings online: {e}. Using empty stub.")
+        conn = duckdb.connect()
+        conn.sql("INSTALL spatial; LOAD spatial;")
+        conn.execute(f"COPY (SELECT NULL::VARCHAR AS building_id, NULL::DOUBLE AS height, NULL::INTEGER AS num_floors, NULL::VARCHAR AS building_class, ST_GeomFromText('POLYGON EMPTY') AS geom WHERE 1=0) TO '{output_parquet}' (FORMAT PARQUET)")
+        return 0
+
+
 if __name__ == "__main__":
     county_addr_cnt = fetch_fresno_county_addresses()
     kings_addr_cnt = fetch_kings_county_addresses()
@@ -441,6 +473,7 @@ if __name__ == "__main__":
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
+    bldg_cnt = fetch_overture_buildings()
     print("\n" + "=" * 70)
     print("All Central Valley Region datasets cached successfully:")
     print(f"  - Fresno County Addresses:      {county_addr_cnt:,}")
@@ -453,5 +486,7 @@ if __name__ == "__main__":
     print(f"  - Overture Addresses:          {overture_addr_cnt:,}")
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
+    print(f"  - Overture Building Footprints: {bldg_cnt:,}")
     print("=" * 70)
+
 

@@ -186,6 +186,30 @@ def main():
     )
     print(f"  -> Exported Address Enhancements: {enhancements_parquet} & {enhancements_geojson}")
 
+    # Export Actionable Jurisdiction Remediation Findings & Deliverables
+    remediation_dir = os.path.join(OUTPUT_DIR, "remediation")
+    os.makedirs(remediation_dir, exist_ok=True)
+    remediation_csv = os.path.join(remediation_dir, "county_remediation_action_items.csv")
+    remediation_parquet = os.path.join(remediation_dir, "county_remediation_points.parquet")
+    remediation_geojson = os.path.join(remediation_dir, "county_remediation_points_sample.geojson")
+
+    conn.sql(f"COPY (SELECT * EXCLUDE (ST_Geometry) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK') TO '{remediation_csv}' (HEADER, DELIMITER ',')")
+    conn.sql(f"COPY mart_ng911_county_remediation_export TO '{remediation_parquet}' (FORMAT PARQUET)")
+    export_geojson_feature_collection(
+        """
+        SELECT 
+            SSAP_NGUID, CountyLocalID, OriginalHouseNumber, OriginalStreetName,
+            StandardizedAddress, CommunityName, BuildingFootprintStatus,
+            DiscrepancyType, Severity, SymbologyCategory, MapillaryGroundTruthURL,
+            RecommendedRemediationAction, ST_AsGeoJSON(ST_Geometry) AS geometry
+        FROM mart_ng911_county_remediation_export
+        LIMIT 5000
+        """,
+        remediation_geojson
+    )
+    print(f"  -> Exported Jurisdiction Remediation Deliverables: {remediation_csv}, {remediation_parquet} & {remediation_geojson}")
+
+
 
     # Export NENA v3.0 Relational Data Model (3NF) Tables
     nena_v3_dir = os.path.join(OUTPUT_DIR, "nena_v3")

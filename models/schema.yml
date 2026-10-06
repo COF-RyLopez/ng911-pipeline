@@ -348,4 +348,22 @@ models:
         tests:
           - not_null
 
+  - name: mart_ng911_county_remediation_export
+    description: "Actionable jurisdiction remediation report exporting building footprint status, Mapillary URLs, and remediation guidance."
+    columns:
+      - name: SSAP_NGUID
+        tests:
+          - not_null
+      - name: SymbologyCategory
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CRITICAL_ATTENTION', 'OUTSIDE_BUILDING', 'ATTENTION_REQUIRED', 'VALIDATED_OK']
+      - name: BuildingFootprintStatus
+        tests:
+          - not_null
+
+
+
 
