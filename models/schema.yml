@@ -227,6 +227,23 @@ models:
         tests:
           - not_null
 
+  - name: mart_ng911_cross_county_audits
+    description: "NENA 02-014.1 Cross-County Boundary Audit model detecting road centerline disconnects and PSAP boundary gaps/overlaps across regional county borders."
+    columns:
+      - name: DiscrepancyID
+        tests:
+          - not_null
+          - unique
+      - name: FeatureNGUID
+        tests:
+          - not_null
+      - name: DiscrepancyType
+        tests:
+          - not_null
+      - name: ST_Geometry
+        tests:
+          - not_null
+
   - name: mart_nena3_discrpag
     description: "NENA v3.0 Relational Discrepancy Agency (ng911.DiscrpAg) registry."
     columns:
