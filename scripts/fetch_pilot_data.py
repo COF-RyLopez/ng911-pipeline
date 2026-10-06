@@ -230,15 +230,93 @@ def fetch_overture_transportation():
     print(f"  -> Saved {count} Overture transportation segments to {output_parquet}")
     return count
 
+def fetch_fresno_county_boundaries():
+    print("\n[5/6] Fetching Fresno County CAD/PSAP, Fire, and City Limits boundaries...")
+    conn = duckdb.connect()
+    conn.sql("INSTALL spatial; LOAD spatial;")
+    
+    layers = [
+        ("CAD/PSAP", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/City_County_CAD/FeatureServer/78/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_cad_psap.parquet"),
+        ("Fire Districts", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/ELECTIONS_FIRE_DISTRICTS_VW/FeatureServer/41/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_fire_districts.parquet"),
+        ("City Limits", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/REGIONAL_CITY_LIMITS_VW/FeatureServer/1/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_city_limits.parquet")
+    ]
+    counts = {}
+    for name, url, fname in layers:
+        out_parquet = os.path.join(CACHE_DIR, fname)
+        req = urllib.request.Request(url, headers={"User-Agent": "Fresno-NG911-Pilot/1.0"})
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            features = data.get("features", [])
+            records = []
+            for f in features:
+                props = f.get("properties", {})
+                geom = f.get("geometry", {})
+                props["geom_geojson"] = json.dumps(geom)
+                records.append(props)
+            df = pd.DataFrame(records)
+            conn.register("df_layer", df)
+            conn.execute(f"""
+                COPY (
+                    SELECT * EXCLUDE (geom_geojson), ST_GeomFromGeoJSON(geom_geojson) AS geom
+                    FROM df_layer
+                ) TO '{out_parquet}' (FORMAT PARQUET)
+            """)
+            print(f"  -> Saved {len(df)} {name} features to {out_parquet}")
+            counts[name] = len(df)
+    return counts
+
+def fetch_overture_places():
+    output_parquet = os.path.join(CACHE_DIR, "overture_places.parquet")
+    print(f"\n[6/6] Fetching Overture Places (Landmarks/POIs) for pilot bbox: {PILOT_BBOX}...")
+    conn = duckdb.connect()
+    conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
+    
+    query = f"""
+    COPY (
+        SELECT
+            id AS place_id,
+            names.primary AS place_name,
+            basic_category,
+            taxonomy.primary AS taxonomy_category,
+            confidence,
+            geometry AS geom,
+            ST_X(geometry) AS longitude,
+            ST_Y(geometry) AS latitude
+        FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=places/type=place/*.parquet')
+        WHERE bbox.xmin >= {PILOT_BBOX['minx']} AND bbox.xmax <= {PILOT_BBOX['maxx']}
+          AND bbox.ymin >= {PILOT_BBOX['miny']} AND bbox.ymax <= {PILOT_BBOX['maxy']}
+          AND (
+            basic_category IN ('hospital', 'school', 'emergency_service', 'college_or_university', 'airport', 'library', 'fire_station', 'police_station')
+            OR taxonomy.primary LIKE '%hospital%' 
+            OR taxonomy.primary LIKE '%school%'
+            OR taxonomy.primary LIKE '%fire%'
+            OR taxonomy.primary LIKE '%police%'
+            OR taxonomy.primary LIKE '%clinic%'
+            OR taxonomy.primary LIKE '%airport%'
+          )
+    ) TO '{output_parquet}' (FORMAT PARQUET);
+    """
+    conn.execute(query)
+    count = conn.execute(f"SELECT count(*) FROM read_parquet('{output_parquet}')").fetchone()[0]
+    print(f"  -> Saved {count} Overture Places records to {output_parquet}")
+    return count
+
 if __name__ == "__main__":
     county_addr_cnt = fetch_fresno_county_addresses(limit=5000)
     county_street_cnt = fetch_fresno_county_streets(limit=5000)
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
+    boundary_counts = fetch_fresno_county_boundaries()
+    places_cnt = fetch_overture_places()
     print("\n" + "=" * 70)
     print("All pilot datasets cached successfully:")
     print(f"  - Fresno County Addresses:      {county_addr_cnt:,}")
     print(f"  - Fresno County Streets:        {county_street_cnt:,}")
     print(f"  - Overture Addresses:          {overture_addr_cnt:,}")
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
+    print(f"  - County CAD / PSAP:           {boundary_counts.get('CAD/PSAP', 0):,}")
+    print(f"  - County Fire Districts:       {boundary_counts.get('Fire Districts', 0):,}")
+    print(f"  - County City Limits:          {boundary_counts.get('City Limits', 0):,}")
+    print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
     print("=" * 70)
+
