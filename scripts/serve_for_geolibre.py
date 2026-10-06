@@ -2,20 +2,23 @@
 """
 scripts/serve_for_geolibre.py
 
-Launches a local CORS-enabled HTTP server serving data/output/
-so any user can inspect NG911 pilot layers directly in https://web.geolibre.app/
-without needing ESRI ArcGIS or desktop GIS software installed.
-Supports HTTP byte-range requests for direct GeoParquet querying in the browser.
+Launches a local CORS-enabled HTTP server with full HTTP 206 Byte-Range serving
+support for data/output/ so any user can inspect 100% of NG911 pilot PMTiles,
+GeoParquet, and GeoJSON layers directly in https://web.geolibre.app/
+
+Supports HTTP range requests required by MapLibre / PMTiles in GeoLibre.
 """
 
 import os
+import re
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 PORT = 8088
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "output")
 
-class CORSRequestHandler(SimpleHTTPRequestHandler):
+
+class RangeCORSRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=OUTPUT_DIR, **kwargs)
 
@@ -32,42 +35,94 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    def send_head(self):
+        path = self.translate_path(self.path)
+        if os.path.isdir(path):
+            return super().send_head()
+
+        try:
+            f = open(path, 'rb')
+        except OSError:
+            self.send_error(404, "File not found")
+            return None
+
+        fs = os.fstat(f.fileno())
+        file_size = fs.st_size
+
+        range_header = self.headers.get('Range')
+        if range_header:
+            match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+            if match:
+                start = int(match.group(1))
+                end = int(match.group(2)) if match.group(2) else file_size - 1
+                if start >= file_size:
+                    self.send_error(416, "Requested Range Not Satisfiable")
+                    f.close()
+                    return None
+                end = min(end, file_size - 1)
+                length = end - start + 1
+
+                self.send_response(206)
+                self.send_header("Content-Type", self.guess_type(path))
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+                self.send_header("Content-Length", str(length))
+                self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+                self.end_headers()
+                f.seek(start)
+                self.range_length = length
+                return f
+
+        self.send_response(200)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Content-Length", str(file_size))
+        self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+        self.end_headers()
+        self.range_length = None
+        return f
+
+    def copyfile(self, source, outputfile):
+        if hasattr(self, 'range_length') and self.range_length is not None:
+            bufsize = 64 * 1024
+            remaining = self.range_length
+            while remaining > 0:
+                chunk = source.read(min(bufsize, remaining))
+                if not chunk:
+                    break
+                outputfile.write(chunk)
+                remaining -= len(chunk)
+        else:
+            super().copyfile(source, outputfile)
+
+
 def main():
     if not os.path.exists(OUTPUT_DIR):
         print(f"Error: Output directory {OUTPUT_DIR} does not exist. Run scripts/run_pilot.py first.")
         sys.exit(1)
 
     print("=" * 78)
-    print("      GEOLIBRE WEB VIEWER (https://web.geolibre.app/) LOCAL DATA PROVIDER")
+    print("      GEOLIBRE LOCAL HTTP BYTE-RANGE DATA SERVER")
     print("=" * 78)
     print(f"Serving files from: {OUTPUT_DIR}")
     print(f"Local Server Base:  http://localhost:{PORT}/")
     print("-" * 78)
-    print("Available NG911 Layers for GeoLibre (GeoJSON & GeoParquet):")
-    print(f"  1. SSAP Address Points (GeoJSON):  http://localhost:{PORT}/mart_ng911_fresno_ssap_sample.geojson")
-    print(f"  2. RCL Road Centerlines (GeoJSON): http://localhost:{PORT}/mart_ng911_fresno_rcl_sample.geojson")
-    print(f"  3. QA Fishbone Vectors (GeoJSON):  http://localhost:{PORT}/mart_ng911_fresno_fishbones_sample.geojson")
-    print(f"  4. Full SSAP Points (Parquet):     http://localhost:{PORT}/mart_ng911_fresno_ssap.parquet")
-    print(f"  5. Full RCL Centerlines (Parquet): http://localhost:{PORT}/mart_ng911_fresno_rcl.parquet")
-    print(f"  6. QA Discrepancies (Parquet):     http://localhost:{PORT}/mart_ng911_fresno_qa_discrepancies.parquet")
+    print("PMTiles Archives (Full 100% County Coverage with Byte Serving):")
+    print(f"  - Remediation Points (PMTiles): http://localhost:{PORT}/tiles/fresno_remediation.pmtiles")
+    print(f"  - Road Centerlines (PMTiles):  http://localhost:{PORT}/tiles/fresno_rcl.pmtiles")
+    print(f"  - QA Fishbones (PMTiles):      http://localhost:{PORT}/tiles/fresno_fishbones.pmtiles")
+    print(f"  - SSAP Address Points:          http://localhost:{PORT}/tiles/fresno_ssap.pmtiles")
     print("-" * 78)
-    print("HOW TO VIEW IN WEB.GEOLIBRE.APP (Zero-Install / Non-ESRI):")
-    print("  Method A (Drag & Drop - Recommended):")
-    print("    1. Open https://web.geolibre.app/ in Chrome/Firefox/Safari.")
-    print("    2. Drag and drop any .geojson or .parquet file from:")
-    print(f"       {OUTPUT_DIR}")
-    print("       directly onto the map.")
-    print("  Method B (URL Streaming):")
-    print("    1. In https://web.geolibre.app/, click 'Add Layer' / '+' icon.")
-    print("    2. Paste one of the local URLs listed above.")
+    print("HOW TO LOAD IN WEB.GEOLIBRE.APP:")
+    print("  Local 1-Click Project URL:")
+    print(f"    http://localhost:{PORT}/ng911_address_comparison_local.geolibre.json")
     print("=" * 78)
-    print("Server running. Press Ctrl+C to stop.\n")
+    print("Server running on http://127.0.0.1:8088/ ... Press Ctrl+C to stop.\n")
 
-    httpd = HTTPServer(('127.0.0.1', PORT), CORSRequestHandler)
+    httpd = HTTPServer(('127.0.0.1', PORT), RangeCORSRequestHandler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nServer stopped.")
+
 
 if __name__ == "__main__":
     main()

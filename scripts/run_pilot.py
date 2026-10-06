@@ -120,7 +120,7 @@ def main():
             FromAddr_R, ToAddr_R, Parity_L, Parity_R, SpeedLimit,
             RoadClass, ST_AsGeoJSON(ST_Geometry) AS geometry
         FROM mart_ng911_road_centerlines
-        LIMIT 2500
+        LIMIT 25000
         """,
         rcl_geojson
     )
@@ -157,7 +157,8 @@ def main():
             DistanceMeters, IsExcessiveOffset, IsRangeViolation,
             ST_AsGeoJSON(ST_Geometry) AS geometry
         FROM mart_ng911_qa_fishbones
-        LIMIT 2500
+        WHERE DistanceMeters > 5.0 OR IsExcessiveOffset OR IsRangeViolation
+        LIMIT 25000
         """,
         fishbone_geojson
     )
