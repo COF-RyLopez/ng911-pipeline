@@ -5,9 +5,9 @@ scripts/generate_comparison_geolibre_project.py
 Generates 1-click GeoLibre Comparison, QA/QC & Actionable Remediation project files
 (.geolibre and .geolibre.json) for raw source vs NG911 enhanced datasets.
 
-Generates:
-1. `ng911_address_comparison.geolibre.json` (GitHub Pages remote streaming URL)
-2. `ng911_address_comparison_local.geolibre.json` (Local HTTP 206 Byte-Range server on http://localhost:8088/)
+Features:
+- Lightweight project configuration (<50 KB) preventing GeoLibre autosave snapshot limit errors (>10 MB).
+- Streams vectors dynamically via URL endpoints.
 """
 
 import argparse
@@ -20,17 +20,6 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 GITHUB_PAGES_BASE_URL = "https://cof-rylopez.github.io/ng911-pipeline/data/output"
 GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output"
 LOCAL_BASE_URL = "http://localhost:8088"
-
-
-def load_geojson(filename):
-    path = os.path.join(OUTPUT_DIR, filename)
-    if os.path.exists(path):
-        try:
-            with open(path, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {"type": "FeatureCollection", "features": []}
 
 
 def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, base_url, opacity=1.0):
@@ -64,10 +53,6 @@ def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, base_url
 
 
 def build_project(base_url, is_local=False):
-    remediation_geojson = load_geojson("remediation/county_remediation_points_sample.geojson")
-    fishbones_geojson = load_geojson("mart_ng911_fresno_fishbones_sample.geojson")
-    rcl_geojson = load_geojson("mart_ng911_fresno_rcl_sample.geojson")
-
     raw_base = GITHUB_RAW_BASE_URL if not is_local else LOCAL_BASE_URL
 
     return {
@@ -99,7 +84,6 @@ def build_project(base_url, is_local=False):
                 "type": "geojson",
                 "visible": True,
                 "opacity": 0.85,
-                "geojson": rcl_geojson,
                 "source": {
                     "type": "geojson",
                     "url": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson"
@@ -161,7 +145,6 @@ def build_project(base_url, is_local=False):
                 "type": "geojson",
                 "visible": True,
                 "opacity": 0.9,
-                "geojson": fishbones_geojson,
                 "source": {
                     "type": "geojson",
                     "url": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson"
@@ -221,7 +204,6 @@ def build_project(base_url, is_local=False):
                 "type": "geojson",
                 "visible": True,
                 "opacity": 1.0,
-                "geojson": remediation_geojson,
                 "source": {
                     "type": "geojson",
                     "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson"
@@ -324,9 +306,9 @@ def main():
     with open(local_geolibre_path, "w") as f:
         json.dump(local_proj, f, indent=2)
 
-    print("Generated GeoLibre QA/QC Projects:")
-    print(f"  Remote -> {json_path}")
-    print(f"  Local  -> {local_json_path}")
+    print("Generated GeoLibre QA/QC Projects (Lightweight <50 KB):")
+    print(f"  Remote -> {json_path} ({os.path.getsize(json_path) / 1024:.1f} KB)")
+    print(f"  Local  -> {local_json_path} ({os.path.getsize(local_json_path) / 1024:.1f} KB)")
 
 
 if __name__ == "__main__":
