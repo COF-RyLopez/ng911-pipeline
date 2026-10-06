@@ -2,19 +2,19 @@
 """
 scripts/generate_comparison_geolibre_project.py
 
-Generates the 1-click GeoLibre Comparison & Visual QA/QC project files
+Generates the 1-click GeoLibre Comparison, QA/QC & Actionable Remediation project files
 (.geolibre and .geolibre.json) for raw source vs NG911 enhanced datasets.
 
 Features:
-- Side-by-side / Swipe comparison view structure
-- Differential visual vector lines showing spatial displacement (Raw -> Enhanced)
-- Color-coded enhancement categories:
-    * Emerald (#059669): SPATIAL_CORRECTION (>5m displacement)
-    * Blue (#2563eb): PSAP_ENRICHMENT (Enriched with PSAP dispatch boundaries)
-    * Purple (#7c3aed): LANDMARK_ALIASED (Mapped to POI / Landmark alias)
-    * Amber (#d97706): NENA_STREET_NORMALIZED (Standardized street components)
-    * Gray (#6b7280): UNCHANGED
-- Support for CLI `--source-file` allowing users to bring their own local address dataset.
+- NENA Road Centerlines (RCL) vector layer
+- QA/QC Spatial Displacement Vectors & Fishbones (snapping distance lines)
+- Color-coded rule-violation & building footprint remediation symbology:
+    * Red (#dc2626): CRITICAL_POS_OFFSET / Missing mandatory NENA fields
+    * Orange (#ea580c): OUTSIDE_BUILDING_FOOTPRINT
+    * Yellow (#eab308): MISSING_NENA_MANDATORY_FIELD
+    * Green (#16a34a): VALIDATED_OK
+- Direct interactive Mapillary ground-truth street-level view links in feature popups.
+- GeoLibre plugins integration: swipe, geo-editor, dimensions, mapillary.
 """
 
 import argparse
@@ -26,6 +26,17 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 GITHUB_BASE_URL = "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output"
 TILES_BASE_URL = f"{GITHUB_BASE_URL}/tiles"
+
+
+def load_geojson(filename):
+    path = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"type": "FeatureCollection", "features": []}
 
 
 def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, opacity=1.0):
@@ -63,6 +74,10 @@ def main():
     parser.add_argument("--source-file", help="Path to local user source dataset (.geojson, .parquet, .csv)", default=None)
     args = parser.parse_args()
 
+    remediation_geojson = load_geojson("remediation/county_remediation_points_sample.geojson")
+    fishbones_geojson = load_geojson("mart_ng911_fresno_fishbones_sample.geojson")
+    rcl_geojson = load_geojson("mart_ng911_fresno_rcl_sample.geojson")
+
     project_data = {
         "version": "0.1.0",
         "name": "NG911 Address Enhancement & Actionable Jurisdiction Remediation Hub",
@@ -86,45 +101,184 @@ def main():
         "basemapOpacity": 1.0,
         "primaryRenderer": "maplibre",
         "layers": [
-            pmtiles_layer(
-                "mart_ng911_fresno_diff_vectors",
-                "Spatial Displacement Vectors (Raw -> Enhanced)",
-                "fresno_diff_vectors.pmtiles",
-                "diff_vectors",
-                {
-                    "fillColor": "#ef4444",
-                    "strokeColor": "#ef4444",
-                    "strokeWidth": 2.0,
+            {
+                "id": "mart_ng911_fresno_rcl_geojson",
+                "name": "Authoritative NENA Road Centerlines (Sample)",
+                "type": "geojson",
+                "visible": True,
+                "opacity": 0.85,
+                "geojson": rcl_geojson,
+                "source": {
+                    "type": "geojson",
+                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl_sample.geojson"
+                },
+                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl_sample.geojson",
+                "style": {
+                    "fillColor": "#059669",
+                    "strokeColor": "#059669",
+                    "strokeWidth": 2.5,
                     "strokeWidthUnit": "pixels",
+                    "minZoom": 0,
+                    "maxZoom": 24
+                },
+                "popup": {
+                    "click": True,
+                    "hover": True,
+                    "titleField": "FullStreetName",
+                    "fields": [
+                        {"field": "FullStreetName", "label": "Street Name", "hover": True},
+                        {"field": "FromAddr_L", "label": "From Left"},
+                        {"field": "ToAddr_L", "label": "To Left"},
+                        {"field": "FromAddr_R", "label": "From Right"},
+                        {"field": "ToAddr_R", "label": "To Right"},
+                        {"field": "RoadClass", "label": "Road Class"},
+                        {"field": "RCL_NGUID", "label": "NENA RCL NGUID"}
+                    ]
+                }
+            },
+            pmtiles_layer(
+                "mart_ng911_fresno_rcl_tiles",
+                "Authoritative NENA Road Centerlines (All 53,474)",
+                "fresno_rcl.pmtiles",
+                "rcl",
+                {
+                    "fillColor": "#059669",
+                    "strokeColor": "#059669",
+                    "strokeWidth": 2.0,
+                    "strokeWidthUnit": "pixels"
                 },
                 {
                     "click": True,
                     "hover": True,
-                    "titleField": "RawAddress",
+                    "titleField": "FullStreetName",
                     "fields": [
-                        {"field": "RawAddress", "label": "Raw Local Address", "hover": True},
-                        {"field": "EnhancedAddress", "label": "Enhanced NG911 Address", "hover": True},
-                        {"field": "DisplacementMeters", "label": "Displacement (meters)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}, "hover": True},
-                        {"field": "EnhancementCategory", "label": "Category"}
+                        {"field": "FullStreetName", "label": "Street Name", "hover": True},
+                        {"field": "FromAddr_L", "label": "From Left"},
+                        {"field": "ToAddr_L", "label": "To Left"},
+                        {"field": "FromAddr_R", "label": "From Right"},
+                        {"field": "ToAddr_R", "label": "To Right"},
+                        {"field": "RoadClass", "label": "Road Class"},
+                        {"field": "RCL_NGUID", "label": "NENA RCL NGUID"}
                     ]
-                },
-                opacity=0.85
+                }
             ),
+            {
+                "id": "mart_ng911_fresno_fishbones_geojson",
+                "name": "QA/QC Spatial Displacement Vectors & Fishbones (Sample)",
+                "type": "geojson",
+                "visible": True,
+                "opacity": 0.9,
+                "geojson": fishbones_geojson,
+                "source": {
+                    "type": "geojson",
+                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_sample.geojson"
+                },
+                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_sample.geojson",
+                "style": {
+                    "fillColor": "#dc2626",
+                    "strokeColor": "#dc2626",
+                    "strokeWidth": 2.0,
+                    "strokeWidthUnit": "pixels",
+                    "minZoom": 0,
+                    "maxZoom": 24
+                },
+                "popup": {
+                    "click": True,
+                    "hover": True,
+                    "titleField": "STN",
+                    "fields": [
+                        {"field": "HNO", "label": "House Number", "hover": True},
+                        {"field": "STN", "label": "Street Name", "hover": True},
+                        {"field": "DistanceMeters", "label": "Displacement / Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}, "hover": True},
+                        {"field": "IsExcessiveOffset", "label": "Excessive Offset (>50m)"},
+                        {"field": "IsRangeViolation", "label": "Range Violation"},
+                        {"field": "FishboneID", "label": "NENA Fishbone URN"}
+                    ]
+                }
+            },
             pmtiles_layer(
-                "mart_ng911_fresno_enhancements",
-                "NG911 Rule Violation & Enhancement Symbology",
-                "fresno_enhancements.pmtiles",
-                "enhancements",
+                "mart_ng911_fresno_fishbones_tiles",
+                "QA/QC Spatial Displacement Vectors & Fishbones (All 365,316)",
+                "fresno_fishbones.pmtiles",
+                "fishbones",
+                {
+                    "fillColor": "#dc2626",
+                    "strokeColor": "#dc2626",
+                    "strokeWidth": 1.5,
+                    "strokeWidthUnit": "pixels"
+                },
+                {
+                    "click": True,
+                    "hover": True,
+                    "titleField": "STN",
+                    "fields": [
+                        {"field": "HNO", "label": "House Number", "hover": True},
+                        {"field": "STN", "label": "Street Name", "hover": True},
+                        {"field": "DistanceMeters", "label": "Displacement / Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}, "hover": True},
+                        {"field": "IsExcessiveOffset", "label": "Excessive Offset (>50m)"},
+                        {"field": "IsRangeViolation", "label": "Range Violation"},
+                        {"field": "FishboneID", "label": "NENA Fishbone URN"}
+                    ]
+                }
+            ),
+            {
+                "id": "mart_ng911_county_remediation_geojson",
+                "name": "NG911 Rule Violation & Remediation Symbology (Sample)",
+                "type": "geojson",
+                "visible": True,
+                "opacity": 1.0,
+                "geojson": remediation_geojson,
+                "source": {
+                    "type": "geojson",
+                    "url": f"{GITHUB_BASE_URL}/remediation/county_remediation_points_sample.geojson"
+                },
+                "sourcePath": f"{GITHUB_BASE_URL}/remediation/county_remediation_points_sample.geojson",
+                "style": {
+                    "circleRadius": 7,
+                    "fillColor": [
+                        "match",
+                        ["get", "SymbologyCategory"],
+                        "CRITICAL_POS_OFFSET", "#dc2626",
+                        "OUTSIDE_BUILDING_FOOTPRINT", "#ea580c",
+                        "MISSING_NENA_MANDATORY_FIELD", "#eab308",
+                        "VALIDATED_OK", "#16a34a",
+                        "#3b82f6"
+                    ],
+                    "strokeColor": "#ffffff",
+                    "strokeWidth": 1.5,
+                    "minZoom": 0,
+                    "maxZoom": 24
+                },
+                "popup": {
+                    "click": True,
+                    "hover": True,
+                    "titleField": "StandardizedAddress",
+                    "fields": [
+                        {"field": "StandardizedAddress", "label": "Enhanced Address", "hover": True},
+                        {"field": "SymbologyCategory", "label": "Rule Violation Status", "hover": True},
+                        {"field": "BuildingFootprintStatus", "label": "Building Footprint Containment", "hover": True},
+                        {"field": "SpatialOffsetMeters", "label": "Spatial Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
+                        {"field": "RecommendedRemediationAction", "label": "Action Needed"},
+                        {"field": "MapillaryGroundTruthURL", "label": "Mapillary Street View Link", "kind": "url"},
+                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
+                    ]
+                }
+            },
+            pmtiles_layer(
+                "mart_ng911_county_remediation_tiles",
+                "NG911 Rule Violation & Remediation Symbology (All 395,000)",
+                "fresno_remediation.pmtiles",
+                "remediation",
                 {
                     "circleRadius": 6,
-                    "circleColor": [
+                    "fillColor": [
                         "match",
-                        ["get", "EnhancementCategory"],
-                        "SPATIAL_CORRECTION", "#dc2626",
-                        "PSAP_ENRICHMENT", "#2563eb",
-                        "LANDMARK_ALIASED", "#7c3aed",
-                        "NENA_STREET_NORMALIZED", "#d97706",
-                        "#10b981"
+                        ["get", "SymbologyCategory"],
+                        "CRITICAL_POS_OFFSET", "#dc2626",
+                        "OUTSIDE_BUILDING_FOOTPRINT", "#ea580c",
+                        "MISSING_NENA_MANDATORY_FIELD", "#eab308",
+                        "VALIDATED_OK", "#16a34a",
+                        "#3b82f6"
                     ],
                     "strokeColor": "#ffffff",
                     "strokeWidth": 1.5
@@ -132,22 +286,20 @@ def main():
                 {
                     "click": True,
                     "hover": True,
-                    "titleField": "EnhancedAddress",
+                    "titleField": "StandardizedAddress",
                     "fields": [
-                        {"field": "EnhancedAddress", "label": "Enhanced Address", "hover": True},
-                        {"field": "RawAddress", "label": "Original Raw Address", "hover": True},
-                        {"field": "EnhancementCategory", "label": "Status / Category", "hover": True},
-                        {"field": "DisplacementMeters", "label": "Displacement (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
-                        {"field": "PSAP", "label": "Primary PSAP"},
-                        {"field": "ESB_Fire", "label": "Fire District"},
-                        {"field": "LandmarkName", "label": "POI Landmark Alias"},
+                        {"field": "StandardizedAddress", "label": "Enhanced Address", "hover": True},
+                        {"field": "SymbologyCategory", "label": "Rule Violation Status", "hover": True},
+                        {"field": "BuildingFootprintStatus", "label": "Building Footprint Containment", "hover": True},
+                        {"field": "SpatialOffsetMeters", "label": "Spatial Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
+                        {"field": "RecommendedRemediationAction", "label": "Action Needed"},
+                        {"field": "MapillaryGroundTruthURL", "label": "Mapillary Street View Link", "kind": "url"},
                         {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
                     ]
                 }
             )
         ]
     }
-
 
     json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre.json")
     proj_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre")

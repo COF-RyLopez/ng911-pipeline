@@ -53,7 +53,7 @@ LAYERS = {
         "mart_ng911_fresno_fishbones.parquet",
         """FishboneID, SSAP_NGUID, RCL_NGUID, HNO, STN,
            round(DistanceMeters, 1) AS DistanceMeters, IsExcessiveOffset, IsRangeViolation""",
-        ["-Z11", "-z15", "-B13", "--drop-densest-as-needed"],
+        ["-Z10", "-z15", "-B12", "--drop-densest-as-needed"],
         "ST_Geometry"
     ),
     "esb": (
@@ -62,19 +62,13 @@ LAYERS = {
         ["-Z6", "-z14", "--no-tiny-polygon-reduction", "--detect-shared-borders"],
         "ST_Geometry"
     ),
-    "enhancements": (
-        "mart_ng911_fresno_enhancements.parquet",
-        """SSAP_NGUID, CountyLocalID, RawAddress, EnhancedAddress, PSAP, ESB_Fire,
-           LandmarkName, ConflationStatus, DisplacementMeters, EnhancementCategory""",
+    "remediation": (
+        "remediation/county_remediation_points.parquet",
+        """SSAP_NGUID, CountyLocalID, StandardizedAddress, SpatialOffsetMeters,
+           BuildingFootprintStatus, SymbologyCategory, MapillaryGroundTruthURL,
+           RecommendedRemediationAction""",
         ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
         "ST_Geometry"
-    ),
-    "diff_vectors": (
-        "mart_ng911_fresno_enhancements.parquet",
-        """SSAP_NGUID, CountyLocalID, RawAddress, EnhancedAddress,
-           DisplacementMeters, EnhancementCategory""",
-        ["-Z11", "-z15", "-B13", "--drop-densest-as-needed"],
-        "DiffLineGeom"
     ),
 }
 
