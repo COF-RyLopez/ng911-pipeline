@@ -80,19 +80,25 @@ To execute the entire pilot end-to-end (ingest, dbt transformation, 37 data qual
 
 To allow anyone—especially non-ESRI agencies across California—to inspect the pilot results without installing desktop GIS software:
 
-1. **Start the Local Provider:**
-   ```bash
-   ./.venv/bin/python scripts/serve_for_geolibre.py
-   ```
-2. **Open GeoLibre Web:**
-   Navigate to [https://web.geolibre.app/](https://web.geolibre.app/) in your browser.
-3. **Inspect the Layers:**
-   - **Option A (Drag & Drop):** Drag any `.geojson` or `.parquet` file from `data/output/` directly into the map window.
-   - **Option B (URL Streaming):** Click `Add Layer` in GeoLibre and paste:
-     - `http://localhost:8088/mart_ng911_fresno_ssap_sample.geojson` (Address Points)
-     - `http://localhost:8088/mart_ng911_fresno_rcl_sample.geojson` (Road Centerlines)
-     - `http://localhost:8088/mart_ng911_fresno_fishbones_sample.geojson` (Fishbone Vectors)
-     - `http://localhost:8088/mart_ng911_fresno_ssap.parquet` (Full GeoParquet)
+### Option 1: 1-Click Complete Map Project
+Open the pre-styled, self-contained project (red fishbones, blue points, green centerlines, popups, and dashboard charts) directly in GeoLibre:
+```text
+https://web.geolibre.app/?url=https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/fresno_ng911_pilot.geolibre.json
+```
+*(Or drag and drop `data/output/fresno_ng911_pilot.geolibre` straight into [web.geolibre.app](https://web.geolibre.app/)).*
+
+### Option 2: Additive Layer Streaming (No Workspace Reset)
+In GeoLibre, open **Add Vector Layer**, paste any of the public GitHub endpoints below, and check **"Stream GeoParquet (no copy)"**:
+- **QA/QC Fishbone Vectors (198 KB GeoParquet):**
+  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_fishbones.parquet`
+- **NENA SSAP Address Points (1.3 MB GeoParquet):**
+  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_ssap.parquet`
+- **NENA Road Centerlines (411 KB GeoParquet):**
+  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_rcl.parquet`
+- **QA Discrepancies (322 KB GeoParquet):**
+  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_qa_discrepancies.parquet`
+
+*(Standard GeoJSON fallbacks are also available at `..._sample.geojson`).*
 
 ---
 
