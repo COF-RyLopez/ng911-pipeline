@@ -2,19 +2,25 @@
 """
 scripts/generate_geolibre_project.py
 
-Generates a fully self-contained, inline GeoLibre Project file (.geolibre and .geolibre.json)
-for the Fresno County NG911 Pilot.
+Generates the GeoLibre Project file (.geolibre and .geolibre.json) for the
+Fresno County NG911 Pilot.
 Includes:
 - Pre-styled layers:
   1. Emergency Service Boundaries (ESBs: CAD/PSAP, Fire Districts, City Limits)
   2. Authoritative Road Centerlines (RCL with synthesized ranges)
   3. Site/Structure Address Points (SSAP with PSAP, Fire, Muni & Landmark attribution)
   4. QA/QC Fishbone Vectors (snapping distances and offset flags)
-- INLINE GeoJSON feature payloads (guarantees layers load instantly without external network dependency)
-- Permanent public GitHub raw fallback URLs for statewide cloud streaming
+- 100% of features for every layer:
+  - ESB (80 polygons) is small enough to inline as GeoJSON.
+  - RCL, SSAP and Fishbones are streamed as PMTiles vector tiles from GitHub
+    (built by scripts/build_pmtiles.py). Inlining them as GeoJSON caps out at a
+    sample of ~40k features before the project exceeds GitHub's file limits,
+    which is why earlier versions of the map looked incomplete.
 - Detailed NENA attribute popup configurations
-- Built-in DuckDB Dashboard charts (Fishbone offset histogram, conflation distribution, PSAP breakdown)
 - Default map extent centered on Fresno County metro
+
+The PMTiles layer shape mirrors `geolibre.project.pmtiles_layer()` from the
+upstream GeoLibre Python package (opengeos/GeoLibre).
 """
 
 import os
@@ -24,8 +30,10 @@ OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 GITHUB_BASE_URL = "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output"
+TILES_BASE_URL = f"{GITHUB_BASE_URL}/tiles"
 
-def load_sample_geojson(filename):
+
+def load_geojson(filename):
     path = os.path.join(OUTPUT_DIR, filename)
     if os.path.exists(path):
         try:
@@ -35,11 +43,45 @@ def load_sample_geojson(filename):
             pass
     return {"type": "FeatureCollection", "features": []}
 
+
+def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, opacity=1.0):
+    """A GeoLibre `pmtiles` vector layer streamed by HTTP range requests."""
+    url = f"{TILES_BASE_URL}/{filename}"
+    return {
+        "id": layer_id,
+        "name": name,
+        "type": "pmtiles",
+        "visible": True,
+        "opacity": opacity,
+        "source": {
+            "type": "vector",
+            "url": url,
+            "sourceId": layer_id,
+            "sourceLayers": [source_layer],
+            "tileType": "vector",
+        },
+        "sourcePath": url,
+        "style": {"minZoom": 0, "maxZoom": 24, **style},
+        "metadata": {
+            "sourceKind": "pmtiles-url",
+            "externalNativeLayer": True,
+            "pickable": True,
+            "sourceId": layer_id,
+            "tileType": "vector",
+            "sourceLayers": [source_layer],
+            # Must be non-empty or GeoLibre never adds the source (see upstream pmtiles_layer()).
+            "nativeLayerIds": [layer_id],
+        },
+        "popup": popup,
+    }
+
+
 def main():
-    fb_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_metro.geojson")
-    ssap_geojson = load_sample_geojson("mart_ng911_fresno_ssap_metro.geojson")
-    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl.geojson")
-    esb_geojson = load_sample_geojson("mart_ng911_fresno_esb_sample.geojson")
+    esb_geojson = load_geojson("mart_ng911_fresno_esb_sample.geojson")
+
+    for f in ("fresno_rcl.pmtiles", "fresno_ssap.pmtiles", "fresno_fishbones.pmtiles"):
+        if not os.path.exists(os.path.join(OUTPUT_DIR, "tiles", f)):
+            print(f"WARNING: data/output/tiles/{f} missing. Run scripts/build_pmtiles.py first.")
 
     project_data = {
         "version": "0.1.0",
@@ -49,11 +91,11 @@ def main():
             "jurisdiction": "County of Fresno, California (FIPS 06019)",
             "repository": "https://github.com/COF-RyLopez/ng911-pipeline",
             "standard": "NENA-STA-010-2021 & Cal OES NG911 GIS Guidelines",
-            "description": "Statewide cloud-native NG911 emergency dispatch layers: SSAP address points, Road Centerlines, Emergency Service Boundaries, and automated QA/QC validation."
+            "description": "Statewide cloud-native NG911 emergency dispatch layers: SSAP address points, Road Centerlines, Emergency Service Boundaries, and automated QA/QC validation. 100% of Fresno County features, streamed as PMTiles."
         },
         "mapView": {
             "center": [-119.7871, 36.7468],
-            "zoom": 13,
+            "zoom": 14,
             "bearing": 0,
             "pitch": 0,
             "bbox": [-119.95, 36.65, -119.65, 36.90]
@@ -98,26 +140,18 @@ def main():
                     ]
                 }
             },
-            {
-                "id": "mart_ng911_fresno_rcl",
-                "name": "NENA Road Centerlines (Authoritative)",
-                "type": "geojson",
-                "visible": True,
-                "opacity": 1.0,
-                "geojson": rcl_geojson,
-                "source": {
-                    "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl.geojson"
-                },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_rcl.geojson",
-                "style": {
+            pmtiles_layer(
+                "mart_ng911_fresno_rcl",
+                "NENA Road Centerlines (All 53,474)",
+                "fresno_rcl.pmtiles",
+                "rcl",
+                {
+                    "fillColor": "#059669",
                     "strokeColor": "#059669",
-                    "strokeWidth": 2.5,
+                    "strokeWidth": 2.0,
                     "strokeWidthUnit": "pixels",
-                    "minZoom": 0,
-                    "maxZoom": 24
                 },
-                "popup": {
+                {
                     "click": True,
                     "hover": True,
                     "titleField": "FullStreetName",
@@ -130,66 +164,20 @@ def main():
                         {"field": "RoadClass", "label": "Road Class"},
                         {"field": "RCL_NGUID", "label": "NENA RCL NGUID"}
                     ]
-                }
-            },
-            {
-                "id": "mart_ng911_fresno_ssap",
-                "name": "NENA SSAP Address Points (With ESB & Landmark)",
-                "type": "geojson",
-                "visible": True,
-                "opacity": 1.0,
-                "geojson": ssap_geojson,
-                "source": {
-                    "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_ssap_metro.geojson"
                 },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_ssap_metro.geojson",
-                "style": {
-                    "circleRadius": 5,
-                    "fillColor": "#2563eb",
-                    "strokeColor": "#ffffff",
-                    "strokeWidth": 1.5,
-                    "fillOpacity": 0.85,
-                    "minZoom": 0,
-                    "maxZoom": 24
-                },
-                "popup": {
-                    "click": True,
-                    "hover": True,
-                    "titleField": "HNO",
-                    "fields": [
-                        {"field": "HNO", "label": "House Number", "hover": True},
-                        {"field": "STN", "label": "Street Name", "hover": True},
-                        {"field": "PSAP", "label": "CAD / PSAP Routing", "hover": True},
-                        {"field": "ESB_Fire", "label": "Fire District", "hover": True},
-                        {"field": "LandmarkName", "label": "Landmark / POI Alias", "hover": True},
-                        {"field": "Muni", "label": "Jurisdiction / Muni"},
-                        {"field": "CommunityName", "label": "Postal Community"},
-                        {"field": "ConflationStatus", "label": "Conflation Status"},
-                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
-                    ]
-                }
-            },
-            {
-                "id": "mart_ng911_fresno_fishbones",
-                "name": "QA/QC Fishbone Vectors (NENA Distance)",
-                "type": "geojson",
-                "visible": True,
-                "opacity": 1.0,
-                "geojson": fb_geojson,
-                "source": {
-                    "type": "geojson",
-                    "url": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_metro.geojson"
-                },
-                "sourcePath": f"{GITHUB_BASE_URL}/mart_ng911_fresno_fishbones_metro.geojson",
-                "style": {
+            ),
+            pmtiles_layer(
+                "mart_ng911_fresno_fishbones",
+                "QA/QC Fishbone Vectors (All 365,316)",
+                "fresno_fishbones.pmtiles",
+                "fishbones",
+                {
+                    "fillColor": "#ef4444",
                     "strokeColor": "#ef4444",
-                    "strokeWidth": 2.5,
+                    "strokeWidth": 1.5,
                     "strokeWidthUnit": "pixels",
-                    "minZoom": 0,
-                    "maxZoom": 24
                 },
-                "popup": {
+                {
                     "click": True,
                     "hover": True,
                     "titleField": "STN",
@@ -198,45 +186,47 @@ def main():
                         {"field": "STN", "label": "Street Name", "hover": True},
                         {"field": "DistanceMeters", "label": "Distance to Centerline (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}, "hover": True},
                         {"field": "IsExcessiveOffset", "label": "Excessive Offset (>50m)"},
+                        {"field": "IsRangeViolation", "label": "Range Violation"},
                         {"field": "FishboneID", "label": "NENA Fishbone URN"},
                         {"field": "SSAP_NGUID", "label": "Matched SSAP Point"},
                         {"field": "RCL_NGUID", "label": "Matched Road Segment"}
                     ]
-                }
-            }
+                },
+            ),
+            # Address points last so they draw on top of the fishbones that end on them.
+            pmtiles_layer(
+                "mart_ng911_fresno_ssap",
+                "NENA SSAP Address Points (All 466,751)",
+                "fresno_ssap.pmtiles",
+                "ssap",
+                {
+                    "circleRadius": 4,
+                    "fillColor": "#2563eb",
+                    "fillOpacity": 0.9,
+                    "strokeColor": "#ffffff",
+                    "strokeWidth": 1.0,
+                },
+                {
+                    "click": True,
+                    "hover": True,
+                    "titleField": "HNO",
+                    "fields": [
+                        {"field": "HNO", "label": "House Number", "hover": True},
+                        {"field": "STN", "label": "Street Name", "hover": True},
+                        {"field": "Unit", "label": "Unit"},
+                        {"field": "PSAP", "label": "CAD / PSAP Routing", "hover": True},
+                        {"field": "ESB_Fire", "label": "Fire District", "hover": True},
+                        {"field": "LandmarkName", "label": "Landmark / POI Alias", "hover": True},
+                        {"field": "Muni", "label": "Jurisdiction / Muni"},
+                        {"field": "CommunityName", "label": "Postal Community"},
+                        {"field": "ConflationStatus", "label": "Conflation Status"},
+                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
+                    ]
+                },
+            ),
         ],
-        "widgets": [
-            {
-                "id": "w_distance_hist",
-                "layerId": "mart_ng911_fresno_fishbones",
-                "type": "histogram",
-                "field": "DistanceMeters",
-                "bins": 15,
-                "title": "NENA Offset Distance (Meters)",
-                "color": "#ef4444"
-            },
-            {
-                "id": "w_conflation_bar",
-                "layerId": "mart_ng911_fresno_ssap",
-                "type": "bar",
-                "category": "ConflationStatus",
-                "aggregation": "count",
-                "title": "Address Conflation Breakdown",
-                "color": "#2563eb"
-            },
-            {
-                "id": "w_psap_bar",
-                "layerId": "mart_ng911_fresno_ssap",
-                "type": "bar",
-                "category": "PSAP",
-                "aggregation": "count",
-                "title": "PSAP CAD Dispatch Breakdown",
-                "color": "#d97706"
-            }
-        ],
-        "dashboardColumns": 3,
         "interaction": {
-            "identify": ["mart_ng911_fresno_fishbones", "mart_ng911_fresno_ssap", "mart_ng911_fresno_esb"],
+            "identify": ["mart_ng911_fresno_ssap", "mart_ng911_fresno_fishbones", "mart_ng911_fresno_rcl", "mart_ng911_fresno_esb"],
             "controls": {
                 "search": True,
                 "measure": True,
@@ -249,13 +239,13 @@ def main():
     proj_path_json = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre.json")
     proj_path_geolibre = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre")
 
-    with open(proj_path_json, "w") as f:
-        json.dump(project_data, f)
+    for path in (proj_path_json, proj_path_geolibre):
+        with open(path, "w") as f:
+            json.dump(project_data, f)
 
-    with open(proj_path_geolibre, "w") as f:
-        json.dump(project_data, f)
+    size_mb = os.path.getsize(proj_path_json) / 1e6
+    print(f"Generated GeoLibre project ({size_mb:.1f} MB, PMTiles-streamed layers):\n  -> {proj_path_json}\n  -> {proj_path_geolibre}")
 
-    print(f"Generated self-contained GeoLibre project files with inline payloads:\n  -> {proj_path_json}\n  -> {proj_path_geolibre}")
 
 if __name__ == "__main__":
     main()

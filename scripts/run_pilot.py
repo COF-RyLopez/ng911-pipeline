@@ -190,6 +190,10 @@ def main():
     conn.sql(f"COPY stg_regional_addresses TO '{regional_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Regional Multi-County Addresses: {regional_parquet}")
 
+    # Build full-county PMTiles (streamed by the GeoLibre project; no sampling)
+    build_tiles_script = os.path.join(PROJECT_DIR, "scripts", "build_pmtiles.py")
+    subprocess.run([sys.executable, build_tiles_script], cwd=PROJECT_DIR, check=True)
+
     # Export GeoLibre project file (.geolibre and .geolibre.json)
     gen_proj_script = os.path.join(PROJECT_DIR, "scripts", "generate_geolibre_project.py")
     subprocess.run([sys.executable, gen_proj_script], cwd=PROJECT_DIR, check=True)
