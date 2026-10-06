@@ -104,9 +104,132 @@ def fetch_fresno_county_addresses():
     print(f"  -> Saved {len(df):,} records to {output_parquet}")
     return len(df)
 
+
+def fetch_kings_county_addresses():
+    output_parquet = os.path.join(CACHE_DIR, "kings_addresses.parquet")
+    print(f"\n[1b] Fetching Kings County addresses from ArcGIS FeatureServer...")
+    try:
+        url = "https://services3.arcgis.com/24gLq1DBBzDfd0cZ/ArcGIS/rest/services/Address_Kings_County/FeatureServer/4/query"
+        req = urllib.request.Request(f"{url}?where=STREET_NBR+IS+NOT+NULL&returnCountOnly=true&f=json", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req) as resp:
+            total_count = json.loads(resp.read().decode("utf-8"))["count"]
+
+        offsets = list(range(0, total_count, 2000))
+
+        def fetch_page(offset):
+            params = {
+                "where": "STREET_NBR IS NOT NULL",
+                "outFields": "OBJECTID,STREET_NBR,STREET_DIR,STREET_NAM,STREET_TYP,COMMUNITY,ZIPCODE",
+                "outSR": "4326",
+                "resultOffset": offset,
+                "resultRecordCount": 2000,
+                "f": "json"
+            }
+            full_url = f"{url}?{urllib.parse.urlencode(params)}"
+            req = urllib.request.Request(full_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                records = []
+                for feat in data.get("features", []):
+                    attr = feat.get("attributes", {})
+                    geom = feat.get("geometry", {})
+                    records.append({
+                        "county_id": str(attr.get("OBJECTID")),
+                        "house_number": str(attr.get("STREET_NBR") or ""),
+                        "pre_directional": attr.get("STREET_DIR"),
+                        "street_name": attr.get("STREET_NAM"),
+                        "street_type": attr.get("STREET_TYP"),
+                        "community_name": attr.get("COMMUNITY"),
+                        "postcode": str(attr.get("ZIPCODE") or ""),
+                        "longitude": float(geom.get("x")) if geom.get("x") is not None else None,
+                        "latitude": float(geom.get("y")) if geom.get("y") is not None else None,
+                    })
+                return records
+
+        t0 = time.time()
+        all_records = []
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for batch in ex.map(fetch_page, offsets):
+                all_records.extend(batch)
+        print(f"  Retrieved {len(all_records):,} Kings addresses in {time.time()-t0:.2f}s")
+        df = pd.DataFrame(all_records)
+    except Exception as e:
+        print(f"  [WARNING] Could not fetch Kings addresses online: {e}. Using empty stub.")
+        df = pd.DataFrame(columns=["county_id", "house_number", "pre_directional", "street_name", "street_type", "community_name", "postcode", "longitude", "latitude"])
+
+    conn = duckdb.connect()
+    conn.register("df_kings", df)
+    conn.execute(f"COPY (SELECT * FROM df_kings WHERE longitude IS NOT NULL AND latitude IS NOT NULL) TO '{output_parquet}' (FORMAT PARQUET)")
+    print(f"  -> Saved {len(df):,} Kings records to {output_parquet}")
+    return len(df)
+
+
+def fetch_tulare_county_addresses():
+    output_parquet = os.path.join(CACHE_DIR, "tulare_addresses.parquet")
+    print(f"\n[1c] Fetching Tulare County addresses from ArcGIS FeatureServer...")
+    try:
+        url = "https://services2.arcgis.com/bYBANhmQGwSSLC0l/ArcGIS/rest/services/SiteStructureAddressPoints/FeatureServer/0/query"
+        req = urllib.request.Request(f"{url}?where=Add_Number+IS+NOT+NULL&returnCountOnly=true&f=json", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req) as resp:
+            total_count = json.loads(resp.read().decode("utf-8"))["count"]
+
+        offsets = list(range(0, total_count, 2000))
+
+        def fetch_page(offset):
+            params = {
+                "where": "Add_Number IS NOT NULL",
+                "outFields": "OBJECTID,Add_Number,AddNum_Suf,St_PreDir,St_Name,St_PosTyp,LSt_Typ,Post_Comm,Post_Code,Longitude,Latitude",
+                "outSR": "4326",
+                "resultOffset": offset,
+                "resultRecordCount": 2000,
+                "f": "json"
+            }
+            full_url = f"{url}?{urllib.parse.urlencode(params)}"
+            req = urllib.request.Request(full_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                records = []
+                for feat in data.get("features", []):
+                    attr = feat.get("attributes", {})
+                    geom = feat.get("geometry", {})
+                    lon = attr.get("Longitude") or (float(geom.get("x")) if geom.get("x") is not None else None)
+                    lat = attr.get("Latitude") or (float(geom.get("y")) if geom.get("y") is not None else None)
+                    records.append({
+                        "county_id": str(attr.get("OBJECTID")),
+                        "house_number": str(attr.get("Add_Number") or ""),
+                        "house_number_suffix": attr.get("AddNum_Suf"),
+                        "pre_directional": attr.get("St_PreDir"),
+                        "street_name": attr.get("St_Name"),
+                        "street_type": attr.get("St_PosTyp") or attr.get("LSt_Typ"),
+                        "community_name": attr.get("Post_Comm"),
+                        "postcode": str(attr.get("Post_Code") or ""),
+                        "longitude": float(lon) if lon is not None else None,
+                        "latitude": float(lat) if lat is not None else None,
+                    })
+                return records
+
+        t0 = time.time()
+        all_records = []
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for batch in ex.map(fetch_page, offsets):
+                all_records.extend(batch)
+        print(f"  Retrieved {len(all_records):,} Tulare addresses in {time.time()-t0:.2f}s")
+        df = pd.DataFrame(all_records)
+    except Exception as e:
+        print(f"  [WARNING] Could not fetch Tulare addresses online: {e}. Using empty stub.")
+        df = pd.DataFrame(columns=["county_id", "house_number", "house_number_suffix", "pre_directional", "street_name", "street_type", "community_name", "postcode", "longitude", "latitude"])
+
+    conn = duckdb.connect()
+    conn.register("df_tulare", df)
+    conn.execute(f"COPY (SELECT * FROM df_tulare WHERE longitude IS NOT NULL AND latitude IS NOT NULL) TO '{output_parquet}' (FORMAT PARQUET)")
+    print(f"  -> Saved {len(df):,} Tulare records to {output_parquet}")
+    return len(df)
+
+
 def fetch_fresno_county_streets():
     output_parquet = os.path.join(CACHE_DIR, "county_streets.parquet")
     print(f"\n[2/6] Fetching all Fresno County street centerlines from ArcGIS FeatureServer...")
+
 
     base_url = "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/REGIONAL_STREETS_VW/FeatureServer/1/query"
     req = urllib.request.Request(
@@ -311,14 +434,18 @@ def fetch_overture_places():
 
 if __name__ == "__main__":
     county_addr_cnt = fetch_fresno_county_addresses()
+    kings_addr_cnt = fetch_kings_county_addresses()
+    tulare_addr_cnt = fetch_tulare_county_addresses()
     county_street_cnt = fetch_fresno_county_streets()
     boundary_counts = fetch_fresno_county_boundaries()
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
     print("\n" + "=" * 70)
-    print("All Fresno County datasets cached successfully:")
+    print("All Central Valley Region datasets cached successfully:")
     print(f"  - Fresno County Addresses:      {county_addr_cnt:,}")
+    print(f"  - Kings County Addresses:       {kings_addr_cnt:,}")
+    print(f"  - Tulare County Addresses:      {tulare_addr_cnt:,}")
     print(f"  - Fresno County Streets:        {county_street_cnt:,}")
     print(f"  - County CAD / PSAP:           {boundary_counts.get('CAD/PSAP', 0):,}")
     print(f"  - County Fire Districts:       {boundary_counts.get('Fire Districts', 0):,}")
@@ -327,3 +454,4 @@ if __name__ == "__main__":
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
     print("=" * 70)
+
