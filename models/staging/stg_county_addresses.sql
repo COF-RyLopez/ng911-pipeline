@@ -25,5 +25,6 @@ SELECT
     coalesce(source_agency, 'County of Fresno') AS source_agency
 FROM raw_county
 WHERE house_number IS NOT NULL 
+  AND street_name IS NOT NULL
   AND longitude IS NOT NULL 
   AND latitude IS NOT NULL

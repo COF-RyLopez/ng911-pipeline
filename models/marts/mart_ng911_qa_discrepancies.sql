@@ -3,12 +3,22 @@
 ) }}
 
 WITH county_streets AS (
-    SELECT street_segment_id, street_name, geom
+    SELECT 
+        street_segment_id, 
+        street_name, 
+        geom,
+        floor(ST_X(ST_Centroid(geom)) * 50)::INTEGER AS gx,
+        floor(ST_Y(ST_Centroid(geom)) * 50)::INTEGER AS gy
     FROM {{ ref('stg_county_streets') }}
 ),
 
 overture_roads AS (
-    SELECT overture_segment_id, road_name, geom
+    SELECT 
+        overture_segment_id, 
+        road_name, 
+        geom,
+        floor(ST_X(ST_Centroid(geom)) * 50)::INTEGER AS gx,
+        floor(ST_Y(ST_Centroid(geom)) * 50)::INTEGER AS gy
     FROM {{ ref('stg_overture_transportation') }}
     WHERE road_name IS NOT NULL
 ),
@@ -26,11 +36,12 @@ name_discrepancies AS (
         c.geom AS ST_Geometry
     FROM county_streets c
     INNER JOIN overture_roads o
-        ON ST_DWithin(c.geom, o.geom, {{ var('conflation_distance_degrees', 0.00015) }} * 2)
+        ON c.gx = o.gx AND c.gy = o.gy
+       AND ST_DWithin(c.geom, o.geom, {{ var('conflation_distance_degrees', 0.00015) }} * 2)
        AND c.street_name != o.road_name
 ),
 
--- 2. Potential Missing Roads: Overture roads with no County centerline within 50m
+-- 2. Potential Missing Roads: Overture roads with no County centerline within 50m in same grid bucket
 missing_roads AS (
     SELECT
         'POTENTIAL_MISSING_ROAD' AS DiscrepancyType,
@@ -43,7 +54,8 @@ missing_roads AS (
         o.geom AS ST_Geometry
     FROM overture_roads o
     LEFT JOIN county_streets c
-        ON ST_DWithin(o.geom, c.geom, {{ var('conflation_distance_degrees', 0.00015) }} * 3)
+        ON o.gx = c.gx AND o.gy = c.gy
+       AND ST_DWithin(o.geom, c.geom, {{ var('conflation_distance_degrees', 0.00015) }} * 3)
     WHERE c.street_segment_id IS NULL
 )
 

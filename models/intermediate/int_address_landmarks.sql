@@ -3,6 +3,10 @@
 WITH addr AS (
     SELECT 
         coalesce(county_id, gers_id) AS addr_uid,
+        longitude,
+        latitude,
+        floor(longitude * 50)::INTEGER AS gx,
+        floor(latitude * 50)::INTEGER AS gy,
         geom
     FROM {{ ref('int_address_conflation') }}
     WHERE geom IS NOT NULL
@@ -13,6 +17,8 @@ places AS (
         place_id,
         place_name,
         taxonomy_category,
+        floor(longitude * 50)::INTEGER AS gx,
+        floor(latitude * 50)::INTEGER AS gy,
         geom
     FROM {{ ref('stg_overture_places') }}
     WHERE geom IS NOT NULL
@@ -30,7 +36,8 @@ ranked_matches AS (
         ) as rn
     FROM addr a
     JOIN places p
-      ON ST_DWithin(a.geom, p.geom, 0.0006)
+      ON a.gx = p.gx AND a.gy = p.gy
+     AND ST_DWithin(a.geom, p.geom, 0.0006)
 )
 
 SELECT
