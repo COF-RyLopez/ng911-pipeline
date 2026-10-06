@@ -1,0 +1,201 @@
+{
+  "version": "0.1.0",
+  "name": "NG911 Address Enhancement & Visual QA/QC Diff Hub",
+  "metadata": {
+    "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
+    "jurisdiction": "County of Fresno, California (FIPS 06019)",
+    "repository": "https://github.com/COF-RyLopez/ng911-pipeline",
+    "standard": "NENA-STA-010-2021 & Cal OES NG911 GIS Guidelines",
+    "description": "Interactive visual diffing hub comparing raw municipal address points against NG911 remediated address points, showing spatial displacement vectors, PSAP attribution, and DuckDB WASM queries."
+  },
+  "mapView": {
+    "center": [
+      -119.7871,
+      36.7468
+    ],
+    "zoom": 14,
+    "bearing": 0,
+    "pitch": 0,
+    "bbox": [
+      -119.95,
+      36.65,
+      -119.65,
+      36.9
+    ]
+  },
+  "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
+  "basemapVisible": true,
+  "basemapOpacity": 1.0,
+  "primaryRenderer": "maplibre",
+  "layers": [
+    {
+      "id": "mart_ng911_fresno_diff_vectors",
+      "name": "Spatial Displacement Vectors (Raw -> Enhanced)",
+      "type": "pmtiles",
+      "visible": true,
+      "opacity": 0.85,
+      "source": {
+        "type": "vector",
+        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_diff_vectors.pmtiles",
+        "sourceId": "mart_ng911_fresno_diff_vectors",
+        "sourceLayers": [
+          "diff_vectors"
+        ],
+        "tileType": "vector"
+      },
+      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_diff_vectors.pmtiles",
+      "style": {
+        "minZoom": 0,
+        "maxZoom": 24,
+        "fillColor": "#ef4444",
+        "strokeColor": "#ef4444",
+        "strokeWidth": 2.0,
+        "strokeWidthUnit": "pixels"
+      },
+      "metadata": {
+        "sourceKind": "pmtiles-url",
+        "externalNativeLayer": true,
+        "pickable": true,
+        "sourceId": "mart_ng911_fresno_diff_vectors",
+        "tileType": "vector",
+        "sourceLayers": [
+          "diff_vectors"
+        ],
+        "nativeLayerIds": [
+          "mart_ng911_fresno_diff_vectors"
+        ]
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "RawAddress",
+        "fields": [
+          {
+            "field": "RawAddress",
+            "label": "Raw Local Address",
+            "hover": true
+          },
+          {
+            "field": "EnhancedAddress",
+            "label": "Enhanced NG911 Address",
+            "hover": true
+          },
+          {
+            "field": "DisplacementMeters",
+            "label": "Displacement (meters)",
+            "kind": "number",
+            "format": {
+              "decimals": 1,
+              "suffix": " m"
+            },
+            "hover": true
+          },
+          {
+            "field": "EnhancementCategory",
+            "label": "Category"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mart_ng911_fresno_enhancements",
+      "name": "NG911 Address Points (Color-Coded by Enhancement)",
+      "type": "pmtiles",
+      "visible": true,
+      "opacity": 1.0,
+      "source": {
+        "type": "vector",
+        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_enhancements.pmtiles",
+        "sourceId": "mart_ng911_fresno_enhancements",
+        "sourceLayers": [
+          "enhancements"
+        ],
+        "tileType": "vector"
+      },
+      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_enhancements.pmtiles",
+      "style": {
+        "minZoom": 0,
+        "maxZoom": 24,
+        "circleRadius": 5,
+        "circleColor": [
+          "match",
+          [
+            "get",
+            "EnhancementCategory"
+          ],
+          "SPATIAL_CORRECTION",
+          "#059669",
+          "PSAP_ENRICHMENT",
+          "#2563eb",
+          "LANDMARK_ALIASED",
+          "#7c3aed",
+          "NENA_STREET_NORMALIZED",
+          "#d97706",
+          "#6b7280"
+        ],
+        "strokeColor": "#ffffff",
+        "strokeWidth": 1.0
+      },
+      "metadata": {
+        "sourceKind": "pmtiles-url",
+        "externalNativeLayer": true,
+        "pickable": true,
+        "sourceId": "mart_ng911_fresno_enhancements",
+        "tileType": "vector",
+        "sourceLayers": [
+          "enhancements"
+        ],
+        "nativeLayerIds": [
+          "mart_ng911_fresno_enhancements"
+        ]
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "EnhancedAddress",
+        "fields": [
+          {
+            "field": "EnhancedAddress",
+            "label": "Enhanced Address",
+            "hover": true
+          },
+          {
+            "field": "RawAddress",
+            "label": "Original Raw Address",
+            "hover": true
+          },
+          {
+            "field": "EnhancementCategory",
+            "label": "Enhancement Type",
+            "hover": true
+          },
+          {
+            "field": "DisplacementMeters",
+            "label": "Displacement (m)",
+            "kind": "number",
+            "format": {
+              "decimals": 1,
+              "suffix": " m"
+            }
+          },
+          {
+            "field": "PSAP",
+            "label": "Primary PSAP"
+          },
+          {
+            "field": "ESB_Fire",
+            "label": "Fire District"
+          },
+          {
+            "field": "LandmarkName",
+            "label": "POI Landmark Alias"
+          },
+          {
+            "field": "SSAP_NGUID",
+            "label": "NENA SSAP NGUID"
+          }
+        ]
+      }
+    }
+  ]
+}
