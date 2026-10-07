@@ -40,6 +40,18 @@
       "type": "geojson",
       "visible": true,
       "opacity": 0.45,
+      "bounds": [
+        -119.92,
+        36.65,
+        -119.68,
+        36.85
+      ],
+      "bbox": [
+        -119.92,
+        36.65,
+        -119.68,
+        36.85
+      ],
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/overture_buildings_sample.geojson",
@@ -88,6 +100,18 @@
       "type": "geojson",
       "visible": true,
       "opacity": 0.85,
+      "bounds": [
+        -119.95,
+        36.6,
+        -118.9,
+        37.25
+      ],
+      "bbox": [
+        -119.95,
+        36.6,
+        -118.9,
+        37.25
+      ],
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_rcl_sample.geojson",
@@ -147,6 +171,18 @@
       "type": "geojson",
       "visible": true,
       "opacity": 0.9,
+      "bounds": [
+        -119.95,
+        36.6,
+        -118.9,
+        37.25
+      ],
+      "bbox": [
+        -119.95,
+        36.6,
+        -118.9,
+        37.25
+      ],
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_fishbones_sample.geojson",
@@ -209,6 +245,18 @@
       "type": "geojson",
       "visible": true,
       "opacity": 1.0,
+      "bounds": [
+        -119.95,
+        36.6,
+        -118.9,
+        37.25
+      ],
+      "bbox": [
+        -119.95,
+        36.6,
+        -118.9,
+        37.25
+      ],
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/remediation/county_remediation_points_sample.geojson",
