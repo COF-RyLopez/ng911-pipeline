@@ -19,14 +19,14 @@
       -119.8085,
       36.737
     ],
-    "zoom": 16.2,
+    "zoom": 15.0,
     "bearing": 0,
     "pitch": 0,
     "bbox": [
-      -119.814,
-      36.732,
-      -119.803,
-      36.742
+      -119.9,
+      36.66,
+      -119.7,
+      36.82
     ]
   },
   "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
@@ -51,10 +51,10 @@
       },
       "sourcePath": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
       "style": {
-        "fillColor": "#94a3b8",
-        "fillOpacity": 0.35,
-        "strokeColor": "#334155",
-        "strokeWidth": 2.0,
+        "fillColor": "#475569",
+        "fillOpacity": 0.45,
+        "strokeColor": "#1e293b",
+        "strokeWidth": 1.5,
         "strokeWidthUnit": "pixels",
         "minZoom": 0,
         "maxZoom": 24

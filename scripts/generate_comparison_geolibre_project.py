@@ -61,7 +61,7 @@ def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, base_url
 
 
 def build_project(base_url, is_local=False):
-    raw_base = GITHUB_RAW_BASE_URL if not is_local else LOCAL_BASE_URL
+    raw_base = GITHUB_PAGES_BASE_URL if not is_local else LOCAL_BASE_URL
 
     return {
         "version": "0.1.0",
@@ -76,10 +76,10 @@ def build_project(base_url, is_local=False):
         },
         "mapView": {
             "center": [-119.8085, 36.7370],
-            "zoom": 16.2,
+            "zoom": 15.0,
             "bearing": 0,
             "pitch": 0,
-            "bbox": [-119.814, 36.732, -119.803, 36.742]
+            "bbox": [-119.90, 36.66, -119.70, 36.82]
         },
         "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
         "basemapVisible": True,
@@ -101,10 +101,10 @@ def build_project(base_url, is_local=False):
                 },
                 "sourcePath": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
                 "style": {
-                    "fillColor": "#94a3b8",
-                    "fillOpacity": 0.35,
-                    "strokeColor": "#334155",
-                    "strokeWidth": 2.0,
+                    "fillColor": "#475569",
+                    "fillOpacity": 0.45,
+                    "strokeColor": "#1e293b",
+                    "strokeWidth": 1.5,
                     "strokeWidthUnit": "pixels",
                     "minZoom": 0,
                     "maxZoom": 24

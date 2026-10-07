@@ -19,14 +19,14 @@
       -119.8085,
       36.737
     ],
-    "zoom": 16.2,
+    "zoom": 15.0,
     "bearing": 0,
     "pitch": 0,
     "bbox": [
-      -119.814,
-      36.732,
-      -119.803,
-      36.742
+      -119.9,
+      36.66,
+      -119.7,
+      36.82
     ]
   },
   "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
@@ -42,17 +42,17 @@
       "opacity": 0.45,
       "source": {
         "type": "geojson",
-        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/overture_buildings_sample.geojson",
+        "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/overture_buildings_sample.geojson",
         "sourceId": "overture_buildings_layer",
         "sourceLayers": null,
         "tileType": null
       },
-      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/overture_buildings_sample.geojson",
+      "sourcePath": "https://cof-rylopez.github.io/ng911-pipeline/data/output/overture_buildings_sample.geojson",
       "style": {
-        "fillColor": "#94a3b8",
-        "fillOpacity": 0.35,
-        "strokeColor": "#334155",
-        "strokeWidth": 2.0,
+        "fillColor": "#475569",
+        "fillOpacity": 0.45,
+        "strokeColor": "#1e293b",
+        "strokeWidth": 1.5,
         "strokeWidthUnit": "pixels",
         "minZoom": 0,
         "maxZoom": 24
@@ -90,12 +90,12 @@
       "opacity": 0.85,
       "source": {
         "type": "geojson",
-        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_rcl_sample.geojson",
+        "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_rcl_sample.geojson",
         "sourceId": "mart_ng911_fresno_rcl_layer",
         "sourceLayers": null,
         "tileType": null
       },
-      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_rcl_sample.geojson",
+      "sourcePath": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_rcl_sample.geojson",
       "style": {
         "fillColor": "#059669",
         "strokeColor": "#059669",
@@ -149,12 +149,12 @@
       "opacity": 0.9,
       "source": {
         "type": "geojson",
-        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_fishbones_sample.geojson",
+        "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_fishbones_sample.geojson",
         "sourceId": "mart_ng911_fresno_fishbones_layer",
         "sourceLayers": null,
         "tileType": null
       },
-      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_fishbones_sample.geojson",
+      "sourcePath": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_fishbones_sample.geojson",
       "style": {
         "fillColor": "#dc2626",
         "strokeColor": "#dc2626",
@@ -211,12 +211,12 @@
       "opacity": 1.0,
       "source": {
         "type": "geojson",
-        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/remediation/county_remediation_points_sample.geojson",
+        "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/remediation/county_remediation_points_sample.geojson",
         "sourceId": "mart_ng911_county_remediation_layer",
         "sourceLayers": null,
         "tileType": null
       },
-      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/remediation/county_remediation_points_sample.geojson",
+      "sourcePath": "https://cof-rylopez.github.io/ng911-pipeline/data/output/remediation/county_remediation_points_sample.geojson",
       "style": {
         "circleRadius": 7,
         "fillColor": [
