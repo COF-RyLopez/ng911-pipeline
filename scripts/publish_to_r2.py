@@ -32,6 +32,8 @@ def get_content_type(file_path):
         return "application/json"
     elif ext == ".csv":
         return "text/csv"
+    elif ext == ".html":
+        return "text/html; charset=utf-8"
     content_type, _ = mimetypes.guess_type(file_path)
     return content_type or "application/octet-stream"
 
@@ -93,6 +95,12 @@ def main():
         print(f"[ERROR] Failed to initialize S3 client for R2: {e}")
         sys.exit(1)
 
+    # Ensure root index.html is copied to data/output/index.html
+    root_index = os.path.join(PROJECT_DIR, "index.html")
+    if os.path.exists(root_index):
+        import shutil
+        shutil.copy2(root_index, os.path.join(OUTPUT_DIR, "index.html"))
+
     # Collect files to upload
     files_to_upload = []
     for root, _, files in os.walk(OUTPUT_DIR):
@@ -101,7 +109,7 @@ def main():
             if f.startswith(".") or f.endswith(".wal"):
                 continue
             ext = os.path.splitext(f)[1].lower()
-            if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".geolibre", ".csv"]:
+            if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".geolibre", ".csv", ".html"]:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(abs_path, OUTPUT_DIR)
                 files_to_upload.append((abs_path, rel_path))
