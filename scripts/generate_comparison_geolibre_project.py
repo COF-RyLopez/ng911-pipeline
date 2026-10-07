@@ -75,17 +75,25 @@ def load_sample_geojson(filename, limit=1500):
     return {"type": "FeatureCollection", "features": []}
 
 
-def build_project(base_url, is_local=False):
-    raw_base = GITHUB_PAGES_BASE_URL if not is_local else LOCAL_BASE_URL
+R2_BASE_URL = os.environ.get("R2_PUBLIC_URL", "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev")
 
-    bldg_geojson = load_sample_geojson("overture_buildings_sample.geojson", limit=1500)
-    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson", limit=1500)
-    fishbones_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson", limit=1500)
-    remediation_geojson = load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500)
+
+def build_project(base_url, is_local=False, is_r2=False):
+    raw_base = R2_BASE_URL if is_r2 else (GITHUB_PAGES_BASE_URL if not is_local else LOCAL_BASE_URL)
+
+    # For R2 or local, we stream full PMTiles without embedding bulky GeoJSON
+    use_pmtiles = is_local or is_r2
+
+    bldg_geojson = load_sample_geojson("overture_buildings_sample.geojson", limit=1500) if not use_pmtiles else None
+    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson", limit=1500) if not use_pmtiles else None
+    fishbones_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson", limit=1500) if not use_pmtiles else None
+    remediation_geojson = load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500) if not use_pmtiles else None
+
+    proj_label = "(Cloudflare R2 Streaming)" if is_r2 else ("(Local Server)" if is_local else "(Cloud Remote)")
 
     return {
         "version": "0.1.0",
-        "name": f"NG911 Address Remediation & Building Footprint Hub {'(Local Server)' if is_local else '(Cloud Remote)'}",
+        "name": f"NG911 Address Remediation & Building Footprint Hub {proj_label}",
         "metadata": {
             "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
             "jurisdiction": "County of Fresno, California (FIPS 06019)",
@@ -109,21 +117,21 @@ def build_project(base_url, is_local=False):
             {
                 "id": "overture_buildings_layer",
                 "name": "🏢 Overture Building Footprints (Containment Check)",
-                "type": "geojson",
+                "type": "pmtiles" if use_pmtiles else "geojson",
                 "visible": True,
                 "opacity": 0.45,
                 "bounds": [-119.95, 36.60, -119.75, 36.75],
                 "bbox": [-119.95, 36.60, -119.75, 36.75],
-                "geojson": bldg_geojson if not is_local else None,
+                "geojson": bldg_geojson,
                 "source": {
-                    "type": "geojson" if not is_local else "vector",
-                    "url": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
-                    "data": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else None,
+                    "type": "vector" if use_pmtiles else "geojson",
+                    "url": f"{raw_base}/tiles/fresno_buildings.pmtiles" if use_pmtiles else f"{raw_base}/overture_buildings_sample.geojson",
+                    "data": f"{raw_base}/overture_buildings_sample.geojson" if not use_pmtiles else None,
                     "sourceId": "overture_buildings_layer",
-                    "sourceLayers": ["buildings"] if is_local else None,
-                    "tileType": "vector" if is_local else None
+                    "sourceLayers": ["buildings"] if use_pmtiles else None,
+                    "tileType": "vector" if use_pmtiles else None
                 },
-                "sourcePath": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
+                "sourcePath": f"{raw_base}/tiles/fresno_buildings.pmtiles" if use_pmtiles else f"{raw_base}/overture_buildings_sample.geojson",
                 "style": {
                     "fillColor": "#475569",
                     "fillOpacity": 0.45,
@@ -148,21 +156,21 @@ def build_project(base_url, is_local=False):
             {
                 "id": "mart_ng911_fresno_rcl_layer",
                 "name": "🛣️ Authoritative NENA Road Centerlines",
-                "type": "geojson",
+                "type": "pmtiles" if use_pmtiles else "geojson",
                 "visible": True,
                 "opacity": 0.85,
                 "bounds": [-119.95, 36.60, -118.90, 37.25],
                 "bbox": [-119.95, 36.60, -118.90, 37.25],
-                "geojson": rcl_geojson if not is_local else None,
+                "geojson": rcl_geojson,
                 "source": {
-                    "type": "geojson" if not is_local else "vector",
-                    "url": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_rcl.pmtiles",
-                    "data": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else None,
+                    "type": "vector" if use_pmtiles else "geojson",
+                    "url": f"{raw_base}/tiles/fresno_rcl.pmtiles" if use_pmtiles else f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson",
+                    "data": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not use_pmtiles else None,
                     "sourceId": "mart_ng911_fresno_rcl_layer",
-                    "sourceLayers": ["rcl"] if is_local else None,
-                    "tileType": "vector" if is_local else None
+                    "sourceLayers": ["rcl"] if use_pmtiles else None,
+                    "tileType": "vector" if use_pmtiles else None
                 },
-                "sourcePath": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_rcl.pmtiles",
+                "sourcePath": f"{raw_base}/tiles/fresno_rcl.pmtiles" if use_pmtiles else f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson",
                 "style": {
                     "fillColor": "#059669",
                     "strokeColor": "#059669",
@@ -189,21 +197,21 @@ def build_project(base_url, is_local=False):
             {
                 "id": "mart_ng911_fresno_fishbones_layer",
                 "name": "📏 QA/QC Displacement Vectors & Fishbones (Address to Street)",
-                "type": "geojson",
+                "type": "pmtiles" if use_pmtiles else "geojson",
                 "visible": True,
                 "opacity": 0.9,
                 "bounds": [-119.95, 36.60, -118.90, 37.25],
                 "bbox": [-119.95, 36.60, -118.90, 37.25],
-                "geojson": fishbones_geojson if not is_local else None,
+                "geojson": fishbones_geojson,
                 "source": {
-                    "type": "geojson" if not is_local else "vector",
-                    "url": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_fishbones.pmtiles",
-                    "data": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else None,
+                    "type": "vector" if use_pmtiles else "geojson",
+                    "url": f"{raw_base}/tiles/fresno_fishbones.pmtiles" if use_pmtiles else f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson",
+                    "data": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not use_pmtiles else None,
                     "sourceId": "mart_ng911_fresno_fishbones_layer",
-                    "sourceLayers": ["fishbones"] if is_local else None,
-                    "tileType": "vector" if is_local else None
+                    "sourceLayers": ["fishbones"] if use_pmtiles else None,
+                    "tileType": "vector" if use_pmtiles else None
                 },
-                "sourcePath": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_fishbones.pmtiles",
+                "sourcePath": f"{raw_base}/tiles/fresno_fishbones.pmtiles" if use_pmtiles else f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson",
                 "style": {
                     "fillColor": "#dc2626",
                     "strokeColor": "#dc2626",
@@ -229,21 +237,21 @@ def build_project(base_url, is_local=False):
             {
                 "id": "mart_ng911_county_remediation_layer",
                 "name": "📍 NG911 Address Remediation & Building Footprint Status",
-                "type": "geojson",
+                "type": "pmtiles" if use_pmtiles else "geojson",
                 "visible": True,
                 "opacity": 1.0,
                 "bounds": [-119.95, 36.60, -118.90, 37.25],
                 "bbox": [-119.95, 36.60, -118.90, 37.25],
-                "geojson": remediation_geojson if not is_local else None,
+                "geojson": remediation_geojson,
                 "source": {
-                    "type": "geojson" if not is_local else "vector",
-                    "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_remediation.pmtiles",
-                    "data": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else None,
+                    "type": "vector" if use_pmtiles else "geojson",
+                    "url": f"{raw_base}/tiles/fresno_remediation.pmtiles" if use_pmtiles else f"{raw_base}/remediation/county_remediation_points_sample.geojson",
+                    "data": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not use_pmtiles else None,
                     "sourceId": "mart_ng911_county_remediation_layer",
-                    "sourceLayers": ["remediation"] if is_local else None,
-                    "tileType": "vector" if is_local else None
+                    "sourceLayers": ["remediation"] if use_pmtiles else None,
+                    "tileType": "vector" if use_pmtiles else None
                 },
-                "sourcePath": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_remediation.pmtiles",
+                "sourcePath": f"{raw_base}/tiles/fresno_remediation.pmtiles" if use_pmtiles else f"{raw_base}/remediation/county_remediation_points_sample.geojson",
                 "style": {
                     "circleRadius": 6,
                     "fillColor": "#ea580c",
@@ -277,31 +285,40 @@ def main():
     parser.add_argument("--source-file", help="Path to local user source dataset (.geojson, .parquet, .csv)", default=None)
     args = parser.parse_args()
 
-    # Build Remote Project (GitHub Raw Streaming)
-    remote_proj = build_project(GITHUB_PAGES_BASE_URL, is_local=False)
+    # 1. Build Remote Project (GitHub Pages / Raw with embedded samples)
+    remote_proj = build_project(GITHUB_PAGES_BASE_URL, is_local=False, is_r2=False)
     json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre.json")
     geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre")
 
     with open(json_path, "w") as f:
         json.dump(remote_proj, f, indent=2)
-
     with open(geolibre_path, "w") as f:
         json.dump(remote_proj, f, indent=2)
 
-    # Build Local Project (http://localhost:8088/ Byte Serving URL)
-    local_proj = build_project(LOCAL_BASE_URL, is_local=True)
+    # 2. Build Cloudflare R2 Project (High-performance full PMTiles streaming)
+    r2_proj = build_project(R2_BASE_URL, is_local=False, is_r2=True)
+    r2_json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_r2.geolibre.json")
+    r2_geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_r2.geolibre")
+
+    with open(r2_json_path, "w") as f:
+        json.dump(r2_proj, f, indent=2)
+    with open(r2_geolibre_path, "w") as f:
+        json.dump(r2_proj, f, indent=2)
+
+    # 3. Build Local Project (http://localhost:8088/ Byte Serving URL)
+    local_proj = build_project(LOCAL_BASE_URL, is_local=True, is_r2=False)
     local_json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_local.geolibre.json")
     local_geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_local.geolibre")
 
     with open(local_json_path, "w") as f:
         json.dump(local_proj, f, indent=2)
-
     with open(local_geolibre_path, "w") as f:
         json.dump(local_proj, f, indent=2)
 
-    print("Generated GeoLibre QA/QC Projects (Focused Street View):")
-    print(f"  Remote -> {json_path}")
-    print(f"  Local  -> {local_json_path}")
+    print("Generated GeoLibre QA/QC Projects:")
+    print(f"  Remote (Embedded) -> {json_path}")
+    print(f"  Cloudflare R2     -> {r2_json_path}")
+    print(f"  Local Byte-Server -> {local_json_path}")
 
 
 if __name__ == "__main__":
