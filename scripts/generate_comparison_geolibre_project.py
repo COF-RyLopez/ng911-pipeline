@@ -73,14 +73,15 @@ def geoparquet_stream_layer(
     popup=None,
     opacity=1.0,
     point_radius=5,
-    line_width=2
+    line_width=2,
+    visible=True
 ):
     url = f"{base_url}/{filename}"
     return {
         "id": layer_id,
         "name": name,
         "type": "geojson",
-        "visible": True,
+        "visible": visible,
         "opacity": opacity,
         "bounds": bounds,
         "bbox": bounds,
@@ -215,7 +216,7 @@ def build_project(base_url, is_local=False, is_r2=False):
         "basemapVisible": True,
         "basemapOpacity": 1.0,
         "primaryRenderer": "maplibre",
-        "layers": [
+        "layers": [l for l in [
             {
                 "id": "overture_buildings_layer",
                 "name": "🏢 Overture Building Footprints (Containment Check)",
@@ -280,7 +281,8 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 },
                 opacity=0.85,
-                line_width=2.5
+                line_width=2.5,
+                visible=True
             ) if is_r2 else {
                 "id": "mart_ng911_fresno_rcl_layer",
                 "name": "🛣️ Authoritative NENA Road Centerlines",
@@ -322,9 +324,78 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 }
             },
+            {
+                "id": "mart_ng911_county_remediation_layer",
+                "name": "📍 NG911 Address Remediation Status (Active Sample)",
+                "type": "geojson",
+                "visible": True,
+                "opacity": 1.0,
+                "bounds": [-119.95, 36.60, -118.90, 37.25],
+                "bbox": [-119.95, 36.60, -118.90, 37.25],
+                "geojson": load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500),
+                "source": {
+                    "type": "geojson",
+                    "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson",
+                    "data": f"{raw_base}/remediation/county_remediation_points_sample.geojson",
+                    "sourceId": "mart_ng911_county_remediation_layer"
+                },
+                "sourcePath": f"{raw_base}/remediation/county_remediation_points_sample.geojson",
+                "style": {
+                    "circleRadius": 6,
+                    "fillColor": "#ea580c",
+                    "fillOpacity": 0.9,
+                    "strokeColor": "#ffffff",
+                    "strokeWidth": 1.5,
+                    "minZoom": 0,
+                    "maxZoom": 24
+                },
+                "popup": {
+                    "click": True,
+                    "hover": True,
+                    "titleField": "StandardizedAddress",
+                    "fields": [
+                        {"field": "StandardizedAddress", "label": "Enhanced Address", "hover": True},
+                        {"field": "SymbologyCategory", "label": "Rule Violation Category", "hover": True},
+                        {"field": "BuildingFootprintStatus", "label": "Building Footprint Containment", "hover": True},
+                        {"field": "SpatialOffsetMeters", "label": "Spatial Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
+                        {"field": "RecommendedRemediationAction", "label": "Action Needed for Jurisdiction"},
+                        {"field": "MapillaryGroundTruthURL", "label": "Mapillary Ground-Truth Link", "kind": "url"},
+                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
+                    ]
+                }
+            },
+            geoparquet_stream_layer(
+                layer_id="mart_ng911_ssap_full_stream_layer",
+                name="📍 Full Address Points (466k GeoParquet Stream)",
+                filename="mart_ng911_fresno_ssap.parquet",
+                geometry_type="point",
+                feature_count=466752,
+                fields=SSAP_FIELDS,
+                bounds=SSAP_BOUNDS,
+                style_color="#3b82f6",
+                base_url=raw_base,
+                popup={
+                    "click": True,
+                    "hover": True,
+                    "titleField": "STN",
+                    "fields": [
+                        {"field": "HNO", "label": "House Number", "hover": True},
+                        {"field": "STN", "label": "Street Name", "hover": True},
+                        {"field": "County", "label": "County"},
+                        {"field": "CommunityName", "label": "Community/City"},
+                        {"field": "PostCode", "label": "ZIP Code"},
+                        {"field": "PSAP", "label": "Responsible PSAP (911)"},
+                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
+                    ]
+                },
+                opacity=0.9,
+                point_radius=5,
+                line_width=1.5,
+                visible=False
+            ) if is_r2 else None,
             geoparquet_stream_layer(
                 layer_id="mart_ng911_fresno_fishbones_layer",
-                name="📏 QA/QC Displacement Vectors & Fishbones (365k Stream)",
+                name="📏 Full Displacement Fishbones (365k GeoParquet Stream)",
                 filename="mart_ng911_fresno_fishbones.parquet",
                 geometry_type="line",
                 feature_count=365319,
@@ -346,7 +417,8 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 },
                 opacity=0.9,
-                line_width=2.0
+                line_width=2.0,
+                visible=False
             ) if is_r2 else {
                 "id": "mart_ng911_fresno_fishbones_layer",
                 "name": "📏 QA/QC Displacement Vectors & Fishbones (Address to Street)",
@@ -386,77 +458,8 @@ def build_project(base_url, is_local=False, is_r2=False):
                         {"field": "FishboneID", "label": "NENA Fishbone URN"}
                     ]
                 }
-            },
-            geoparquet_stream_layer(
-                layer_id="mart_ng911_county_remediation_layer",
-                name="📍 NG911 Address Points (466k Stream)",
-                filename="mart_ng911_fresno_ssap.parquet",
-                geometry_type="point",
-                feature_count=466752,
-                fields=SSAP_FIELDS,
-                bounds=SSAP_BOUNDS,
-                style_color="#ea580c",
-                base_url=raw_base,
-                popup={
-                    "click": True,
-                    "hover": True,
-                    "titleField": "STN",
-                    "fields": [
-                        {"field": "HNO", "label": "House Number", "hover": True},
-                        {"field": "STN", "label": "Street Name", "hover": True},
-                        {"field": "County", "label": "County"},
-                        {"field": "CommunityName", "label": "Community/City"},
-                        {"field": "PostCode", "label": "ZIP Code"},
-                        {"field": "PSAP", "label": "Responsible PSAP (911)"},
-                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
-                    ]
-                },
-                opacity=0.9,
-                point_radius=6,
-                line_width=1.5
-            ) if is_r2 else {
-                "id": "mart_ng911_county_remediation_layer",
-                "name": "📍 NG911 Address Remediation & Building Footprint Status",
-                "type": "pmtiles" if use_pmtiles else "geojson",
-                "visible": True,
-                "opacity": 1.0,
-                "bounds": [-119.95, 36.60, -118.90, 37.25],
-                "bbox": [-119.95, 36.60, -118.90, 37.25],
-                "geojson": remediation_geojson,
-                "source": {
-                    "type": "vector" if use_pmtiles else "geojson",
-                    "url": f"{raw_base}/tiles/fresno_remediation.pmtiles" if use_pmtiles else f"{raw_base}/remediation/county_remediation_points_sample.geojson",
-                    "data": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not use_pmtiles else None,
-                    "sourceId": "mart_ng911_county_remediation_layer",
-                    "sourceLayers": ["remediation"] if use_pmtiles else None,
-                    "tileType": "vector" if use_pmtiles else None
-                },
-                "sourcePath": f"{raw_base}/tiles/fresno_remediation.pmtiles" if use_pmtiles else f"{raw_base}/remediation/county_remediation_points_sample.geojson",
-                "style": {
-                    "circleRadius": 6,
-                    "fillColor": "#ea580c",
-                    "fillOpacity": 0.9,
-                    "strokeColor": "#ffffff",
-                    "strokeWidth": 1.5,
-                    "minZoom": 0,
-                    "maxZoom": 24
-                },
-                "popup": {
-                    "click": True,
-                    "hover": True,
-                    "titleField": "StandardizedAddress",
-                    "fields": [
-                        {"field": "StandardizedAddress", "label": "Enhanced Address", "hover": True},
-                        {"field": "SymbologyCategory", "label": "Rule Violation Category", "hover": True},
-                        {"field": "BuildingFootprintStatus", "label": "Building Footprint Containment", "hover": True},
-                        {"field": "SpatialOffsetMeters", "label": "Spatial Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
-                        {"field": "RecommendedRemediationAction", "label": "Action Needed for Jurisdiction"},
-                        {"field": "MapillaryGroundTruthURL", "label": "Mapillary Ground-Truth Link", "kind": "url"},
-                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
-                    ]
-                }
             }
-        ]
+        ] if l is not None]
     }
 
 
