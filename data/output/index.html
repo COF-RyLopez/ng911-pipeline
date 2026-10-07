@@ -548,8 +548,12 @@
       <div class="layer-card">
         <div class="layer-header">
           <label class="layer-label" for="toggle-ssap">
-            <span class="color-dot" style="background: var(--color-orange);"></span>
-            <span>NG911 Address Points</span>
+            <span style="display: inline-flex; gap: 3px; align-items: center;">
+              <span class="color-dot" style="background: #10b981; width: 7px; height: 7px;"></span>
+              <span class="color-dot" style="background: #ea580c; width: 7px; height: 7px;"></span>
+              <span class="color-dot" style="background: #ef4444; width: 7px; height: 7px;"></span>
+            </span>
+            <span>NG911 Address Remediation</span>
           </label>
           <label class="layer-switch">
             <input type="checkbox" id="toggle-ssap" checked>
@@ -557,8 +561,8 @@
           </label>
         </div>
         <div class="layer-meta">
-          <span>mart_ng911_fresno_ssap</span>
-          <span style="color: #ffffff; font-weight: 600;">466,752 pts</span>
+          <span>mart_ng911_county_remediation</span>
+          <span style="color: #ffffff; font-weight: 600;">454,734 pts</span>
         </div>
       </div>
 
@@ -566,7 +570,7 @@
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-rcl">
-            <span class="color-dot" style="background: var(--color-emerald);"></span>
+            <span style="display: inline-block; width: 12px; height: 3px; background: #059669; border-radius: 1px;"></span>
             <span>Road Centerlines</span>
           </label>
           <label class="layer-switch">
@@ -584,7 +588,7 @@
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-fishbones">
-            <span class="color-dot" style="background: var(--color-crimson);"></span>
+            <span style="display: inline-block; width: 12px; height: 0; border-top: 2px dashed #ef4444;"></span>
             <span>QA/QC Fishbone Connectors</span>
           </label>
           <label class="layer-switch">
@@ -602,7 +606,7 @@
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-buildings">
-            <span class="color-dot" style="background: #64748b;"></span>
+            <span style="display: inline-block; width: 10px; height: 9px; background: rgba(148, 163, 184, 0.4); border: 1px solid #64748b; border-radius: 2px;"></span>
             <span>Overture Footprints</span>
           </label>
           <label class="layer-switch">
@@ -612,7 +616,7 @@
         </div>
         <div class="layer-meta">
           <span>fresno_buildings</span>
-          <span style="color: #ffffff; font-weight: 600;">Footprint Check</span>
+          <span style="color: #ffffff; font-weight: 600;">Zoom 13.5+</span>
         </div>
       </div>
     </div>
@@ -679,19 +683,27 @@
   <div class="legend-panel">
     <div class="legend-item">
       <span class="color-dot" style="background: #10b981;"></span>
-      <span>Valid Point</span>
+      <span>Valid (Inside Footprint)</span>
     </div>
     <div class="legend-item">
       <span class="color-dot" style="background: #ea580c;"></span>
-      <span>Outside Footprint</span>
+      <span>Outside Footprint (Audit)</span>
     </div>
     <div class="legend-item">
       <span class="color-dot" style="background: #ef4444;"></span>
-      <span>Excessive Offset (>50m)</span>
+      <span>Critical Offset (>50m)</span>
     </div>
     <div class="legend-item">
-      <span class="color-dot" style="background: #059669; width: 12px; height: 3px; border-radius: 2px;"></span>
+      <span style="background: #059669; width: 14px; height: 3px; border-radius: 2px;"></span>
       <span>Road Centerline</span>
+    </div>
+    <div class="legend-item">
+      <span style="width: 14px; height: 0; border-top: 2px dashed #ef4444;"></span>
+      <span>Fishbone Vector</span>
+    </div>
+    <div class="legend-item">
+      <span style="width: 12px; height: 10px; background: rgba(148, 163, 184, 0.35); border: 1px solid #64748b; border-radius: 2px;"></span>
+      <span>Building Footprint</span>
     </div>
   </div>
 
@@ -745,7 +757,7 @@
 
     // 3. Add Vector Tile Sources and Layers from R2
     function addCustomLayers() {
-      // 3.1 Buildings Footprints PMTiles
+      // 3.1 Buildings Footprints PMTiles (Visible at zoom 13.5+ to prevent black speck clustering)
       if (!map.getSource("fresno_buildings_src")) {
         map.addSource("fresno_buildings_src", {
           type: "vector",
@@ -759,12 +771,13 @@
           type: "fill",
           source: "fresno_buildings_src",
           "source-layer": "buildings",
+          minzoom: 13.5,
           layout: {
             visibility: getToggleState("toggle-buildings") ? "visible" : "none"
           },
           paint: {
-            "fill-color": "#475569",
-            "fill-opacity": 0.35
+            "fill-color": "#94a3b8",
+            "fill-opacity": 0.28
           }
         });
       }
@@ -775,12 +788,14 @@
           type: "line",
           source: "fresno_buildings_src",
           "source-layer": "buildings",
+          minzoom: 13.5,
           layout: {
             visibility: getToggleState("toggle-buildings") ? "visible" : "none"
           },
           paint: {
-            "line-color": "#1e293b",
-            "line-width": 1
+            "line-color": "#64748b",
+            "line-width": 1,
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], 13.5, 0.3, 16, 0.8]
           }
         });
       }
@@ -830,7 +845,7 @@
             "line-color": [
               "case",
               ["==", ["get", "IsExcessiveOffset"], "True"], "#ef4444",
-              "#dc2626"
+              "#ea580c"
             ],
             "line-width": 2,
             "line-dasharray": [2, 1]
@@ -838,11 +853,11 @@
         });
       }
 
-      // 3.4 Address Points PMTiles (466k Points)
-      if (!map.getSource("fresno_ssap_src")) {
-        map.addSource("fresno_ssap_src", {
+      // 3.4 Address Remediation Points PMTiles (454k Points with True Cal OES Categorization)
+      if (!map.getSource("fresno_remediation_src")) {
+        map.addSource("fresno_remediation_src", {
           type: "vector",
-          url: `pmtiles://${R2_BASE}/tiles/fresno_ssap.pmtiles`
+          url: `pmtiles://${R2_BASE}/tiles/fresno_remediation.pmtiles`
         });
       }
 
@@ -850,21 +865,23 @@
         map.addLayer({
           id: "ssap_points",
           type: "circle",
-          source: "fresno_ssap_src",
-          "source-layer": "ssap",
+          source: "fresno_remediation_src",
+          "source-layer": "remediation",
           layout: {
             visibility: getToggleState("toggle-ssap") ? "visible" : "none"
           },
           paint: {
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 15, 6, 18, 9],
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2.5, 14, 5, 17, 8],
             "circle-color": [
-              "case",
-              [">", ["get", "SpatialOffsetMeters"], 50], "#ef4444", // Excessive offset
-              [">", ["get", "SpatialOffsetMeters"], 25], "#ea580c", // Warning
-              "#10b981" // Validated inside / nearby
+              "match",
+              ["get", "SymbologyCategory"],
+              "CRITICAL_ATTENTION", "#ef4444", // Red (>50m displacement or critical issue)
+              "ATTENTION_REQUIRED", "#ea580c", // Orange (Outside building footprint)
+              "VALIDATED_OK", "#10b981",       // Green (Validated OK)
+              "#10b981"                        // Default
             ],
             "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 1.5,
+            "circle-stroke-width": 1.2,
             "circle-opacity": 0.95
           }
         });
@@ -886,19 +903,20 @@
       const f = e.features[0];
       const p = f.properties;
 
-      const hno = p.HNO || "";
-      const stn = p.STN || "";
-      const address = `${hno} ${stn}`.trim() || "Address Point";
-      const offset = p.SpatialOffsetMeters ? `${p.SpatialOffsetMeters} m` : "Near Centerline";
-      const psap = p.PSAP || "Fresno County Sheriff";
-      const esb = p.ESB_Fire || "Fresno Fire Protection";
-      const nguid = p.SSAP_NGUID || "SSAP_FRESNO_RECORD";
+      const address = p.StandardizedAddress || "Address Point";
+      const offset = (p.SpatialOffsetMeters !== undefined && p.SpatialOffsetMeters !== null) 
+        ? `${Number(p.SpatialOffsetMeters).toFixed(1)} m` 
+        : "Near Centerline";
+      const nguid = p.SSAP_NGUID || p.CountyLocalID || "SSAP_FRESNO_RECORD";
 
-      const isExcessive = p.SpatialOffsetMeters > 50;
-      const statusText = isExcessive ? "Outside Footprint / Excessive Offset" : "Inside Footprint";
-      const actionText = isExcessive 
-        ? "Positioning remediation required: Verify driveway access." 
-        : "Validated OK against Overture building footprint & RCL.";
+      const isInside = p.BuildingFootprintStatus === "INSIDE_BUILDING_FOOTPRINT";
+      const isCritical = p.SymbologyCategory === "CRITICAL_ATTENTION";
+      const statusText = isCritical 
+        ? "Critical Offset (>50m / Error)" 
+        : (isInside ? "Inside Building Footprint" : "Outside Footprint (Audit Needed)");
+      const actionText = p.RecommendedRemediationAction || (isInside 
+        ? "Validated OK against building footprint & RCL." 
+        : "Driveway access verification required.");
 
       // Update Drawer
       document.getElementById("drawer-address").textContent = address;
@@ -906,12 +924,12 @@
       document.getElementById("drawer-footprint-status").textContent = statusText;
       document.getElementById("drawer-offset").textContent = offset;
       document.getElementById("drawer-action").textContent = actionText;
-      document.getElementById("drawer-psap").textContent = psap;
-      document.getElementById("drawer-esb").textContent = esb;
+      document.getElementById("drawer-psap").textContent = "Fresno County Sheriff";
+      document.getElementById("drawer-esb").textContent = "Fresno County Fire Protection";
 
       // Mapillary Ground-Truth Street View URL
       const coords = f.geometry.coordinates;
-      const mapillaryUrl = `https://www.mapillary.com/app/?lat=${coords[1]}&lng=${coords[0]}&z=17`;
+      const mapillaryUrl = p.MapillaryGroundTruthURL || `https://www.mapillary.com/app/?lat=${coords[1]}&lng=${coords[0]}&z=17`;
       document.getElementById("drawer-mapillary-btn").href = mapillaryUrl;
 
       // Show drawer
@@ -978,13 +996,13 @@
 
     filterViolations.addEventListener("click", () => {
       setActivePill(filterViolations);
-      activeFilter = [">", ["get", "SpatialOffsetMeters"], 25];
+      activeFilter = ["!=", ["get", "SymbologyCategory"], "VALIDATED_OK"];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
     });
 
     filterValid.addEventListener("click", () => {
       setActivePill(filterValid);
-      activeFilter = ["<=", ["get", "SpatialOffsetMeters"], 25];
+      activeFilter = ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
     });
   </script>
