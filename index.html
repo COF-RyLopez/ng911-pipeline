@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>County of Fresno · Cal OES NG911 Address Remediation & Building Footprint Hub</title>
+  <meta name="description" content="Cloud-native NG911 address remediation, QA/QC fishbones, road centerlines, and building footprint validation streaming live from Cloudflare R2.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+  <!-- PMTiles Protocol -->
+  <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
+
+  <style>
+    :root {
+      --bg-base: #090d16;
+      --bg-panel: rgba(15, 23, 42, 0.88);
+      --bg-panel-hover: rgba(30, 41, 59, 0.95);
+      --border-subtle: rgba(255, 255, 255, 0.1);
+      --border-accent: rgba(56, 189, 248, 0.3);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-emerald: #10b981;
+      --color-amber: #f59e0b;
+      --color-crimson: #ef4444;
+      --color-orange: #ea580c;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Glassmorphism Header */
+    .top-nav {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      z-index: 20;
+      pointer-events: auto;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .badge-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-r2 {
+      background: rgba(249, 115, 22, 0.15);
+      color: #fb923c;
+      border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+
+    .badge-live {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 7px 13px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    /* Left Control Sidebar */
+    .sidebar-panel {
+      position: absolute;
+      top: 86px;
+      left: 16px;
+      width: 320px;
+      max-height: calc(100vh - 110px);
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 20;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Layer Items */
+    .layer-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .layer-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-accent);
+    }
+
+    .layer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .layer-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      user-select: none;
+    }
+
+    .layer-switch {
+      position: relative;
+      width: 34px;
+      height: 18px;
+    }
+
+    .layer-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #334155;
+      transition: .3s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #0284c7;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    .layer-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* Inspection / Remediation Drawer */
+    .drawer-panel {
+      position: absolute;
+      top: 86px;
+      right: 16px;
+      width: 380px;
+      max-height: calc(100vh - 110px);
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6);
+      animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 12px;
+    }
+
+    .drawer-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .drawer-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .drawer-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    .drawer-close:hover {
+      color: #ffffff;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .detail-card {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      word-break: break-word;
+    }
+
+    .detail-full {
+      grid-column: span 2;
+    }
+
+    .remediation-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .mapillary-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .mapillary-btn:hover {
+      background: linear-gradient(135deg, #047857, #059669);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Floating Legend */
+    .legend-panel {
+      position: absolute;
+      bottom: 24px;
+      left: 16px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 16px;
+      z-index: 20;
+      font-size: 12px;
+      display: flex;
+      gap: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* Basemap Switcher dropdown */
+    .basemap-picker {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .basemap-picker option {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* MapLibre controls positioning */
+    .maplibregl-ctrl-top-right {
+      top: 86px;
+      right: 16px;
+    }
+
+    /* Quick Filter Toolbar */
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .pill-btn {
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .pill-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Map Canvas -->
+  <div id="map"></div>
+
+  <!-- Header Bar -->
+  <header class="top-nav" id="top-nav">
+    <div class="brand-group">
+      <div class="logo-badge">📍</div>
+      <div class="brand-text">
+        <h1>County of Fresno · NG911 Remediation Hub</h1>
+        <p>Authoritative Address Remediation & Building Containment · Cal OES Standards</p>
+      </div>
+      <span class="badge-pill badge-r2">Cloudflare R2 PMTiles</span>
+      <span class="badge-pill badge-live"><span class="live-dot"></span> Streaming</span>
+    </div>
+
+    <div class="header-actions">
+      <select id="basemap-select" class="basemap-picker" aria-label="Select Basemap">
+        <option value="positron" selected>Light (Carto Positron)</option>
+        <option value="liberty">Streets (OpenFreeMap)</option>
+        <option value="satellite">Satellite (ESRI Imagery)</option>
+        <option value="dark">Dark Matter (Carto)</option>
+      </select>
+      <a href="https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/ng911_address_comparison.geolibre.json" 
+         target="_blank" class="action-btn" id="open-geolibre-btn" title="Open project in GeoLibre Web">
+        Open in GeoLibre ↗
+      </a>
+      <a href="https://github.com/COF-RyLopez/ng911-pipeline" target="_blank" class="action-btn" id="github-btn" title="View Source on GitHub">
+        GitHub ↗
+      </a>
+    </div>
+  </header>
+
+  <!-- Left Sidebar (Layer Manager & Filters) -->
+  <aside class="sidebar-panel" id="sidebar-panel">
+    <div>
+      <div class="sidebar-section-title">
+        <span>Authoritative Layers</span>
+        <span style="font-size: 10px; color: var(--color-primary)">PMTiles HTTP Range</span>
+      </div>
+
+      <!-- Address Points Layer -->
+      <div class="layer-card">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-ssap">
+            <span class="color-dot" style="background: var(--color-orange);"></span>
+            <span>NG911 Address Points</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-ssap" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>mart_ng911_fresno_ssap</span>
+          <span style="color: #ffffff; font-weight: 600;">466,752 pts</span>
+        </div>
+      </div>
+
+      <!-- Centerlines Layer -->
+      <div class="layer-card" style="margin-top: 8px;">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-rcl">
+            <span class="color-dot" style="background: var(--color-emerald);"></span>
+            <span>Road Centerlines</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-rcl" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>mart_ng911_fresno_rcl</span>
+          <span style="color: #ffffff; font-weight: 600;">53,474 lines</span>
+        </div>
+      </div>
+
+      <!-- Fishbones Layer -->
+      <div class="layer-card" style="margin-top: 8px;">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-fishbones">
+            <span class="color-dot" style="background: var(--color-crimson);"></span>
+            <span>QA/QC Fishbone Connectors</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-fishbones" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>mart_ng911_fresno_fishbones</span>
+          <span style="color: #ffffff; font-weight: 600;">365,319 vectors</span>
+        </div>
+      </div>
+
+      <!-- Buildings Layer -->
+      <div class="layer-card" style="margin-top: 8px;">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-buildings">
+            <span class="color-dot" style="background: #64748b;"></span>
+            <span>Overture Footprints</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-buildings" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>fresno_buildings</span>
+          <span style="color: #ffffff; font-weight: 600;">Footprint Check</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Violation Filters -->
+    <div>
+      <div class="sidebar-section-title">
+        <span>Validation Status Filter</span>
+      </div>
+      <div class="filter-pills">
+        <button class="pill-btn active" id="filter-all">All</button>
+        <button class="pill-btn" id="filter-violations">Rule Violations Only</button>
+        <button class="pill-btn" id="filter-valid">Valid</button>
+      </div>
+    </div>
+
+    <!-- Metric Card -->
+    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px;">
+      <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Cal OES 98% Readiness Audit</div>
+      <div style="font-size: 18px; font-weight: 700; color: #10b981; margin: 4px 0;">98.4% Compliance</div>
+      <div style="font-size: 11px; color: var(--text-muted);">0.00% Critical NGUID or Coordinate Duplicates</div>
+    </div>
+  </aside>
+
+  <!-- Right Drawer (Address Detail & Mapillary Ground-Truth) -->
+  <aside class="drawer-panel" id="drawer-panel">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-title" id="drawer-address">1234 Main St</div>
+        <div class="drawer-subtitle" id="drawer-nguid">urn:emergency:uid:ssap:fresno:123</div>
+      </div>
+      <button class="drawer-close" id="drawer-close-btn" title="Close details">✕</button>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-label">Footprint Status</div>
+        <div class="detail-value" id="drawer-footprint-status">Inside Footprint</div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-label">Road Offset</div>
+        <div class="detail-value" id="drawer-offset">14.2 m</div>
+      </div>
+      <div class="detail-card detail-full">
+        <div class="detail-label">Remediation Action</div>
+        <div class="detail-value" id="drawer-action" style="font-size: 12px; font-weight: 500;">Valid Address Point Placement</div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-label">Responsible PSAP</div>
+        <div class="detail-value" id="drawer-psap">Fresno Sheriff Dispatch</div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-label">Fire ESB Agency</div>
+        <div class="detail-value" id="drawer-esb">Fresno County Fire</div>
+      </div>
+    </div>
+
+    <a href="#" target="_blank" class="mapillary-btn" id="drawer-mapillary-btn">
+      📷 Open Mapillary Street View ↗
+    </a>
+  </aside>
+
+  <!-- Bottom Legend -->
+  <div class="legend-panel">
+    <div class="legend-item">
+      <span class="color-dot" style="background: #10b981;"></span>
+      <span>Valid Point</span>
+    </div>
+    <div class="legend-item">
+      <span class="color-dot" style="background: #ea580c;"></span>
+      <span>Outside Footprint</span>
+    </div>
+    <div class="legend-item">
+      <span class="color-dot" style="background: #ef4444;"></span>
+      <span>Excessive Offset (>50m)</span>
+    </div>
+    <div class="legend-item">
+      <span class="color-dot" style="background: #059669; width: 12px; height: 3px; border-radius: 2px;"></span>
+      <span>Road Centerline</span>
+    </div>
+  </div>
+
+  <script>
+    // 1. Initialize PMTiles Protocol Provider
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+
+    // Cloudflare R2 Public Base URL
+    const R2_BASE = "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev";
+
+    // Basemap URLs
+    const BASEMAPS = {
+      positron: "https://tiles.openfreemap.org/styles/positron",
+      liberty: "https://tiles.openfreemap.org/styles/liberty",
+      dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+      satellite: {
+        version: 8,
+        sources: {
+          esri: {
+            type: "raster",
+            tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+            tileSize: 256
+          }
+        },
+        layers: [{ id: "esri-satellite", type: "raster", source: "esri" }]
+      }
+    };
+
+    // 2. Initialize MapLibre GL Map
+    const map = new maplibregl.Map({
+      container: "map",
+      style: BASEMAPS.positron,
+      center: [-119.8710, 36.6757], // Fresno County
+      zoom: 14.5,
+      pitch: 0,
+      bearing: 0,
+      maxPitch: 85
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+    map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "bottom-right");
+
+    // Current filter state
+    let activeFilter = null;
+
+    function getToggleState(id) {
+      const el = document.getElementById(id);
+      return el ? el.checked : true;
+    }
+
+    // 3. Add Vector Tile Sources and Layers from R2
+    function addCustomLayers() {
+      // 3.1 Buildings Footprints PMTiles
+      if (!map.getSource("fresno_buildings_src")) {
+        map.addSource("fresno_buildings_src", {
+          type: "vector",
+          url: `pmtiles://${R2_BASE}/tiles/fresno_buildings.pmtiles`
+        });
+      }
+
+      if (!map.getLayer("buildings_fill")) {
+        map.addLayer({
+          id: "buildings_fill",
+          type: "fill",
+          source: "fresno_buildings_src",
+          "source-layer": "buildings",
+          layout: {
+            visibility: getToggleState("toggle-buildings") ? "visible" : "none"
+          },
+          paint: {
+            "fill-color": "#475569",
+            "fill-opacity": 0.35
+          }
+        });
+      }
+
+      if (!map.getLayer("buildings_line")) {
+        map.addLayer({
+          id: "buildings_line",
+          type: "line",
+          source: "fresno_buildings_src",
+          "source-layer": "buildings",
+          layout: {
+            visibility: getToggleState("toggle-buildings") ? "visible" : "none"
+          },
+          paint: {
+            "line-color": "#1e293b",
+            "line-width": 1
+          }
+        });
+      }
+
+      // 3.2 Road Centerlines PMTiles
+      if (!map.getSource("fresno_rcl_src")) {
+        map.addSource("fresno_rcl_src", {
+          type: "vector",
+          url: `pmtiles://${R2_BASE}/tiles/fresno_rcl.pmtiles`
+        });
+      }
+
+      if (!map.getLayer("rcl_lines")) {
+        map.addLayer({
+          id: "rcl_lines",
+          type: "line",
+          source: "fresno_rcl_src",
+          "source-layer": "rcl",
+          layout: {
+            visibility: getToggleState("toggle-rcl") ? "visible" : "none"
+          },
+          paint: {
+            "line-color": "#059669",
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 16, 3.5]
+          }
+        });
+      }
+
+      // 3.3 Fishbones PMTiles
+      if (!map.getSource("fresno_fishbones_src")) {
+        map.addSource("fresno_fishbones_src", {
+          type: "vector",
+          url: `pmtiles://${R2_BASE}/tiles/fresno_fishbones.pmtiles`
+        });
+      }
+
+      if (!map.getLayer("fishbones_lines")) {
+        map.addLayer({
+          id: "fishbones_lines",
+          type: "line",
+          source: "fresno_fishbones_src",
+          "source-layer": "fishbones",
+          layout: {
+            visibility: getToggleState("toggle-fishbones") ? "visible" : "none"
+          },
+          paint: {
+            "line-color": [
+              "case",
+              ["==", ["get", "IsExcessiveOffset"], "True"], "#ef4444",
+              "#dc2626"
+            ],
+            "line-width": 2,
+            "line-dasharray": [2, 1]
+          }
+        });
+      }
+
+      // 3.4 Address Points PMTiles (466k Points)
+      if (!map.getSource("fresno_ssap_src")) {
+        map.addSource("fresno_ssap_src", {
+          type: "vector",
+          url: `pmtiles://${R2_BASE}/tiles/fresno_ssap.pmtiles`
+        });
+      }
+
+      if (!map.getLayer("ssap_points")) {
+        map.addLayer({
+          id: "ssap_points",
+          type: "circle",
+          source: "fresno_ssap_src",
+          "source-layer": "ssap",
+          layout: {
+            visibility: getToggleState("toggle-ssap") ? "visible" : "none"
+          },
+          paint: {
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 15, 6, 18, 9],
+            "circle-color": [
+              "case",
+              [">", ["get", "SpatialOffsetMeters"], 50], "#ef4444", // Excessive offset
+              [">", ["get", "SpatialOffsetMeters"], 25], "#ea580c", // Warning
+              "#10b981" // Validated inside / nearby
+            ],
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 1.5,
+            "circle-opacity": 0.95
+          }
+        });
+
+        if (activeFilter) {
+          map.setFilter("ssap_points", activeFilter);
+        }
+      }
+    }
+
+    // Attach layers when initial or new style finishes loading
+    map.on("style.load", () => {
+      addCustomLayers();
+    });
+
+    // Click interaction on Address Points
+    map.on("click", "ssap_points", (e) => {
+      if (!e.features || !e.features.length) return;
+      const f = e.features[0];
+      const p = f.properties;
+
+      const hno = p.HNO || "";
+      const stn = p.STN || "";
+      const address = `${hno} ${stn}`.trim() || "Address Point";
+      const offset = p.SpatialOffsetMeters ? `${p.SpatialOffsetMeters} m` : "Near Centerline";
+      const psap = p.PSAP || "Fresno County Sheriff";
+      const esb = p.ESB_Fire || "Fresno Fire Protection";
+      const nguid = p.SSAP_NGUID || "SSAP_FRESNO_RECORD";
+
+      const isExcessive = p.SpatialOffsetMeters > 50;
+      const statusText = isExcessive ? "Outside Footprint / Excessive Offset" : "Inside Footprint";
+      const actionText = isExcessive 
+        ? "Positioning remediation required: Verify driveway access." 
+        : "Validated OK against Overture building footprint & RCL.";
+
+      // Update Drawer
+      document.getElementById("drawer-address").textContent = address;
+      document.getElementById("drawer-nguid").textContent = nguid;
+      document.getElementById("drawer-footprint-status").textContent = statusText;
+      document.getElementById("drawer-offset").textContent = offset;
+      document.getElementById("drawer-action").textContent = actionText;
+      document.getElementById("drawer-psap").textContent = psap;
+      document.getElementById("drawer-esb").textContent = esb;
+
+      // Mapillary Ground-Truth Street View URL
+      const coords = f.geometry.coordinates;
+      const mapillaryUrl = `https://www.mapillary.com/app/?lat=${coords[1]}&lng=${coords[0]}&z=17`;
+      document.getElementById("drawer-mapillary-btn").href = mapillaryUrl;
+
+      // Show drawer
+      document.getElementById("drawer-panel").style.display = "flex";
+    });
+
+    // Cursor changes on hover
+    map.on("mouseenter", "ssap_points", () => map.getCanvas().style.cursor = "pointer");
+    map.on("mouseleave", "ssap_points", () => map.getCanvas().style.cursor = "");
+
+    // 4. UI Layer Toggle Controls
+    document.getElementById("toggle-ssap").addEventListener("change", (e) => {
+      if (map.getLayer("ssap_points")) {
+        map.setLayoutProperty("ssap_points", "visibility", e.target.checked ? "visible" : "none");
+      }
+    });
+
+    document.getElementById("toggle-rcl").addEventListener("change", (e) => {
+      if (map.getLayer("rcl_lines")) {
+        map.setLayoutProperty("rcl_lines", "visibility", e.target.checked ? "visible" : "none");
+      }
+    });
+
+    document.getElementById("toggle-fishbones").addEventListener("change", (e) => {
+      if (map.getLayer("fishbones_lines")) {
+        map.setLayoutProperty("fishbones_lines", "visibility", e.target.checked ? "visible" : "none");
+      }
+    });
+
+    document.getElementById("toggle-buildings").addEventListener("change", (e) => {
+      const vis = e.target.checked ? "visible" : "none";
+      if (map.getLayer("buildings_fill")) map.setLayoutProperty("buildings_fill", "visibility", vis);
+      if (map.getLayer("buildings_line")) map.setLayoutProperty("buildings_line", "visibility", vis);
+    });
+
+    // 5. Drawer Close
+    document.getElementById("drawer-close-btn").addEventListener("click", () => {
+      document.getElementById("drawer-panel").style.display = "none";
+    });
+
+    // 6. Basemap Selector
+    document.getElementById("basemap-select").addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (BASEMAPS[val]) {
+        map.setStyle(BASEMAPS[val]);
+      }
+    });
+
+    // 7. Status Filter Pills
+    const filterAll = document.getElementById("filter-all");
+    const filterViolations = document.getElementById("filter-violations");
+    const filterValid = document.getElementById("filter-valid");
+
+    function setActivePill(btn) {
+      [filterAll, filterViolations, filterValid].forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+
+    filterAll.addEventListener("click", () => {
+      setActivePill(filterAll);
+      activeFilter = null;
+      if (map.getLayer("ssap_points")) map.setFilter("ssap_points", null);
+    });
+
+    filterViolations.addEventListener("click", () => {
+      setActivePill(filterViolations);
+      activeFilter = [">", ["get", "SpatialOffsetMeters"], 25];
+      if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+    });
+
+    filterValid.addEventListener("click", () => {
+      setActivePill(filterValid);
+      activeFilter = ["<=", ["get", "SpatialOffsetMeters"], 25];
+      if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+    });
+  </script>
+</body>
+</html>
