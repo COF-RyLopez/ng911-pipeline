@@ -97,6 +97,7 @@ def build_project(base_url, is_local=False):
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
+                    "data": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else None,
                     "sourceId": "overture_buildings_layer",
                     "sourceLayers": ["buildings"] if is_local else None,
                     "tileType": "vector" if is_local else None
@@ -134,6 +135,7 @@ def build_project(base_url, is_local=False):
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_rcl.pmtiles",
+                    "data": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else None,
                     "sourceId": "mart_ng911_fresno_rcl_layer",
                     "sourceLayers": ["rcl"] if is_local else None,
                     "tileType": "vector" if is_local else None
@@ -173,6 +175,7 @@ def build_project(base_url, is_local=False):
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_fishbones.pmtiles",
+                    "data": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else None,
                     "sourceId": "mart_ng911_fresno_fishbones_layer",
                     "sourceLayers": ["fishbones"] if is_local else None,
                     "tileType": "vector" if is_local else None
@@ -211,22 +214,16 @@ def build_project(base_url, is_local=False):
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_remediation.pmtiles",
+                    "data": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else None,
                     "sourceId": "mart_ng911_county_remediation_layer",
                     "sourceLayers": ["remediation"] if is_local else None,
                     "tileType": "vector" if is_local else None
                 },
                 "sourcePath": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_remediation.pmtiles",
                 "style": {
-                    "circleRadius": 7,
-                    "fillColor": [
-                        "match",
-                        ["get", "SymbologyCategory"],
-                        "CRITICAL_POS_OFFSET", "#dc2626",
-                        "OUTSIDE_BUILDING_FOOTPRINT", "#ea580c",
-                        "MISSING_NENA_MANDATORY_FIELD", "#eab308",
-                        "VALIDATED_OK", "#16a34a",
-                        "#3b82f6"
-                    ],
+                    "circleRadius": 6,
+                    "fillColor": "#ea580c",
+                    "fillOpacity": 0.9,
                     "strokeColor": "#ffffff",
                     "strokeWidth": 1.5,
                     "minZoom": 0,
