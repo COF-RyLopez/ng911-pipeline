@@ -60,6 +60,85 @@ def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, base_url
     }
 
 
+def geoparquet_stream_layer(
+    layer_id,
+    name,
+    filename,
+    geometry_type,
+    feature_count,
+    fields,
+    bounds,
+    style_color,
+    base_url,
+    popup=None,
+    opacity=1.0,
+    point_radius=5,
+    line_width=2
+):
+    url = f"{base_url}/{filename}"
+    return {
+        "id": layer_id,
+        "name": name,
+        "type": "geojson",
+        "visible": True,
+        "opacity": opacity,
+        "bounds": bounds,
+        "bbox": bounds,
+        "source": {
+            "type": "geojson",
+            "url": url,
+            "sourceId": layer_id
+        },
+        "sourcePath": url,
+        "style": {
+            "fillColor": style_color,
+            "fillOpacity": 0.4 if geometry_type != "point" else opacity,
+            "strokeColor": style_color if geometry_type != "point" else "#ffffff",
+            "strokeWidth": line_width,
+            "circleRadius": point_radius,
+            "circleColor": style_color,
+            "minZoom": 0,
+            "maxZoom": 24
+        },
+        "metadata": {
+            "sourceKind": "maplibre-gl-vector",
+            "vectorSource": "url",
+            "externalNativeLayer": True,
+            "controlOwnsPaint": True,
+            "identifiable": True,
+            "nativeLayerIds": [layer_id],
+            "panelCollapsed": False,
+            "sourceIds": [layer_id],
+            "vectorState": {
+                "format": "geoparquet",
+                "ingestMode": "stream",
+                "picker": False,
+                "renderMode": "geojson",
+                "style": {
+                    "fillColor": style_color,
+                    "fillOpacity": 0.4 if geometry_type != "point" else opacity,
+                    "lineColor": style_color,
+                    "lineWidth": line_width,
+                    "circleColor": style_color,
+                    "circleRadius": point_radius,
+                    "circleOpacity": opacity,
+                    "pointMode": "circle",
+                    "heatmapRadius": 30,
+                    "heatmapIntensity": 1,
+                    "clusterRadius": 50,
+                    "clusterMaxZoom": 14
+                }
+            },
+            "geometryType": geometry_type,
+            "customLayerType": geometry_type,
+            "featureCount": feature_count,
+            "fields": fields,
+            "bounds": bounds
+        },
+        "popup": popup or {}
+    }
+
+
 def load_sample_geojson(filename, limit=1500):
     path = os.path.join(OUTPUT_DIR, filename)
     if os.path.exists(path):
@@ -78,20 +157,41 @@ def load_sample_geojson(filename, limit=1500):
 R2_BASE_URL = os.environ.get("R2_PUBLIC_URL", "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev")
 
 
+RCL_FIELDS = [
+    "DisclID", "RCL_NGUID", "CountyLocalID", "St_PreDir", "St_Name", "St_Typ", "St_PosDir",
+    "FullStreetName", "FromAddr_L", "ToAddr_L", "FromAddr_R", "ToAddr_R", "Parity_L", "Parity_R",
+    "AddressPointsCount", "County_L", "County_R", "State_L", "State_R", "Country_L", "Country_R",
+    "SpeedLimit", "OneWay", "RoadClass", "DateUpdate"
+]
+RCL_BOUNDS = [-120.871453820008, 36.0010943699472, -118.58279249634, 37.379285154233]
+
+FISHBONE_FIELDS = [
+    "FishboneID", "DisclID", "SSAP_NGUID", "RCL_NGUID", "HNO", "STN",
+    "DistanceMeters", "IsExcessiveOffset", "IsRangeViolation", "DateUpdate"
+]
+FISHBONE_BOUNDS = [-120.77022927981426, 36.01772407331037, -118.88475372256462, 37.25923752687248]
+
+SSAP_FIELDS = [
+    "DisclID", "SSAP_NGUID", "CountyLocalID", "GERS_ID", "ConflationStatus", "Source",
+    "HNO", "HNS", "PRD", "STN", "STS", "POD", "Unit", "Muni", "CommunityName",
+    "County", "State", "PostCode", "Country", "PSAP", "PSAP_NGUID", "PSAP_Phone",
+    "ESB_Fire", "ESB_Fire_NGUID", "LandmarkName", "LandmarkCategory", "LandmarkDistanceMeters",
+    "Longitude", "Latitude", "PointType", "SpatialOffsetMeters"
+]
+SSAP_BOUNDS = [-120.9192896, 35.9107343, -118.73109760984126, 37.25923752687248]
+
+
 def build_project(base_url, is_local=False, is_r2=False):
     raw_base = R2_BASE_URL if is_r2 else (GITHUB_PAGES_BASE_URL if not is_local else LOCAL_BASE_URL)
 
-    # Note: GeoLibre Web app (browser build) does not bundle the PMTiles decoder,
-    # so PMTiles only applies to local desktop/Tauri environments.
-    # For R2 web viewing, we use GeoJSON with R2 source URLs and pre-cached features.
     use_pmtiles = is_local
 
     bldg_geojson = load_sample_geojson("overture_buildings_sample.geojson", limit=1500) if not use_pmtiles else None
-    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson", limit=1500) if not use_pmtiles else None
-    fishbones_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson", limit=1500) if not use_pmtiles else None
-    remediation_geojson = load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500) if not use_pmtiles else None
+    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson", limit=1500) if not (use_pmtiles or is_r2) else None
+    fishbones_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson", limit=1500) if not (use_pmtiles or is_r2) else None
+    remediation_geojson = load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500) if not (use_pmtiles or is_r2) else None
 
-    proj_label = "(Cloudflare R2)" if is_r2 else ("(Local Server)" if is_local else "(Cloud Remote)")
+    proj_label = "(Cloudflare R2 GeoParquet Streaming)" if is_r2 else ("(Local Server)" if is_local else "(Cloud Remote)")
 
     return {
         "version": "0.1.0",
@@ -155,7 +255,33 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 }
             },
-            {
+            geoparquet_stream_layer(
+                layer_id="mart_ng911_fresno_rcl_layer",
+                name="🛣️ Authoritative NENA Road Centerlines (53k Stream)",
+                filename="mart_ng911_fresno_rcl.parquet",
+                geometry_type="line",
+                feature_count=53474,
+                fields=RCL_FIELDS,
+                bounds=RCL_BOUNDS,
+                style_color="#059669",
+                base_url=raw_base,
+                popup={
+                    "click": True,
+                    "hover": True,
+                    "titleField": "FullStreetName",
+                    "fields": [
+                        {"field": "FullStreetName", "label": "Street Name", "hover": True},
+                        {"field": "FromAddr_L", "label": "From Left (HNS)"},
+                        {"field": "ToAddr_L", "label": "To Left (HNS)"},
+                        {"field": "FromAddr_R", "label": "From Right (HNS)"},
+                        {"field": "ToAddr_R", "label": "To Right (HNS)"},
+                        {"field": "RoadClass", "label": "Road Functional Class"},
+                        {"field": "RCL_NGUID", "label": "NENA RCL NGUID"}
+                    ]
+                },
+                opacity=0.85,
+                line_width=2.5
+            ) if is_r2 else {
                 "id": "mart_ng911_fresno_rcl_layer",
                 "name": "🛣️ Authoritative NENA Road Centerlines",
                 "type": "pmtiles" if use_pmtiles else "geojson",
@@ -196,7 +322,32 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 }
             },
-            {
+            geoparquet_stream_layer(
+                layer_id="mart_ng911_fresno_fishbones_layer",
+                name="📏 QA/QC Displacement Vectors & Fishbones (365k Stream)",
+                filename="mart_ng911_fresno_fishbones.parquet",
+                geometry_type="line",
+                feature_count=365319,
+                fields=FISHBONE_FIELDS,
+                bounds=FISHBONE_BOUNDS,
+                style_color="#dc2626",
+                base_url=raw_base,
+                popup={
+                    "click": True,
+                    "hover": True,
+                    "titleField": "STN",
+                    "fields": [
+                        {"field": "HNO", "label": "House Number", "hover": True},
+                        {"field": "STN", "label": "Street Name", "hover": True},
+                        {"field": "DistanceMeters", "label": "Displacement Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}, "hover": True},
+                        {"field": "IsExcessiveOffset", "label": "Excessive Offset (>50m)"},
+                        {"field": "IsRangeViolation", "label": "Range Violation"},
+                        {"field": "FishboneID", "label": "NENA Fishbone URN"}
+                    ]
+                },
+                opacity=0.9,
+                line_width=2.0
+            ) if is_r2 else {
                 "id": "mart_ng911_fresno_fishbones_layer",
                 "name": "📏 QA/QC Displacement Vectors & Fishbones (Address to Street)",
                 "type": "pmtiles" if use_pmtiles else "geojson",
@@ -236,7 +387,34 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 }
             },
-            {
+            geoparquet_stream_layer(
+                layer_id="mart_ng911_county_remediation_layer",
+                name="📍 NG911 Address Points (466k Stream)",
+                filename="mart_ng911_fresno_ssap.parquet",
+                geometry_type="point",
+                feature_count=466752,
+                fields=SSAP_FIELDS,
+                bounds=SSAP_BOUNDS,
+                style_color="#ea580c",
+                base_url=raw_base,
+                popup={
+                    "click": True,
+                    "hover": True,
+                    "titleField": "STN",
+                    "fields": [
+                        {"field": "HNO", "label": "House Number", "hover": True},
+                        {"field": "STN", "label": "Street Name", "hover": True},
+                        {"field": "County", "label": "County"},
+                        {"field": "CommunityName", "label": "Community/City"},
+                        {"field": "PostCode", "label": "ZIP Code"},
+                        {"field": "PSAP", "label": "Responsible PSAP (911)"},
+                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
+                    ]
+                },
+                opacity=0.9,
+                point_radius=6,
+                line_width=1.5
+            ) if is_r2 else {
                 "id": "mart_ng911_county_remediation_layer",
                 "name": "📍 NG911 Address Remediation & Building Footprint Status",
                 "type": "pmtiles" if use_pmtiles else "geojson",
