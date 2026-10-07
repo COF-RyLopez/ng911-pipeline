@@ -81,15 +81,17 @@ R2_BASE_URL = os.environ.get("R2_PUBLIC_URL", "https://pub-152dce9299c94555bb415
 def build_project(base_url, is_local=False, is_r2=False):
     raw_base = R2_BASE_URL if is_r2 else (GITHUB_PAGES_BASE_URL if not is_local else LOCAL_BASE_URL)
 
-    # For R2 or local, we stream full PMTiles without embedding bulky GeoJSON
-    use_pmtiles = is_local or is_r2
+    # Note: GeoLibre Web app (browser build) does not bundle the PMTiles decoder,
+    # so PMTiles only applies to local desktop/Tauri environments.
+    # For R2 web viewing, we use GeoJSON with R2 source URLs and pre-cached features.
+    use_pmtiles = is_local
 
     bldg_geojson = load_sample_geojson("overture_buildings_sample.geojson", limit=1500) if not use_pmtiles else None
     rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson", limit=1500) if not use_pmtiles else None
     fishbones_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson", limit=1500) if not use_pmtiles else None
     remediation_geojson = load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500) if not use_pmtiles else None
 
-    proj_label = "(Cloudflare R2 Streaming)" if is_r2 else ("(Local Server)" if is_local else "(Cloud Remote)")
+    proj_label = "(Cloudflare R2)" if is_r2 else ("(Local Server)" if is_local else "(Cloud Remote)")
 
     return {
         "version": "0.1.0",
