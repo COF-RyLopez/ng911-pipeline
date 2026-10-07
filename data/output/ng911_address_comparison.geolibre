@@ -55,6 +55,7 @@
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/overture_buildings_sample.geojson",
+        "data": "https://cof-rylopez.github.io/ng911-pipeline/data/output/overture_buildings_sample.geojson",
         "sourceId": "overture_buildings_layer",
         "sourceLayers": null,
         "tileType": null
@@ -115,6 +116,7 @@
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_rcl_sample.geojson",
+        "data": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_rcl_sample.geojson",
         "sourceId": "mart_ng911_fresno_rcl_layer",
         "sourceLayers": null,
         "tileType": null
@@ -186,6 +188,7 @@
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_fishbones_sample.geojson",
+        "data": "https://cof-rylopez.github.io/ng911-pipeline/data/output/mart_ng911_fresno_fishbones_sample.geojson",
         "sourceId": "mart_ng911_fresno_fishbones_layer",
         "sourceLayers": null,
         "tileType": null
@@ -260,29 +263,16 @@
       "source": {
         "type": "geojson",
         "url": "https://cof-rylopez.github.io/ng911-pipeline/data/output/remediation/county_remediation_points_sample.geojson",
+        "data": "https://cof-rylopez.github.io/ng911-pipeline/data/output/remediation/county_remediation_points_sample.geojson",
         "sourceId": "mart_ng911_county_remediation_layer",
         "sourceLayers": null,
         "tileType": null
       },
       "sourcePath": "https://cof-rylopez.github.io/ng911-pipeline/data/output/remediation/county_remediation_points_sample.geojson",
       "style": {
-        "circleRadius": 7,
-        "fillColor": [
-          "match",
-          [
-            "get",
-            "SymbologyCategory"
-          ],
-          "CRITICAL_POS_OFFSET",
-          "#dc2626",
-          "OUTSIDE_BUILDING_FOOTPRINT",
-          "#ea580c",
-          "MISSING_NENA_MANDATORY_FIELD",
-          "#eab308",
-          "VALIDATED_OK",
-          "#16a34a",
-          "#3b82f6"
-        ],
+        "circleRadius": 6,
+        "fillColor": "#ea580c",
+        "fillOpacity": 0.9,
         "strokeColor": "#ffffff",
         "strokeWidth": 1.5,
         "minZoom": 0,

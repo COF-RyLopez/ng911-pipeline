@@ -55,6 +55,7 @@
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
+        "data": null,
         "sourceId": "overture_buildings_layer",
         "sourceLayers": [
           "buildings"
@@ -117,6 +118,7 @@
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
+        "data": null,
         "sourceId": "mart_ng911_fresno_rcl_layer",
         "sourceLayers": [
           "rcl"
@@ -190,6 +192,7 @@
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
+        "data": null,
         "sourceId": "mart_ng911_fresno_fishbones_layer",
         "sourceLayers": [
           "fishbones"
@@ -266,6 +269,7 @@
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
+        "data": null,
         "sourceId": "mart_ng911_county_remediation_layer",
         "sourceLayers": [
           "remediation"
@@ -274,23 +278,9 @@
       },
       "sourcePath": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
       "style": {
-        "circleRadius": 7,
-        "fillColor": [
-          "match",
-          [
-            "get",
-            "SymbologyCategory"
-          ],
-          "CRITICAL_POS_OFFSET",
-          "#dc2626",
-          "OUTSIDE_BUILDING_FOOTPRINT",
-          "#ea580c",
-          "MISSING_NENA_MANDATORY_FIELD",
-          "#eab308",
-          "VALIDATED_OK",
-          "#16a34a",
-          "#3b82f6"
-        ],
+        "circleRadius": 6,
+        "fillColor": "#ea580c",
+        "fillOpacity": 0.9,
         "strokeColor": "#ffffff",
         "strokeWidth": 1.5,
         "minZoom": 0,
