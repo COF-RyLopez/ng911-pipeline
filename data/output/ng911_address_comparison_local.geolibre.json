@@ -37,7 +37,7 @@
     {
       "id": "overture_buildings_layer",
       "name": "\ud83c\udfe2 Overture Building Footprints (Containment Check)",
-      "type": "geojson",
+      "type": "pmtiles",
       "visible": true,
       "opacity": 0.45,
       "bounds": [
@@ -101,7 +101,7 @@
     {
       "id": "mart_ng911_fresno_rcl_layer",
       "name": "\ud83d\udee3\ufe0f Authoritative NENA Road Centerlines",
-      "type": "geojson",
+      "type": "pmtiles",
       "visible": true,
       "opacity": 0.85,
       "bounds": [
@@ -176,7 +176,7 @@
     {
       "id": "mart_ng911_fresno_fishbones_layer",
       "name": "\ud83d\udccf QA/QC Displacement Vectors & Fishbones (Address to Street)",
-      "type": "geojson",
+      "type": "pmtiles",
       "visible": true,
       "opacity": 0.9,
       "bounds": [
@@ -254,7 +254,7 @@
     {
       "id": "mart_ng911_county_remediation_layer",
       "name": "\ud83d\udccd NG911 Address Remediation & Building Footprint Status",
-      "type": "geojson",
+      "type": "pmtiles",
       "visible": true,
       "opacity": 1.0,
       "bounds": [

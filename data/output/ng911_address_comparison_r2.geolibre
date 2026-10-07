@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "name": "NG911 Address Remediation & Building Footprint Hub (Local Server)",
+  "name": "NG911 Address Remediation & Building Footprint Hub (Cloudflare R2 Streaming)",
   "metadata": {
     "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
     "jurisdiction": "County of Fresno, California (FIPS 06019)",
@@ -55,7 +55,7 @@
       "geojson": null,
       "source": {
         "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
+        "url": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_buildings.pmtiles",
         "data": null,
         "sourceId": "overture_buildings_layer",
         "sourceLayers": [
@@ -63,7 +63,7 @@
         ],
         "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
+      "sourcePath": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_buildings.pmtiles",
       "style": {
         "fillColor": "#475569",
         "fillOpacity": 0.45,
@@ -119,7 +119,7 @@
       "geojson": null,
       "source": {
         "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
+        "url": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_rcl.pmtiles",
         "data": null,
         "sourceId": "mart_ng911_fresno_rcl_layer",
         "sourceLayers": [
@@ -127,7 +127,7 @@
         ],
         "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
+      "sourcePath": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_rcl.pmtiles",
       "style": {
         "fillColor": "#059669",
         "strokeColor": "#059669",
@@ -194,7 +194,7 @@
       "geojson": null,
       "source": {
         "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
+        "url": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_fishbones.pmtiles",
         "data": null,
         "sourceId": "mart_ng911_fresno_fishbones_layer",
         "sourceLayers": [
@@ -202,7 +202,7 @@
         ],
         "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
+      "sourcePath": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_fishbones.pmtiles",
       "style": {
         "fillColor": "#dc2626",
         "strokeColor": "#dc2626",
@@ -272,7 +272,7 @@
       "geojson": null,
       "source": {
         "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
+        "url": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_remediation.pmtiles",
         "data": null,
         "sourceId": "mart_ng911_county_remediation_layer",
         "sourceLayers": [
@@ -280,7 +280,7 @@
         ],
         "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
+      "sourcePath": "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/tiles/fresno_remediation.pmtiles",
       "style": {
         "circleRadius": 6,
         "fillColor": "#ea580c",
