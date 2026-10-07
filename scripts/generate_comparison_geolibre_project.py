@@ -60,8 +60,28 @@ def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, base_url
     }
 
 
+def load_sample_geojson(filename, limit=1500):
+    path = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+                return {
+                    "type": "FeatureCollection",
+                    "features": data.get("features", [])[:limit]
+                }
+        except Exception:
+            pass
+    return {"type": "FeatureCollection", "features": []}
+
+
 def build_project(base_url, is_local=False):
     raw_base = GITHUB_PAGES_BASE_URL if not is_local else LOCAL_BASE_URL
+
+    bldg_geojson = load_sample_geojson("overture_buildings_sample.geojson", limit=1500)
+    rcl_geojson = load_sample_geojson("mart_ng911_fresno_rcl_sample.geojson", limit=1500)
+    fishbones_geojson = load_sample_geojson("mart_ng911_fresno_fishbones_sample.geojson", limit=1500)
+    remediation_geojson = load_sample_geojson("remediation/county_remediation_points_sample.geojson", limit=1500)
 
     return {
         "version": "0.1.0",
@@ -75,11 +95,11 @@ def build_project(base_url, is_local=False):
             "plugins": ["swipe", "geo-editor", "dimensions", "mapillary"]
         },
         "mapView": {
-            "center": [-119.8085, 36.7370],
-            "zoom": 15.0,
+            "center": [-119.8710, 36.6757],
+            "zoom": 14.5,
             "bearing": 0,
             "pitch": 0,
-            "bbox": [-119.90, 36.66, -119.70, 36.82]
+            "bbox": [-119.9500, 36.6001, -119.7921, 36.7514]
         },
         "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
         "basemapVisible": True,
@@ -89,11 +109,12 @@ def build_project(base_url, is_local=False):
             {
                 "id": "overture_buildings_layer",
                 "name": "🏢 Overture Building Footprints (Containment Check)",
-                "type": "geojson" if not is_local else "pmtiles",
+                "type": "geojson",
                 "visible": True,
                 "opacity": 0.45,
-                "bounds": [-119.92, 36.65, -119.68, 36.85],
-                "bbox": [-119.92, 36.65, -119.68, 36.85],
+                "bounds": [-119.95, 36.60, -119.75, 36.75],
+                "bbox": [-119.95, 36.60, -119.75, 36.75],
+                "geojson": bldg_geojson if not is_local else None,
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
@@ -127,11 +148,12 @@ def build_project(base_url, is_local=False):
             {
                 "id": "mart_ng911_fresno_rcl_layer",
                 "name": "🛣️ Authoritative NENA Road Centerlines",
-                "type": "geojson" if not is_local else "pmtiles",
+                "type": "geojson",
                 "visible": True,
                 "opacity": 0.85,
                 "bounds": [-119.95, 36.60, -118.90, 37.25],
                 "bbox": [-119.95, 36.60, -118.90, 37.25],
+                "geojson": rcl_geojson if not is_local else None,
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_rcl.pmtiles",
@@ -167,11 +189,12 @@ def build_project(base_url, is_local=False):
             {
                 "id": "mart_ng911_fresno_fishbones_layer",
                 "name": "📏 QA/QC Displacement Vectors & Fishbones (Address to Street)",
-                "type": "geojson" if not is_local else "pmtiles",
+                "type": "geojson",
                 "visible": True,
                 "opacity": 0.9,
                 "bounds": [-119.95, 36.60, -118.90, 37.25],
                 "bbox": [-119.95, 36.60, -118.90, 37.25],
+                "geojson": fishbones_geojson if not is_local else None,
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_fishbones.pmtiles",
@@ -206,11 +229,12 @@ def build_project(base_url, is_local=False):
             {
                 "id": "mart_ng911_county_remediation_layer",
                 "name": "📍 NG911 Address Remediation & Building Footprint Status",
-                "type": "geojson" if not is_local else "pmtiles",
+                "type": "geojson",
                 "visible": True,
                 "opacity": 1.0,
                 "bounds": [-119.95, 36.60, -118.90, 37.25],
                 "bbox": [-119.95, 36.60, -118.90, 37.25],
+                "geojson": remediation_geojson if not is_local else None,
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_remediation.pmtiles",
