@@ -141,6 +141,22 @@ def main():
     )
     print(f"  -> Exported Emergency Service Boundaries: {esb_parquet} & {esb_geojson}")
 
+    # Export Overture Building Footprints Sample
+    bldg_geojson = os.path.join(OUTPUT_DIR, "overture_buildings_sample.geojson")
+    bldg_cache = os.path.join(PROJECT_DIR, "data", "cache", "overture_buildings.parquet")
+    if os.path.exists(bldg_cache):
+        export_geojson_feature_collection(
+            f"""
+            SELECT 
+                building_id, height, num_floors, building_class,
+                ST_AsGeoJSON(geom) AS geometry
+            FROM '{bldg_cache}'
+            LIMIT 5000
+            """,
+            bldg_geojson
+        )
+        print(f"  -> Exported Overture Building Footprints Sample: {bldg_geojson}")
+
     # Export QA Discrepancies
     qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_qa_discrepancies.parquet")
     conn.sql(f"COPY mart_ng911_qa_discrepancies TO '{qa_parquet}' (FORMAT PARQUET)")
