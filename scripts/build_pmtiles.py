@@ -70,6 +70,12 @@ LAYERS = {
         ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
         "ST_Geometry"
     ),
+    "buildings": (
+        "../cache/overture_buildings.parquet",
+        "building_id, height, num_floors, building_class",
+        ["-Z13", "-z16", "--drop-densest-as-needed"],
+        "geom"
+    ),
 }
 
 

@@ -1,12 +1,12 @@
 {
   "version": "0.1.0",
-  "name": "NG911 Address Enhancement & Remediation Hub (Local Server)",
+  "name": "NG911 Address Remediation & Building Footprint Hub (Local Server)",
   "metadata": {
     "author": "County of Fresno (Ryan Lopez) & Cal OES GIS Committee",
     "jurisdiction": "County of Fresno, California (FIPS 06019)",
     "repository": "https://github.com/COF-RyLopez/ng911-pipeline",
     "standard": "NENA-STA-010-2021 & Cal OES NG911 GIS Guidelines",
-    "description": "Interactive visual QA/QC and remediation hub comparing raw local address points against NG911 remediated address points, showing rule-violation symbology, building footprint intersections, spatial displacement vectors, and Mapillary street views.",
+    "description": "Interactive visual QA/QC and remediation hub for county GIS departments. Displays address point containment inside Overture building footprints, QA/QC fishbone snapping vectors, road centerlines, and Mapillary ground-truth street view.",
     "plugins": [
       "swipe",
       "geo-editor",
@@ -19,7 +19,7 @@
       -119.7871,
       36.7468
     ],
-    "zoom": 15,
+    "zoom": 16,
     "bearing": 0,
     "pitch": 0,
     "bbox": [
@@ -35,16 +35,71 @@
   "primaryRenderer": "maplibre",
   "layers": [
     {
-      "id": "mart_ng911_fresno_rcl_geojson",
-      "name": "Authoritative NENA Road Centerlines (25,000 Vectors)",
-      "type": "geojson",
+      "id": "overture_buildings_layer",
+      "name": "\ud83c\udfe2 Overture Building Footprints (Containment Check)",
+      "type": "pmtiles",
+      "visible": true,
+      "opacity": 0.35,
+      "source": {
+        "type": "vector",
+        "url": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
+        "sourceId": "overture_buildings_layer",
+        "sourceLayers": [
+          "buildings"
+        ],
+        "tileType": "vector"
+      },
+      "sourcePath": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
+      "style": {
+        "fillColor": "#64748b",
+        "fillOpacity": 0.25,
+        "strokeColor": "#334155",
+        "strokeWidth": 1.5,
+        "strokeWidthUnit": "pixels",
+        "minZoom": 0,
+        "maxZoom": 24
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "building_id",
+        "fields": [
+          {
+            "field": "building_id",
+            "label": "Overture Building ID",
+            "hover": true
+          },
+          {
+            "field": "building_class",
+            "label": "Building Structure Class"
+          },
+          {
+            "field": "num_floors",
+            "label": "Number of Floors"
+          },
+          {
+            "field": "height",
+            "label": "Building Height (m)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mart_ng911_fresno_rcl_layer",
+      "name": "\ud83d\udee3\ufe0f Authoritative NENA Road Centerlines",
+      "type": "pmtiles",
       "visible": true,
       "opacity": 0.85,
       "source": {
-        "type": "geojson",
-        "url": "http://localhost:8088/mart_ng911_fresno_rcl_sample.geojson"
+        "type": "vector",
+        "url": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
+        "sourceId": "mart_ng911_fresno_rcl_layer",
+        "sourceLayers": [
+          "rcl"
+        ],
+        "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/mart_ng911_fresno_rcl_sample.geojson",
+      "sourcePath": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
       "style": {
         "fillColor": "#059669",
         "strokeColor": "#059669",
@@ -65,23 +120,23 @@
           },
           {
             "field": "FromAddr_L",
-            "label": "From Left"
+            "label": "From Left (HNS)"
           },
           {
             "field": "ToAddr_L",
-            "label": "To Left"
+            "label": "To Left (HNS)"
           },
           {
             "field": "FromAddr_R",
-            "label": "From Right"
+            "label": "From Right (HNS)"
           },
           {
             "field": "ToAddr_R",
-            "label": "To Right"
+            "label": "To Right (HNS)"
           },
           {
             "field": "RoadClass",
-            "label": "Road Class"
+            "label": "Road Functional Class"
           },
           {
             "field": "RCL_NGUID",
@@ -91,90 +146,21 @@
       }
     },
     {
-      "id": "mart_ng911_fresno_rcl_tiles",
-      "name": "Authoritative NENA Road Centerlines (Full 53,474)",
+      "id": "mart_ng911_fresno_fishbones_layer",
+      "name": "\ud83d\udccf QA/QC Displacement Vectors & Fishbones (Address to Street)",
       "type": "pmtiles",
-      "visible": true,
-      "opacity": 1.0,
-      "source": {
-        "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
-        "sourceId": "mart_ng911_fresno_rcl_tiles",
-        "sourceLayers": [
-          "rcl"
-        ],
-        "tileType": "vector"
-      },
-      "sourcePath": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
-      "style": {
-        "minZoom": 0,
-        "maxZoom": 24,
-        "fillColor": "#059669",
-        "strokeColor": "#059669",
-        "strokeWidth": 2.0,
-        "strokeWidthUnit": "pixels"
-      },
-      "metadata": {
-        "sourceKind": "pmtiles-url",
-        "externalNativeLayer": true,
-        "pickable": true,
-        "sourceId": "mart_ng911_fresno_rcl_tiles",
-        "tileType": "vector",
-        "sourceLayers": [
-          "rcl"
-        ],
-        "nativeLayerIds": [
-          "mart_ng911_fresno_rcl_tiles"
-        ]
-      },
-      "popup": {
-        "click": true,
-        "hover": true,
-        "titleField": "FullStreetName",
-        "fields": [
-          {
-            "field": "FullStreetName",
-            "label": "Street Name",
-            "hover": true
-          },
-          {
-            "field": "FromAddr_L",
-            "label": "From Left"
-          },
-          {
-            "field": "ToAddr_L",
-            "label": "To Left"
-          },
-          {
-            "field": "FromAddr_R",
-            "label": "From Right"
-          },
-          {
-            "field": "ToAddr_R",
-            "label": "To Right"
-          },
-          {
-            "field": "RoadClass",
-            "label": "Road Class"
-          },
-          {
-            "field": "RCL_NGUID",
-            "label": "NENA RCL NGUID"
-          }
-        ]
-      }
-    },
-    {
-      "id": "mart_ng911_fresno_fishbones_geojson",
-      "name": "QA/QC Displacement Vectors & Fishbones (25,000 Vectors)",
-      "type": "geojson",
       "visible": true,
       "opacity": 0.9,
       "source": {
-        "type": "geojson",
-        "url": "http://localhost:8088/mart_ng911_fresno_fishbones_sample.geojson"
+        "type": "vector",
+        "url": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
+        "sourceId": "mart_ng911_fresno_fishbones_layer",
+        "sourceLayers": [
+          "fishbones"
+        ],
+        "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/mart_ng911_fresno_fishbones_sample.geojson",
+      "sourcePath": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
       "style": {
         "fillColor": "#dc2626",
         "strokeColor": "#dc2626",
@@ -200,7 +186,7 @@
           },
           {
             "field": "DistanceMeters",
-            "label": "Displacement / Offset (m)",
+            "label": "Displacement Offset (m)",
             "kind": "number",
             "format": {
               "decimals": 1,
@@ -224,93 +210,21 @@
       }
     },
     {
-      "id": "mart_ng911_fresno_fishbones_tiles",
-      "name": "QA/QC Displacement Vectors & Fishbones (Full 365,316)",
+      "id": "mart_ng911_county_remediation_layer",
+      "name": "\ud83d\udccd NG911 Address Remediation & Building Footprint Status",
       "type": "pmtiles",
       "visible": true,
       "opacity": 1.0,
       "source": {
         "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
-        "sourceId": "mart_ng911_fresno_fishbones_tiles",
+        "url": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
+        "sourceId": "mart_ng911_county_remediation_layer",
         "sourceLayers": [
-          "fishbones"
+          "remediation"
         ],
         "tileType": "vector"
       },
-      "sourcePath": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
-      "style": {
-        "minZoom": 0,
-        "maxZoom": 24,
-        "fillColor": "#dc2626",
-        "strokeColor": "#dc2626",
-        "strokeWidth": 1.5,
-        "strokeWidthUnit": "pixels"
-      },
-      "metadata": {
-        "sourceKind": "pmtiles-url",
-        "externalNativeLayer": true,
-        "pickable": true,
-        "sourceId": "mart_ng911_fresno_fishbones_tiles",
-        "tileType": "vector",
-        "sourceLayers": [
-          "fishbones"
-        ],
-        "nativeLayerIds": [
-          "mart_ng911_fresno_fishbones_tiles"
-        ]
-      },
-      "popup": {
-        "click": true,
-        "hover": true,
-        "titleField": "STN",
-        "fields": [
-          {
-            "field": "HNO",
-            "label": "House Number",
-            "hover": true
-          },
-          {
-            "field": "STN",
-            "label": "Street Name",
-            "hover": true
-          },
-          {
-            "field": "DistanceMeters",
-            "label": "Displacement / Offset (m)",
-            "kind": "number",
-            "format": {
-              "decimals": 1,
-              "suffix": " m"
-            },
-            "hover": true
-          },
-          {
-            "field": "IsExcessiveOffset",
-            "label": "Excessive Offset (>50m)"
-          },
-          {
-            "field": "IsRangeViolation",
-            "label": "Range Violation"
-          },
-          {
-            "field": "FishboneID",
-            "label": "NENA Fishbone URN"
-          }
-        ]
-      }
-    },
-    {
-      "id": "mart_ng911_county_remediation_geojson",
-      "name": "NG911 Rule Violation & Remediation Symbology (Action Items)",
-      "type": "geojson",
-      "visible": true,
-      "opacity": 1.0,
-      "source": {
-        "type": "geojson",
-        "url": "http://localhost:8088/remediation/county_remediation_points_sample.geojson"
-      },
-      "sourcePath": "http://localhost:8088/remediation/county_remediation_points_sample.geojson",
+      "sourcePath": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
       "style": {
         "circleRadius": 7,
         "fillColor": [
@@ -346,7 +260,7 @@
           },
           {
             "field": "SymbologyCategory",
-            "label": "Rule Violation Status",
+            "label": "Rule Violation Category",
             "hover": true
           },
           {
@@ -365,108 +279,11 @@
           },
           {
             "field": "RecommendedRemediationAction",
-            "label": "Action Needed"
+            "label": "Action Needed for Jurisdiction"
           },
           {
             "field": "MapillaryGroundTruthURL",
-            "label": "Mapillary Street View Link",
-            "kind": "url"
-          },
-          {
-            "field": "SSAP_NGUID",
-            "label": "NENA SSAP NGUID"
-          }
-        ]
-      }
-    },
-    {
-      "id": "mart_ng911_county_remediation_tiles",
-      "name": "NG911 Rule Violation & Remediation Symbology (Full 395,000)",
-      "type": "pmtiles",
-      "visible": true,
-      "opacity": 1.0,
-      "source": {
-        "type": "vector",
-        "url": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
-        "sourceId": "mart_ng911_county_remediation_tiles",
-        "sourceLayers": [
-          "remediation"
-        ],
-        "tileType": "vector"
-      },
-      "sourcePath": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
-      "style": {
-        "minZoom": 0,
-        "maxZoom": 24,
-        "circleRadius": 6,
-        "fillColor": [
-          "match",
-          [
-            "get",
-            "SymbologyCategory"
-          ],
-          "CRITICAL_POS_OFFSET",
-          "#dc2626",
-          "OUTSIDE_BUILDING_FOOTPRINT",
-          "#ea580c",
-          "MISSING_NENA_MANDATORY_FIELD",
-          "#eab308",
-          "VALIDATED_OK",
-          "#16a34a",
-          "#3b82f6"
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 1.5
-      },
-      "metadata": {
-        "sourceKind": "pmtiles-url",
-        "externalNativeLayer": true,
-        "pickable": true,
-        "sourceId": "mart_ng911_county_remediation_tiles",
-        "tileType": "vector",
-        "sourceLayers": [
-          "remediation"
-        ],
-        "nativeLayerIds": [
-          "mart_ng911_county_remediation_tiles"
-        ]
-      },
-      "popup": {
-        "click": true,
-        "hover": true,
-        "titleField": "StandardizedAddress",
-        "fields": [
-          {
-            "field": "StandardizedAddress",
-            "label": "Enhanced Address",
-            "hover": true
-          },
-          {
-            "field": "SymbologyCategory",
-            "label": "Rule Violation Status",
-            "hover": true
-          },
-          {
-            "field": "BuildingFootprintStatus",
-            "label": "Building Footprint Containment",
-            "hover": true
-          },
-          {
-            "field": "SpatialOffsetMeters",
-            "label": "Spatial Offset (m)",
-            "kind": "number",
-            "format": {
-              "decimals": 1,
-              "suffix": " m"
-            }
-          },
-          {
-            "field": "RecommendedRemediationAction",
-            "label": "Action Needed"
-          },
-          {
-            "field": "MapillaryGroundTruthURL",
-            "label": "Mapillary Street View Link",
+            "label": "Mapillary Ground-Truth Link",
             "kind": "url"
           },
           {
