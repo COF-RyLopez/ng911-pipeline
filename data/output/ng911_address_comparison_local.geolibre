@@ -16,17 +16,17 @@
   },
   "mapView": {
     "center": [
-      -119.8085,
-      36.737
+      -119.871,
+      36.6757
     ],
-    "zoom": 15.0,
+    "zoom": 14.5,
     "bearing": 0,
     "pitch": 0,
     "bbox": [
-      -119.9,
-      36.66,
-      -119.7,
-      36.82
+      -119.95,
+      36.6001,
+      -119.7921,
+      36.7514
     ]
   },
   "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
@@ -37,21 +37,22 @@
     {
       "id": "overture_buildings_layer",
       "name": "\ud83c\udfe2 Overture Building Footprints (Containment Check)",
-      "type": "pmtiles",
+      "type": "geojson",
       "visible": true,
       "opacity": 0.45,
       "bounds": [
-        -119.92,
-        36.65,
-        -119.68,
-        36.85
+        -119.95,
+        36.6,
+        -119.75,
+        36.75
       ],
       "bbox": [
-        -119.92,
-        36.65,
-        -119.68,
-        36.85
+        -119.95,
+        36.6,
+        -119.75,
+        36.75
       ],
+      "geojson": null,
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
@@ -100,7 +101,7 @@
     {
       "id": "mart_ng911_fresno_rcl_layer",
       "name": "\ud83d\udee3\ufe0f Authoritative NENA Road Centerlines",
-      "type": "pmtiles",
+      "type": "geojson",
       "visible": true,
       "opacity": 0.85,
       "bounds": [
@@ -115,6 +116,7 @@
         -118.9,
         37.25
       ],
+      "geojson": null,
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_rcl.pmtiles",
@@ -174,7 +176,7 @@
     {
       "id": "mart_ng911_fresno_fishbones_layer",
       "name": "\ud83d\udccf QA/QC Displacement Vectors & Fishbones (Address to Street)",
-      "type": "pmtiles",
+      "type": "geojson",
       "visible": true,
       "opacity": 0.9,
       "bounds": [
@@ -189,6 +191,7 @@
         -118.9,
         37.25
       ],
+      "geojson": null,
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_fishbones.pmtiles",
@@ -251,7 +254,7 @@
     {
       "id": "mart_ng911_county_remediation_layer",
       "name": "\ud83d\udccd NG911 Address Remediation & Building Footprint Status",
-      "type": "pmtiles",
+      "type": "geojson",
       "visible": true,
       "opacity": 1.0,
       "bounds": [
@@ -266,6 +269,7 @@
         -118.9,
         37.25
       ],
+      "geojson": null,
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_remediation.pmtiles",
