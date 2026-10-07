@@ -151,7 +151,9 @@ def main():
                 building_id, height, num_floors, building_class,
                 ST_AsGeoJSON(geom) AS geometry
             FROM '{bldg_cache}'
-            LIMIT 5000
+            WHERE ST_X(ST_Centroid(geom)) BETWEEN -119.95 AND -119.65
+              AND ST_Y(ST_Centroid(geom)) BETWEEN 36.60 AND 36.90
+            LIMIT 20000
             """,
             bldg_geojson
         )
@@ -173,7 +175,7 @@ def main():
             DistanceMeters, IsExcessiveOffset, IsRangeViolation,
             ST_AsGeoJSON(ST_Geometry) AS geometry
         FROM mart_ng911_qa_fishbones
-        WHERE DistanceMeters > 5.0 OR IsExcessiveOffset OR IsRangeViolation
+        WHERE DistanceMeters > 2.0 OR IsExcessiveOffset OR IsRangeViolation
         LIMIT 25000
         """,
         fishbone_geojson
@@ -197,7 +199,7 @@ def main():
             DisplacementMeters, EnhancementCategory,
             ST_AsGeoJSON(ST_Geometry) AS geometry
         FROM mart_ng911_address_enhancements
-        LIMIT 5000
+        LIMIT 10000
         """,
         enhancements_geojson
     )
@@ -220,7 +222,13 @@ def main():
             DiscrepancyType, Severity, SymbologyCategory, MapillaryGroundTruthURL,
             RecommendedRemediationAction, ST_AsGeoJSON(ST_Geometry) AS geometry
         FROM mart_ng911_county_remediation_export
-        LIMIT 5000
+        ORDER BY CASE 
+            WHEN SymbologyCategory = 'CRITICAL_POS_OFFSET' THEN 1 
+            WHEN SymbologyCategory = 'OUTSIDE_BUILDING_FOOTPRINT' THEN 2 
+            WHEN SymbologyCategory = 'MISSING_NENA_MANDATORY_FIELD' THEN 3 
+            ELSE 4 
+        END
+        LIMIT 20000
         """,
         remediation_geojson
     )
