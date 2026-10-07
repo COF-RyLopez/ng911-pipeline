@@ -36,34 +36,62 @@ def get_content_type(file_path):
     return content_type or "application/octet-stream"
 
 
+def sanitize_secret(val):
+    if not val:
+        return ""
+    val = val.strip()
+    while (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        val = val[1:-1].strip()
+    return val
+
+
+def resolve_r2_endpoint(raw_account_id):
+    cleaned = sanitize_secret(raw_account_id)
+    if "r2.cloudflarestorage.com" in cleaned:
+        cleaned = cleaned.replace("http://", "").replace("https://", "").strip("/")
+        return f"https://{cleaned}"
+    cleaned = cleaned.replace("http://", "").replace("https://", "").strip("/")
+    return f"https://{cleaned}.r2.cloudflarestorage.com"
+
+
 def main():
     print("=" * 70)
     print("     CLOUDFLARE R2 PIPELINE PUBLISHER (GEOPARQUET & PMTILES)")
     print("=" * 70)
 
-    account_id = os.environ.get("R2_ACCOUNT_ID")
-    access_key = os.environ.get("R2_ACCESS_KEY_ID")
-    secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
-    bucket_name = os.environ.get("R2_BUCKET_NAME")
-    public_base_url = os.environ.get("R2_PUBLIC_URL", DEFAULT_PUBLIC_URL).rstrip("/")
+    raw_account_id = os.environ.get("R2_ACCOUNT_ID")
+    raw_access_key = os.environ.get("R2_ACCESS_KEY_ID")
+    raw_secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
+    raw_bucket_name = os.environ.get("R2_BUCKET_NAME")
 
-    if not all([account_id, access_key, secret_key, bucket_name]):
+    if not all([raw_account_id, raw_access_key, raw_secret_key, raw_bucket_name]):
         print("[NOTICE] Cloudflare R2 credentials not fully set in environment.")
         print("  Required: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME")
         print("  Skipping R2 publish step.")
         sys.exit(0)
 
-    endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com"
-    print(f"Connecting to Cloudflare R2 Bucket: '{bucket_name}' via {endpoint_url}...")
+    account_id = sanitize_secret(raw_account_id)
+    access_key = sanitize_secret(raw_access_key)
+    secret_key = sanitize_secret(raw_secret_key)
+    bucket_name = sanitize_secret(raw_bucket_name).replace("https://", "").replace("http://", "").strip("/")
+    public_base_url = sanitize_secret(os.environ.get("R2_PUBLIC_URL", DEFAULT_PUBLIC_URL)).rstrip("/")
 
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=endpoint_url,
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        region_name="auto",
-        config=Config(retries={"max_attempts": 5, "mode": "standard"})
-    )
+    endpoint_url = resolve_r2_endpoint(account_id)
+    print(f"Connecting to Cloudflare R2 Bucket: '{bucket_name}'")
+    print(f"Target S3 Endpoint: {endpoint_url}")
+
+    try:
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=endpoint_url,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name="auto",
+            config=Config(retries={"max_attempts": 5, "mode": "standard"})
+        )
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize S3 client for R2: {e}")
+        sys.exit(1)
 
     # Collect files to upload
     files_to_upload = []
