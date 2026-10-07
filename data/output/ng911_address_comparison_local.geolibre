@@ -16,17 +16,17 @@
   },
   "mapView": {
     "center": [
-      -119.7871,
-      36.7468
+      -119.8085,
+      36.737
     ],
-    "zoom": 16,
+    "zoom": 16.2,
     "bearing": 0,
     "pitch": 0,
     "bbox": [
-      -119.95,
-      36.65,
-      -119.65,
-      36.9
+      -119.814,
+      36.732,
+      -119.803,
+      36.742
     ]
   },
   "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
@@ -39,7 +39,7 @@
       "name": "\ud83c\udfe2 Overture Building Footprints (Containment Check)",
       "type": "pmtiles",
       "visible": true,
-      "opacity": 0.35,
+      "opacity": 0.45,
       "source": {
         "type": "vector",
         "url": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
@@ -51,10 +51,10 @@
       },
       "sourcePath": "http://localhost:8088/tiles/fresno_buildings.pmtiles",
       "style": {
-        "fillColor": "#64748b",
-        "fillOpacity": 0.25,
+        "fillColor": "#94a3b8",
+        "fillOpacity": 0.35,
         "strokeColor": "#334155",
-        "strokeWidth": 1.5,
+        "strokeWidth": 2.0,
         "strokeWidthUnit": "pixels",
         "minZoom": 0,
         "maxZoom": 24

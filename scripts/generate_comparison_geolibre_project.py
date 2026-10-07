@@ -6,6 +6,7 @@ Generates 1-click GeoLibre Comparison, QA/QC & Actionable Remediation project fi
 (.geolibre and .geolibre.json) for raw source vs NG911 enhanced datasets.
 
 Features:
+- Focused street-level default view (zoom 16.5) so building footprints and points are immediately visible.
 - Overture Building Footprints polygon layer (visual containment check)
 - Color-coded rule-violation symbology:
     * Red (#dc2626): CRITICAL_POS_OFFSET / Missing mandatory NENA fields
@@ -74,11 +75,11 @@ def build_project(base_url, is_local=False):
             "plugins": ["swipe", "geo-editor", "dimensions", "mapillary"]
         },
         "mapView": {
-            "center": [-119.7871, 36.7468],
-            "zoom": 16,
+            "center": [-119.8085, 36.7370],
+            "zoom": 16.2,
             "bearing": 0,
             "pitch": 0,
-            "bbox": [-119.95, 36.65, -119.65, 36.90]
+            "bbox": [-119.814, 36.732, -119.803, 36.742]
         },
         "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
         "basemapVisible": True,
@@ -90,7 +91,7 @@ def build_project(base_url, is_local=False):
                 "name": "🏢 Overture Building Footprints (Containment Check)",
                 "type": "geojson" if not is_local else "pmtiles",
                 "visible": True,
-                "opacity": 0.35,
+                "opacity": 0.45,
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
@@ -100,10 +101,10 @@ def build_project(base_url, is_local=False):
                 },
                 "sourcePath": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
                 "style": {
-                    "fillColor": "#64748b",
-                    "fillOpacity": 0.25,
+                    "fillColor": "#94a3b8",
+                    "fillOpacity": 0.35,
                     "strokeColor": "#334155",
-                    "strokeWidth": 1.5,
+                    "strokeWidth": 2.0,
                     "strokeWidthUnit": "pixels",
                     "minZoom": 0,
                     "maxZoom": 24
@@ -269,9 +270,9 @@ def main():
     with open(local_geolibre_path, "w") as f:
         json.dump(local_proj, f, indent=2)
 
-    print("Generated GeoLibre QA/QC Projects (Single Unified Layer Structure):")
-    print(f"  Remote -> {json_path} ({os.path.getsize(json_path) / 1024:.1f} KB)")
-    print(f"  Local  -> {local_json_path} ({os.path.getsize(local_json_path) / 1024:.1f} KB)")
+    print("Generated GeoLibre QA/QC Projects (Focused Street View):")
+    print(f"  Remote -> {json_path}")
+    print(f"  Local  -> {local_json_path}")
 
 
 if __name__ == "__main__":
