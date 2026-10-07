@@ -92,6 +92,8 @@ def build_project(base_url, is_local=False):
                 "type": "geojson" if not is_local else "pmtiles",
                 "visible": True,
                 "opacity": 0.45,
+                "bounds": [-119.92, 36.65, -119.68, 36.85],
+                "bbox": [-119.92, 36.65, -119.68, 36.85],
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/overture_buildings_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_buildings.pmtiles",
@@ -127,6 +129,8 @@ def build_project(base_url, is_local=False):
                 "type": "geojson" if not is_local else "pmtiles",
                 "visible": True,
                 "opacity": 0.85,
+                "bounds": [-119.95, 36.60, -118.90, 37.25],
+                "bbox": [-119.95, 36.60, -118.90, 37.25],
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/mart_ng911_fresno_rcl_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_rcl.pmtiles",
@@ -164,6 +168,8 @@ def build_project(base_url, is_local=False):
                 "type": "geojson" if not is_local else "pmtiles",
                 "visible": True,
                 "opacity": 0.9,
+                "bounds": [-119.95, 36.60, -118.90, 37.25],
+                "bbox": [-119.95, 36.60, -118.90, 37.25],
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/mart_ng911_fresno_fishbones_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_fishbones.pmtiles",
@@ -200,6 +206,8 @@ def build_project(base_url, is_local=False):
                 "type": "geojson" if not is_local else "pmtiles",
                 "visible": True,
                 "opacity": 1.0,
+                "bounds": [-119.95, 36.60, -118.90, 37.25],
+                "bbox": [-119.95, 36.60, -118.90, 37.25],
                 "source": {
                     "type": "geojson" if not is_local else "vector",
                     "url": f"{raw_base}/remediation/county_remediation_points_sample.geojson" if not is_local else f"{base_url}/tiles/fresno_remediation.pmtiles",
