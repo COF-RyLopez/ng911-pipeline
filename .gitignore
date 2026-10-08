@@ -19,3 +19,10 @@ data/cache/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Pipeline large deliverables published directly to Cloudflare R2
+data/output/tiles/
+data/output/remediation/
+data/output/**/*.csv
+data/output/**/*.geojson
+*.pmtiles
