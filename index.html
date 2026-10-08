@@ -1174,12 +1174,16 @@
       basemapSelectEl.value = initialBasemap;
     }
 
+    const initialLat = parseFloat(urlParams.get("lat")) || 36.6757;
+    const initialLng = parseFloat(urlParams.get("lng")) || -119.8710;
+    const initialZoom = parseFloat(urlParams.get("zoom")) || 14.5;
+
     // 2. Initialize MapLibre GL Map
     const map = new maplibregl.Map({
       container: "map",
       style: BASEMAPS[initialBasemap],
-      center: [-119.8710, 36.6757], // Fresno County
-      zoom: 14.5,
+      center: [initialLng, initialLat],
+      zoom: initialZoom,
       pitch: 0,
       bearing: 0,
       maxPitch: 85
@@ -1211,7 +1215,8 @@
       if (!map.getSource("fresno_buildings_src")) {
         map.addSource("fresno_buildings_src", {
           type: "vector",
-          url: `pmtiles://${R2_BASE}/tiles/fresno_buildings.pmtiles`
+          url: `pmtiles://${R2_BASE}/tiles/fresno_buildings.pmtiles`,
+          maxzoom: 17
         });
       }
 
@@ -1227,7 +1232,7 @@
           },
           paint: {
             "fill-color": "#94a3b8",
-            "fill-opacity": 0.32
+            "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13.0, 0.22, 16.0, 0.35, 20.0, 0.45]
           }
         });
       }
@@ -1244,8 +1249,8 @@
           },
           paint: {
             "line-color": "#64748b",
-            "line-width": 1.2,
-            "line-opacity": ["interpolate", ["linear"], ["zoom"], 13.0, 0.4, 15.5, 0.9]
+            "line-width": ["interpolate", ["linear"], ["zoom"], 13.0, 1.2, 16.0, 2.0, 20.0, 3.2],
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], 13.0, 0.4, 15.5, 0.85, 20.0, 1.0]
           }
         });
       }
@@ -1254,7 +1259,8 @@
       if (!map.getSource("fresno_rcl_src")) {
         map.addSource("fresno_rcl_src", {
           type: "vector",
-          url: `pmtiles://${R2_BASE}/tiles/fresno_rcl.pmtiles`
+          url: `pmtiles://${R2_BASE}/tiles/fresno_rcl.pmtiles`,
+          maxzoom: 17
         });
       }
 
@@ -1269,7 +1275,7 @@
           },
           paint: {
             "line-color": "#059669",
-            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 16, 3.5]
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 16, 3.5, 20, 6.0]
           }
         });
       }
@@ -1278,7 +1284,8 @@
       if (!map.getSource("fresno_fishbones_src")) {
         map.addSource("fresno_fishbones_src", {
           type: "vector",
-          url: `pmtiles://${R2_BASE}/tiles/fresno_fishbones.pmtiles`
+          url: `pmtiles://${R2_BASE}/tiles/fresno_fishbones.pmtiles`,
+          maxzoom: 17
         });
       }
 
@@ -1305,7 +1312,7 @@
               "#dc2626", // Red dashed for excessive offset (>50m) or range violation
               "#10b981"  // Green dashed for valid proximity (<=50m)
             ],
-            "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 2.5],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 2.5, 20, 4.0],
             "line-dasharray": [3, 2]
           }
         });
@@ -1322,7 +1329,7 @@
             visibility: getToggleState("toggle-fishbones") ? "visible" : "none",
             "symbol-placement": "line-center",
             "text-field": ["concat", ["to-string", ["round", ["get", "DistanceMeters"]]], " m"],
-            "text-size": 10,
+            "text-size": ["interpolate", ["linear"], ["zoom"], 15.0, 10, 18, 12, 20, 14],
             "text-offset": [0, -0.6],
             "text-allow-overlap": false
           },
@@ -1350,7 +1357,8 @@
       if (!map.getSource("fresno_remediation_src")) {
         map.addSource("fresno_remediation_src", {
           type: "vector",
-          url: `pmtiles://${R2_BASE}/tiles/fresno_remediation.pmtiles`
+          url: `pmtiles://${R2_BASE}/tiles/fresno_remediation.pmtiles`,
+          maxzoom: 17
         });
       }
 
@@ -1364,7 +1372,7 @@
             visibility: getToggleState("toggle-ssap") ? "visible" : "none"
           },
           paint: {
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2.5, 14, 5, 17, 8],
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2.5, 14, 5, 17, 8, 20, 13],
             "circle-color": [
               "case",
               // 1. Critical Discrepancy / Severe Offset (>50m) / Unresolved Road -> Ruby Red
@@ -1382,7 +1390,7 @@
               "#f59e0b"
             ],
             "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 1.2,
+            "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 10, 1.0, 16, 1.5, 20, 2.5],
             "circle-opacity": 0.95
           }
         });
@@ -1403,7 +1411,7 @@
           layout: {
             visibility: getToggleState("toggle-ssap") ? "visible" : "none",
             "text-field": ["coalesce", ["get", "HNO"], ""],
-            "text-size": 11,
+            "text-size": ["interpolate", ["linear"], ["zoom"], 15.5, 11, 18, 13, 20, 16],
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "text-allow-overlap": false

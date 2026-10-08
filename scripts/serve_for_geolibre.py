@@ -12,7 +12,7 @@ Supports HTTP range requests required by MapLibre / PMTiles in GeoLibre.
 import os
 import re
 import sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 PORT = 8088
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "output")
@@ -81,17 +81,20 @@ class RangeCORSRequestHandler(SimpleHTTPRequestHandler):
         return f
 
     def copyfile(self, source, outputfile):
-        if hasattr(self, 'range_length') and self.range_length is not None:
-            bufsize = 64 * 1024
-            remaining = self.range_length
-            while remaining > 0:
-                chunk = source.read(min(bufsize, remaining))
-                if not chunk:
-                    break
-                outputfile.write(chunk)
-                remaining -= len(chunk)
-        else:
-            super().copyfile(source, outputfile)
+        try:
+            if hasattr(self, 'range_length') and self.range_length is not None:
+                bufsize = 64 * 1024
+                remaining = self.range_length
+                while remaining > 0:
+                    chunk = source.read(min(bufsize, remaining))
+                    if not chunk:
+                        break
+                    outputfile.write(chunk)
+                    remaining -= len(chunk)
+            else:
+                super().copyfile(source, outputfile)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
 
 def main():
@@ -117,7 +120,7 @@ def main():
     print("=" * 78)
     print("Server running on http://127.0.0.1:8088/ ... Press Ctrl+C to stop.\n")
 
-    httpd = HTTPServer(('127.0.0.1', PORT), RangeCORSRequestHandler)
+    httpd = ThreadingHTTPServer(('127.0.0.1', PORT), RangeCORSRequestHandler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

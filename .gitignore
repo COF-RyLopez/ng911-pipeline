@@ -26,3 +26,7 @@ data/output/remediation/
 data/output/**/*.csv
 data/output/**/*.geojson
 *.pmtiles
+
+# Scratch directory
+scratch/
+

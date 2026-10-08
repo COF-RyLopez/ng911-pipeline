@@ -26,9 +26,7 @@ WITH addresses AS (
         LandmarkName,
         Longitude AS enhanced_lon,
         Latitude AS enhanced_lat,
-        ST_Geometry AS enhanced_geom,
-        cast(floor(Longitude * 200.0) as int) AS grid_x,
-        cast(floor(Latitude * 200.0) as int) AS grid_y
+        ST_Geometry AS enhanced_geom
     FROM {{ ref('mart_ng911_addresses') }}
 ),
 
@@ -45,7 +43,7 @@ raw_inputs AS (
 ),
 
 buildings AS (
-    SELECT building_id, geom, grid_x, grid_y FROM {{ ref('stg_overture_buildings') }}
+    SELECT building_id, geom FROM {{ ref('stg_overture_buildings') }}
 ),
 
 building_intersection AS (
@@ -54,9 +52,7 @@ building_intersection AS (
         min(b.building_id) AS building_id
     FROM addresses a
     JOIN buildings b 
-      ON a.grid_x = b.grid_x 
-     AND a.grid_y = b.grid_y
-     AND ST_Intersects(a.enhanced_geom, b.geom)
+      ON ST_Intersects(a.enhanced_geom, b.geom)
     GROUP BY a.SSAP_NGUID
 ),
 
