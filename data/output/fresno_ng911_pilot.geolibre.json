@@ -1,0 +1,301 @@
+{
+  "version": "0.1.0",
+  "name": "Fresno County NG911 Statewide Dispatch & QA/QC Hub",
+  "metadata": {
+    "author": "County of Fresno (Ryan Lopez)",
+    "jurisdiction": "County of Fresno, California (FIPS 06019)",
+    "repository": "https://github.com/COF-RyLopez/ng911-pipeline",
+    "standard": "NENA-STA-010-2021 & Cal OES NG911 GIS Guidelines",
+    "description": "Statewide cloud-native NG911 emergency dispatch layers: SSAP address points, Road Centerlines, Emergency Service Boundaries, and automated QA/QC validation. 100% of Fresno County features, streamed as PMTiles."
+  },
+  "mapView": {
+    "center": [
+      -119.7871,
+      36.7468
+    ],
+    "zoom": 14,
+    "bearing": 0,
+    "pitch": 0,
+    "bbox": [
+      -119.95,
+      36.65,
+      -119.65,
+      36.9
+    ]
+  },
+  "basemapStyleUrl": "https://tiles.openfreemap.org/styles/positron",
+  "basemapVisible": true,
+  "basemapOpacity": 1.0,
+  "primaryRenderer": "maplibre",
+  "layers": [
+    {
+      "id": "mart_ng911_fresno_esb",
+      "name": "Emergency Service Boundaries (PSAP, Fire, Muni)",
+      "type": "geojson",
+      "visible": true,
+      "opacity": 0.45,
+      "source": {
+        "type": "geojson",
+        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_esb_sample.geojson"
+      },
+      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_esb_sample.geojson",
+      "style": {
+        "fillColor": "#d97706",
+        "fillOpacity": 0.25,
+        "strokeColor": "#b45309",
+        "strokeWidth": 2.0,
+        "strokeWidthUnit": "pixels",
+        "minZoom": 0,
+        "maxZoom": 24
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "Agency_Name",
+        "fields": [
+          {
+            "field": "Agency_Name",
+            "label": "Agency / District",
+            "hover": true
+          },
+          {
+            "field": "Agency_Type",
+            "label": "Boundary Type (PSAP/FIRE/MUNI)",
+            "hover": true
+          },
+          {
+            "field": "Agency_Code",
+            "label": "Agency Code"
+          },
+          {
+            "field": "ServiceNum",
+            "label": "Dispatch Phone"
+          },
+          {
+            "field": "Area_Code",
+            "label": "CAD Area Code"
+          },
+          {
+            "field": "ESB_NGUID",
+            "label": "NENA ESB NGUID"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mart_ng911_fresno_rcl",
+      "name": "NENA Road Centerlines (All 53,474)",
+      "type": "pmtiles",
+      "visible": true,
+      "opacity": 1.0,
+      "source": {
+        "type": "vector",
+        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_rcl.pmtiles",
+        "sourceId": "mart_ng911_fresno_rcl",
+        "sourceLayers": [
+          "rcl"
+        ],
+        "tileType": "vector"
+      },
+      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_rcl.pmtiles",
+      "style": {
+        "minZoom": 0,
+        "maxZoom": 24,
+        "fillColor": "#059669",
+        "strokeColor": "#059669",
+        "strokeWidth": 2.0,
+        "strokeWidthUnit": "pixels"
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "FullStreetName",
+        "fields": [
+          {
+            "field": "FullStreetName",
+            "label": "Street Name",
+            "hover": true
+          },
+          {
+            "field": "FromAddr_L",
+            "label": "From Left",
+            "kind": "number"
+          },
+          {
+            "field": "ToAddr_L",
+            "label": "To Left",
+            "kind": "number"
+          },
+          {
+            "field": "FromAddr_R",
+            "label": "From Right",
+            "kind": "number"
+          },
+          {
+            "field": "ToAddr_R",
+            "label": "To Right",
+            "kind": "number"
+          },
+          {
+            "field": "RoadClass",
+            "label": "Road Class"
+          },
+          {
+            "field": "RCL_NGUID",
+            "label": "NENA RCL NGUID"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mart_ng911_fresno_fishbones",
+      "name": "QA/QC Fishbone Vectors (All 365,316)",
+      "type": "pmtiles",
+      "visible": true,
+      "opacity": 1.0,
+      "source": {
+        "type": "vector",
+        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_fishbones.pmtiles",
+        "sourceId": "mart_ng911_fresno_fishbones",
+        "sourceLayers": [
+          "fishbones"
+        ],
+        "tileType": "vector"
+      },
+      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_fishbones.pmtiles",
+      "style": {
+        "minZoom": 0,
+        "maxZoom": 24,
+        "fillColor": "#ef4444",
+        "strokeColor": "#ef4444",
+        "strokeWidth": 1.5,
+        "strokeWidthUnit": "pixels"
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "STN",
+        "fields": [
+          {
+            "field": "HNO",
+            "label": "House Number",
+            "hover": true
+          },
+          {
+            "field": "STN",
+            "label": "Street Name",
+            "hover": true
+          },
+          {
+            "field": "DistanceMeters",
+            "label": "Distance to Centerline (m)",
+            "kind": "number",
+            "format": {
+              "decimals": 1,
+              "suffix": " m"
+            },
+            "hover": true
+          },
+          {
+            "field": "IsExcessiveOffset",
+            "label": "Excessive Offset (>50m)"
+          },
+          {
+            "field": "IsRangeViolation",
+            "label": "Range Violation"
+          },
+          {
+            "field": "FishboneID",
+            "label": "NENA Fishbone URN"
+          },
+          {
+            "field": "SSAP_NGUID",
+            "label": "Matched SSAP Point"
+          },
+          {
+            "field": "RCL_NGUID",
+            "label": "Matched Road Segment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mart_ng911_fresno_ssap",
+      "name": "NENA SSAP Address Points (All 466,751)",
+      "type": "pmtiles",
+      "visible": true,
+      "opacity": 1.0,
+      "source": {
+        "type": "vector",
+        "url": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_ssap.pmtiles",
+        "sourceId": "mart_ng911_fresno_ssap",
+        "sourceLayers": [
+          "ssap"
+        ],
+        "tileType": "vector"
+      },
+      "sourcePath": "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/tiles/fresno_ssap.pmtiles",
+      "style": {
+        "minZoom": 0,
+        "maxZoom": 24,
+        "circleRadius": 4,
+        "fillColor": "#2563eb",
+        "fillOpacity": 0.9,
+        "strokeColor": "#ffffff",
+        "strokeWidth": 1.0
+      },
+      "popup": {
+        "click": true,
+        "hover": true,
+        "titleField": "HNO",
+        "fields": [
+          {
+            "field": "HNO",
+            "label": "House Number",
+            "hover": true
+          },
+          {
+            "field": "STN",
+            "label": "Street Name",
+            "hover": true
+          },
+          {
+            "field": "Unit",
+            "label": "Unit"
+          },
+          {
+            "field": "PSAP",
+            "label": "CAD / PSAP Routing",
+            "hover": true
+          },
+          {
+            "field": "ESB_Fire",
+            "label": "Fire District",
+            "hover": true
+          },
+          {
+            "field": "LandmarkName",
+            "label": "Landmark / POI Alias",
+            "hover": true
+          },
+          {
+            "field": "Muni",
+            "label": "Jurisdiction / Muni"
+          },
+          {
+            "field": "CommunityName",
+            "label": "Postal Community"
+          },
+          {
+            "field": "ConflationStatus",
+            "label": "Conflation Status"
+          },
+          {
+            "field": "SSAP_NGUID",
+            "label": "NENA SSAP NGUID"
+          }
+        ]
+      }
+    }
+  ]
+}
