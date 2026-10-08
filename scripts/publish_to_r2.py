@@ -34,6 +34,8 @@ def get_content_type(file_path):
         return "text/csv"
     elif ext == ".html":
         return "text/html; charset=utf-8"
+    elif ext == ".gpkg":
+        return "application/geopackage+sqlite3"
     content_type, _ = mimetypes.guess_type(file_path)
     return content_type or "application/octet-stream"
 
@@ -109,7 +111,7 @@ def main():
             if f.startswith(".") or f.endswith(".wal"):
                 continue
             ext = os.path.splitext(f)[1].lower()
-            if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".geolibre", ".csv", ".html"]:
+            if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".geolibre", ".csv", ".html", ".gpkg"]:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(abs_path, OUTPUT_DIR)
                 files_to_upload.append((abs_path, rel_path))
@@ -145,7 +147,7 @@ def main():
             for obj in page.get("Contents", []):
                 key = obj["Key"]
                 ext = os.path.splitext(key)[1].lower()
-                if ext in [".geojson", ".geolibre", ".pmtiles", ".parquet", ".csv"] or key == "index.html":
+                if ext in [".geojson", ".geolibre", ".pmtiles", ".parquet", ".csv", ".gpkg"] or key == "index.html":
                     if key not in local_rel_keys:
                         remote_keys_to_delete.append(key)
 
