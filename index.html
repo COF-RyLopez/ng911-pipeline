@@ -522,6 +522,7 @@
     <div class="header-actions">
       <select id="basemap-select" class="basemap-picker" aria-label="Select Basemap">
         <option value="positron" selected>Light (Carto Positron)</option>
+        <option value="caltrans">Caltrans Aerial (California 30cm Ortho)</option>
         <option value="liberty">Streets (OpenFreeMap)</option>
         <option value="satellite">Satellite (ESRI Imagery)</option>
         <option value="dark">Dark Matter (Carto)</option>
@@ -756,6 +757,21 @@
       positron: "https://tiles.openfreemap.org/styles/positron",
       liberty: "https://tiles.openfreemap.org/styles/liberty",
       dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+      caltrans: {
+        version: 8,
+        sources: {
+          caltrans_ortho: {
+            type: "raster",
+            tiles: [
+              "https://orthos.dot.ca.gov/login/path/prism-telex-basil-epoxy/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=california_hexagon_30cm_imagery&STYLE=default&FORMAT=image/png&TILEMATRIXSET=0to20&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
+            ],
+            tileSize: 256,
+            maxzoom: 20,
+            attribution: "State of California · Caltrans · Hexagon"
+          }
+        },
+        layers: [{ id: "caltrans-aerial", type: "raster", source: "caltrans_ortho" }]
+      },
       satellite: {
         version: 8,
         sources: {
@@ -769,10 +785,18 @@
       }
     };
 
+    // Read initial basemap from query params if specified (e.g. ?basemap=caltrans)
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialBasemap = (urlParams.get("basemap") && BASEMAPS[urlParams.get("basemap")]) ? urlParams.get("basemap") : "positron";
+    const basemapSelectEl = document.getElementById("basemap-select");
+    if (basemapSelectEl) {
+      basemapSelectEl.value = initialBasemap;
+    }
+
     // 2. Initialize MapLibre GL Map
     const map = new maplibregl.Map({
       container: "map",
-      style: BASEMAPS.positron,
+      style: BASEMAPS[initialBasemap],
       center: [-119.8710, 36.6757], // Fresno County
       zoom: 14.5,
       pitch: 0,
