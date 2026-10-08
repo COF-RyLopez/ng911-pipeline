@@ -79,6 +79,12 @@ LAYERS = {
         ["-Z13", "-z17", "--drop-densest-as-needed"],
         "geom"
     ),
+    "parcels": (
+        "../cache/county_parcels.parquet",
+        "parcel_id, apn, agency_code, roll_year",
+        ["-Z12", "-z17", "--drop-densest-as-needed"],
+        "geom"
+    ),
 }
 
 
@@ -93,7 +99,11 @@ def main():
     conn = duckdb.connect()
     conn.sql("INSTALL spatial; LOAD spatial;")
 
-    for name, item in LAYERS.items():
+    selected = [sys.argv[1]] if len(sys.argv) > 1 and sys.argv[1] in LAYERS else list(LAYERS.keys())
+    print(f"Building PMTiles for: {', '.join(selected)}")
+
+    for name in selected:
+        item = LAYERS[name]
         parquet = item[0]
         cols = item[1]
         tip_args = item[2]
