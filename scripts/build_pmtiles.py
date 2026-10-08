@@ -64,9 +64,12 @@ LAYERS = {
     ),
     "remediation": (
         "remediation/county_remediation_points.parquet",
-        """SSAP_NGUID, CountyLocalID, StandardizedAddress, SpatialOffsetMeters,
-           BuildingFootprintStatus, SymbologyCategory, MapillaryGroundTruthURL,
-           RecommendedRemediationAction""",
+        """SSAP_NGUID, CountyLocalID, HNO, STN, StandardizedAddress,
+           round(SpatialOffsetMeters, 1) AS SpatialOffsetMeters,
+           BuildingFootprintStatus, SymbologyCategory, DiscrepancyType, Severity,
+           OvertureAddressGERS_ID, OvertureBuildingGERS_ID, RoadCenterlineNGUID,
+           IsExcessiveOffset, IsRangeViolation, PSAP, ESB_Fire,
+           MapillaryGroundTruthURL, RecommendedRemediationAction""",
         ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
         "ST_Geometry"
     ),

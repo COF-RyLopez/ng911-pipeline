@@ -562,7 +562,7 @@
         </div>
         <div class="layer-meta">
           <span>mart_ng911_county_remediation</span>
-          <span style="color: #ffffff; font-weight: 600;">454,734 pts</span>
+          <span style="color: #ffffff; font-weight: 600;">395,970 pts</span>
         </div>
       </div>
 
@@ -657,9 +657,38 @@
         <div class="detail-value" id="drawer-footprint-status">Inside Footprint (Valid)</div>
       </div>
       <div class="detail-card">
-        <div class="detail-label">Road Offset</div>
+        <div class="detail-label">Road Snapping Offset</div>
         <div class="detail-value" id="drawer-offset">14.2 m</div>
       </div>
+
+      <!-- Overture GERS ID & NG911 Stable Cross-Reference Card -->
+      <div class="detail-card detail-full" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(59, 130, 246, 0.35); padding: 10px 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 11px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+            <span>🔑</span> Overture GERS & NG911 Cross-Reference
+          </span>
+          <span class="badge-pill" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-size: 9px; border: 1px solid rgba(59, 130, 246, 0.4);">Open Geospatial Data Unlock</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 10px;">Address GERS ID</span>
+            <span id="drawer-gers-addr" style="font-family: monospace; color: #38bdf8; font-size: 11px; word-break: break-all; font-weight: 600;">-</span>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 10px;">Building GERS ID</span>
+            <span id="drawer-gers-bldg" style="font-family: monospace; color: #38bdf8; font-size: 11px; word-break: break-all; font-weight: 600;">-</span>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 10px;">County Parcel / Local ID</span>
+            <span id="drawer-local-id" style="font-family: monospace; color: #e2e8f0; font-size: 11px;">-</span>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); display: block; font-size: 10px;">Snapping RCL NGUID</span>
+            <span id="drawer-rcl-nguid" style="font-family: monospace; color: #e2e8f0; font-size: 11px; word-break: break-all;">-</span>
+          </div>
+        </div>
+      </div>
+
       <div class="detail-card detail-full">
         <div class="detail-label">Remediation Action</div>
         <div class="detail-value" id="drawer-action" style="font-size: 12px; font-weight: 500;">Valid Address Point Placement</div>
@@ -698,8 +727,12 @@
       <span>Road Centerline</span>
     </div>
     <div class="legend-item">
+      <span style="width: 14px; height: 0; border-top: 2px dashed #10b981;"></span>
+      <span>Fishbone (≤50m)</span>
+    </div>
+    <div class="legend-item">
       <span style="width: 14px; height: 0; border-top: 2px dashed #dc2626;"></span>
-      <span>Fishbone Vector</span>
+      <span>Fishbone (>50m / Error)</span>
     </div>
     <div class="legend-item">
       <span style="width: 12px; height: 10px; background: rgba(148, 163, 184, 0.35); border: 1px solid #64748b; border-radius: 2px;"></span>
@@ -712,8 +745,11 @@
     const protocol = new pmtiles.Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
 
-    // Cloudflare R2 Public Base URL
-    const R2_BASE = "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev";
+    // Cloudflare R2 Public Base URL (or local HTTP byte-range server if testing on localhost)
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const R2_BASE = isLocal
+      ? window.location.origin
+      : "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev";
 
     // Basemap URLs
     const BASEMAPS = {
@@ -844,16 +880,59 @@
           paint: {
             "line-color": [
               "case",
-              ["==", ["get", "IsExcessiveOffset"], "True"], "#dc2626",
-              "#f59e0b"
+              [
+                "any",
+                ["==", ["get", "IsExcessiveOffset"], true],
+                ["==", ["get", "IsExcessiveOffset"], "True"],
+                ["==", ["get", "IsRangeViolation"], true],
+                ["==", ["get", "IsRangeViolation"], "True"],
+                [">", ["get", "DistanceMeters"], 50.0]
+              ],
+              "#dc2626", // Red dashed for excessive offset (>50m) or range violation
+              "#10b981"  // Green dashed for valid proximity (<=50m)
             ],
-            "line-width": 2,
-            "line-dasharray": [2, 1]
+            "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 2.5],
+            "line-dasharray": [3, 2]
           }
         });
       }
 
-      // 3.4 Address Remediation Points PMTiles (454k Points with True Cal OES Categorization)
+      if (!map.getLayer("fishbones_labels")) {
+        map.addLayer({
+          id: "fishbones_labels",
+          type: "symbol",
+          source: "fresno_fishbones_src",
+          "source-layer": "fishbones",
+          minzoom: 15.0,
+          layout: {
+            visibility: getToggleState("toggle-fishbones") ? "visible" : "none",
+            "symbol-placement": "line-center",
+            "text-field": ["concat", ["to-string", ["round", ["get", "DistanceMeters"]]], " m"],
+            "text-size": 10,
+            "text-offset": [0, -0.6],
+            "text-allow-overlap": false
+          },
+          paint: {
+            "text-color": [
+              "case",
+              [
+                "any",
+                ["==", ["get", "IsExcessiveOffset"], true],
+                ["==", ["get", "IsExcessiveOffset"], "True"],
+                ["==", ["get", "IsRangeViolation"], true],
+                ["==", ["get", "IsRangeViolation"], "True"],
+                [">", ["get", "DistanceMeters"], 50.0]
+              ],
+              "#dc2626",
+              "#059669"
+            ],
+            "text-halo-color": "rgba(255, 255, 255, 0.95)",
+            "text-halo-width": 2
+          }
+        });
+      }
+
+      // 3.4 Address Remediation Points PMTiles (395k Points with True Snapping & GERS IDs)
       if (!map.getSource("fresno_remediation_src")) {
         map.addSource("fresno_remediation_src", {
           type: "vector",
@@ -874,23 +953,19 @@
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2.5, 14, 5, 17, 8],
             "circle-color": [
               "case",
-              // 1. Critical Discrepancy / Severe Offset (>50m) -> Deep Crimson Red
+              // 1. Critical Discrepancy / Severe Offset (>50m) / Unresolved Road -> Ruby Red
               ["==", ["get", "SymbologyCategory"], "CRITICAL_ATTENTION"], "#dc2626",
 
-              // 2. Any point Outside Building Footprint -> Vivid Amber Gold
+              // 2. Outside Building Footprint (Within 50m of Road) -> Golden Amber
               ["==", ["get", "BuildingFootprintStatus"], "OUTSIDE_BUILDING_FOOTPRINT"], "#f59e0b",
-
-              // 3. Other warnings needing attention -> Vivid Amber Gold
               ["==", ["get", "SymbologyCategory"], "ATTENTION_REQUIRED"], "#f59e0b",
 
-              // 4. Truly Inside Footprint & Validated OK -> Bright Emerald Green
-              ["all",
-                ["==", ["get", "BuildingFootprintStatus"], "INSIDE_BUILDING_FOOTPRINT"],
-                ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"]
-              ], "#10b981",
+              // 3. Truly Inside Footprint & Validated OK -> Bright Emerald Green
+              ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"], "#10b981",
+              ["==", ["get", "BuildingFootprintStatus"], "INSIDE_BUILDING_FOOTPRINT"], "#10b981",
 
-              // Fallback
-              "#10b981"
+              // Fallback default
+              "#f59e0b"
             ],
             "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 1.2,
@@ -900,6 +975,34 @@
 
         if (activeFilter) {
           map.setFilter("ssap_points", activeFilter);
+        }
+      }
+
+      // 3.5 House Number Labels on Address Points at High Zoom (>=15.5)
+      if (!map.getLayer("ssap_labels")) {
+        map.addLayer({
+          id: "ssap_labels",
+          type: "symbol",
+          source: "fresno_remediation_src",
+          "source-layer": "remediation",
+          minzoom: 15.5,
+          layout: {
+            visibility: getToggleState("toggle-ssap") ? "visible" : "none",
+            "text-field": ["coalesce", ["get", "HNO"], ""],
+            "text-size": 11,
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+            "text-allow-overlap": false
+          },
+          paint: {
+            "text-color": "#ffffff",
+            "text-halo-color": "#0f172a",
+            "text-halo-width": 2.5
+          }
+        });
+
+        if (activeFilter) {
+          map.setFilter("ssap_labels", activeFilter);
         }
       }
     }
@@ -915,10 +1018,9 @@
       const f = e.features[0];
       const p = f.properties;
 
-      const address = p.StandardizedAddress || "Address Point";
-      const offset = (p.SpatialOffsetMeters !== undefined && p.SpatialOffsetMeters !== null) 
-        ? `${Number(p.SpatialOffsetMeters).toFixed(1)} m` 
-        : "Near Centerline";
+      const address = p.StandardizedAddress || (p.HNO ? `${p.HNO} ${p.STN || ''}` : "Address Point");
+      const hasOffset = (p.SpatialOffsetMeters !== undefined && p.SpatialOffsetMeters !== null && p.SpatialOffsetMeters !== "" && !isNaN(Number(p.SpatialOffsetMeters)));
+      const offset = hasOffset ? `${Number(p.SpatialOffsetMeters).toFixed(1)} m` : "> 200 m (Unresolved Road)";
       const nguid = p.SSAP_NGUID || p.CountyLocalID || "SSAP_FRESNO_RECORD";
 
       const isInside = p.BuildingFootprintStatus === "INSIDE_BUILDING_FOOTPRINT";
@@ -927,7 +1029,7 @@
       let statusText = "";
       let statusColor = "";
       if (isCritical) {
-        statusText = "Critical Offset / Error (>50m)";
+        statusText = !hasOffset ? "Unresolved Road (>200m)" : "Critical Offset / Error (>50m)";
         statusColor = "#dc2626";
       } else if (isInside) {
         statusText = "Inside Footprint (Valid)";
@@ -940,7 +1042,7 @@
       let actionText = p.RecommendedRemediationAction || "";
       if (!actionText) {
         actionText = isInside 
-          ? "Validated OK against building footprint & RCL." 
+          ? "Validated OK against building footprint & road centerline." 
           : "Address point is outside building footprint; inspect aerial/Mapillary imagery to verify placement.";
       }
 
@@ -953,8 +1055,15 @@
 
       document.getElementById("drawer-offset").textContent = offset;
       document.getElementById("drawer-action").textContent = actionText;
-      document.getElementById("drawer-psap").textContent = "Fresno County Sheriff";
-      document.getElementById("drawer-esb").textContent = "Fresno County Fire Protection";
+
+      // Populate GERS & NG911 Cross-Reference Identifiers
+      document.getElementById("drawer-gers-addr").textContent = p.OvertureAddressGERS_ID || "County Authoritative";
+      document.getElementById("drawer-gers-bldg").textContent = p.OvertureBuildingGERS_ID || "Outside Footprint";
+      document.getElementById("drawer-local-id").textContent = p.CountyLocalID || "-";
+      document.getElementById("drawer-rcl-nguid").textContent = p.RoadCenterlineNGUID || "Unresolved (>200m)";
+
+      document.getElementById("drawer-psap").textContent = p.PSAP || "Fresno County Sheriff";
+      document.getElementById("drawer-esb").textContent = p.ESB_Fire || "Fresno County Fire Protection";
 
       // Mapillary Ground-Truth Street View URL
       const coords = f.geometry.coordinates;
@@ -971,9 +1080,9 @@
 
     // 4. UI Layer Toggle Controls
     document.getElementById("toggle-ssap").addEventListener("change", (e) => {
-      if (map.getLayer("ssap_points")) {
-        map.setLayoutProperty("ssap_points", "visibility", e.target.checked ? "visible" : "none");
-      }
+      const vis = e.target.checked ? "visible" : "none";
+      if (map.getLayer("ssap_points")) map.setLayoutProperty("ssap_points", "visibility", vis);
+      if (map.getLayer("ssap_labels")) map.setLayoutProperty("ssap_labels", "visibility", vis);
     });
 
     document.getElementById("toggle-rcl").addEventListener("change", (e) => {
@@ -983,9 +1092,9 @@
     });
 
     document.getElementById("toggle-fishbones").addEventListener("change", (e) => {
-      if (map.getLayer("fishbones_lines")) {
-        map.setLayoutProperty("fishbones_lines", "visibility", e.target.checked ? "visible" : "none");
-      }
+      const vis = e.target.checked ? "visible" : "none";
+      if (map.getLayer("fishbones_lines")) map.setLayoutProperty("fishbones_lines", "visibility", vis);
+      if (map.getLayer("fishbones_labels")) map.setLayoutProperty("fishbones_labels", "visibility", vis);
     });
 
     document.getElementById("toggle-buildings").addEventListener("change", (e) => {
@@ -1021,6 +1130,7 @@
       setActivePill(filterAll);
       activeFilter = null;
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", null);
+      if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", null);
     });
 
     filterViolations.addEventListener("click", () => {
@@ -1031,6 +1141,7 @@
         ["!=", ["get", "SymbologyCategory"], "VALIDATED_OK"]
       ];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+      if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
     });
 
     filterValid.addEventListener("click", () => {
@@ -1041,6 +1152,7 @@
         ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"]
       ];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+      if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
     });
   </script>
 </body>

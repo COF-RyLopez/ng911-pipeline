@@ -324,7 +324,37 @@ def build_project(base_url, is_local=False, is_r2=False):
                     ]
                 }
             },
-            {
+            pmtiles_layer(
+                layer_id="mart_ng911_county_remediation_layer",
+                name="📍 NG911 Address Remediation Status (395k True Snapping)",
+                filename="fresno_remediation.pmtiles",
+                source_layer="remediation",
+                style={
+                    "circleRadius": 6,
+                    "fillColor": "#ea580c",
+                    "fillOpacity": 0.9,
+                    "strokeColor": "#ffffff",
+                    "strokeWidth": 1.5,
+                },
+                popup={
+                    "click": True,
+                    "hover": True,
+                    "titleField": "StandardizedAddress",
+                    "fields": [
+                        {"field": "StandardizedAddress", "label": "Enhanced Address", "hover": True},
+                        {"field": "HNO", "label": "House Number"},
+                        {"field": "SymbologyCategory", "label": "Remediation Category", "hover": True},
+                        {"field": "BuildingFootprintStatus", "label": "Building Footprint Status", "hover": True},
+                        {"field": "SpatialOffsetMeters", "label": "Snapping Offset (m)", "kind": "number", "format": {"decimals": 1, "suffix": " m"}},
+                        {"field": "OvertureAddressGERS_ID", "label": "Overture Address GERS ID"},
+                        {"field": "OvertureBuildingGERS_ID", "label": "Overture Building GERS ID"},
+                        {"field": "RecommendedRemediationAction", "label": "Action Needed"},
+                        {"field": "MapillaryGroundTruthURL", "label": "Mapillary Ground-Truth", "kind": "url"},
+                        {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
+                    ]
+                },
+                base_url=raw_base
+            ) if (use_pmtiles or is_r2) else {
                 "id": "mart_ng911_county_remediation_layer",
                 "name": "📍 NG911 Address Remediation Status (Active Sample)",
                 "type": "geojson",
@@ -468,40 +498,15 @@ def main():
     parser.add_argument("--source-file", help="Path to local user source dataset (.geojson, .parquet, .csv)", default=None)
     args = parser.parse_args()
 
-    # 1. Build Remote Project (GitHub Pages / Raw with embedded samples)
-    remote_proj = build_project(GITHUB_PAGES_BASE_URL, is_local=False, is_r2=False)
-    json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre.json")
-    geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison.geolibre")
-
-    with open(json_path, "w") as f:
-        json.dump(remote_proj, f, indent=2)
-    with open(geolibre_path, "w") as f:
-        json.dump(remote_proj, f, indent=2)
-
-    # 2. Build Cloudflare R2 Project (High-performance full PMTiles streaming)
+    # Build Canonical Cloudflare R2 Project (High-performance full PMTiles streaming)
     r2_proj = build_project(R2_BASE_URL, is_local=False, is_r2=True)
     r2_json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_r2.geolibre.json")
-    r2_geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_r2.geolibre")
 
     with open(r2_json_path, "w") as f:
         json.dump(r2_proj, f, indent=2)
-    with open(r2_geolibre_path, "w") as f:
-        json.dump(r2_proj, f, indent=2)
 
-    # 3. Build Local Project (http://localhost:8088/ Byte Serving URL)
-    local_proj = build_project(LOCAL_BASE_URL, is_local=True, is_r2=False)
-    local_json_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_local.geolibre.json")
-    local_geolibre_path = os.path.join(OUTPUT_DIR, "ng911_address_comparison_local.geolibre")
-
-    with open(local_json_path, "w") as f:
-        json.dump(local_proj, f, indent=2)
-    with open(local_geolibre_path, "w") as f:
-        json.dump(local_proj, f, indent=2)
-
-    print("Generated GeoLibre QA/QC Projects:")
-    print(f"  Remote (Embedded) -> {json_path}")
-    print(f"  Cloudflare R2     -> {r2_json_path}")
-    print(f"  Local Byte-Server -> {local_json_path}")
+    print("Generated Canonical GeoLibre QA/QC Project:")
+    print(f"  Cloudflare R2 -> {r2_json_path}")
 
 
 if __name__ == "__main__":

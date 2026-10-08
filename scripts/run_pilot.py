@@ -92,72 +92,18 @@ def main():
 
     # Export SSAP
     ssap_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_ssap.parquet")
-    ssap_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_ssap_sample.geojson")
     conn.sql(f"COPY mart_ng911_addresses TO '{ssap_parquet}' (FORMAT PARQUET)")
-    export_geojson_feature_collection(
-        """
-        SELECT 
-            SSAP_NGUID, DisclID, CountyLocalID, GERS_ID, ConflationStatus, 
-            Source, HNO, PRD, STN, STS, Unit, Muni, CommunityName, County, State, 
-            PostCode, PSAP, PSAP_NGUID, ESB_Fire, LandmarkName, LandmarkCategory,
-            SpatialOffsetMeters, ST_AsGeoJSON(ST_Geometry) AS geometry
-        FROM mart_ng911_addresses
-        WHERE ConflationStatus = 'CONFLATED' OR rowid % 10 = 0
-        LIMIT 5000
-        """,
-        ssap_geojson
-    )
-    print(f"  -> Exported SSAP Address Points: {ssap_parquet} & {ssap_geojson}")
+    print(f"  -> Exported SSAP Address Points: {ssap_parquet}")
 
     # Export RCL
     rcl_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_rcl.parquet")
-    rcl_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_rcl_sample.geojson")
     conn.sql(f"COPY mart_ng911_road_centerlines TO '{rcl_parquet}' (FORMAT PARQUET)")
-    export_geojson_feature_collection(
-        """
-        SELECT 
-            RCL_NGUID, DisclID, FullStreetName, FromAddr_L, ToAddr_L,
-            FromAddr_R, ToAddr_R, Parity_L, Parity_R, SpeedLimit,
-            RoadClass, ST_AsGeoJSON(ST_Geometry) AS geometry
-        FROM mart_ng911_road_centerlines
-        LIMIT 25000
-        """,
-        rcl_geojson
-    )
-    print(f"  -> Exported RCL Road Centerlines: {rcl_parquet} & {rcl_geojson}")
+    print(f"  -> Exported RCL Road Centerlines: {rcl_parquet}")
 
     # Export Emergency Service Boundaries (ESBs & PSAP CAD)
     esb_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb.parquet")
-    esb_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb_sample.geojson")
     conn.sql(f"COPY mart_ng911_emergency_boundaries TO '{esb_parquet}' (FORMAT PARQUET)")
-    export_geojson_feature_collection(
-        """
-        SELECT 
-            DisclID, ESB_NGUID, Agency_Type, Agency_Name, Agency_Code,
-            ServiceNum, Area_Code, ST_AsGeoJSON(ST_Geometry) AS geometry
-        FROM mart_ng911_emergency_boundaries
-        """,
-        esb_geojson
-    )
-    print(f"  -> Exported Emergency Service Boundaries: {esb_parquet} & {esb_geojson}")
-
-    # Export Overture Building Footprints Sample
-    bldg_geojson = os.path.join(OUTPUT_DIR, "overture_buildings_sample.geojson")
-    bldg_cache = os.path.join(PROJECT_DIR, "data", "cache", "overture_buildings.parquet")
-    if os.path.exists(bldg_cache):
-        export_geojson_feature_collection(
-            f"""
-            SELECT 
-                building_id, height, num_floors, building_class,
-                ST_AsGeoJSON(geom) AS geometry
-            FROM '{bldg_cache}'
-            WHERE ST_X(ST_Centroid(geom)) BETWEEN -119.95 AND -119.65
-              AND ST_Y(ST_Centroid(geom)) BETWEEN 36.60 AND 36.90
-            LIMIT 20000
-            """,
-            bldg_geojson
-        )
-        print(f"  -> Exported Overture Building Footprints Sample: {bldg_geojson}")
+    print(f"  -> Exported Emergency Service Boundaries: {esb_parquet}")
 
     # Export QA Discrepancies
     qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_qa_discrepancies.parquet")
@@ -166,21 +112,8 @@ def main():
 
     # Export Fishbones
     fishbone_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_fishbones.parquet")
-    fishbone_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_fishbones_sample.geojson")
     conn.sql(f"COPY mart_ng911_qa_fishbones TO '{fishbone_parquet}' (FORMAT PARQUET)")
-    export_geojson_feature_collection(
-        """
-        SELECT 
-            FishboneID, SSAP_NGUID, RCL_NGUID, HNO, STN,
-            DistanceMeters, IsExcessiveOffset, IsRangeViolation,
-            ST_AsGeoJSON(ST_Geometry) AS geometry
-        FROM mart_ng911_qa_fishbones
-        WHERE DistanceMeters > 2.0 OR IsExcessiveOffset OR IsRangeViolation
-        LIMIT 25000
-        """,
-        fishbone_geojson
-    )
-    print(f"  -> Exported QA Fishbone Vectors: {fishbone_parquet} & {fishbone_geojson}")
+    print(f"  -> Exported QA Fishbone Vectors: {fishbone_parquet}")
 
     # Export Cal OES 98% Readiness Audit Mart
     audit_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_readiness_audit.parquet")
@@ -189,50 +122,18 @@ def main():
 
     # Export Address Enhancements & QA/QC Displacement Mart
     enhancements_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_enhancements.parquet")
-    enhancements_geojson = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_enhancements_sample.geojson")
     conn.sql(f"COPY mart_ng911_address_enhancements TO '{enhancements_parquet}' (FORMAT PARQUET)")
-    export_geojson_feature_collection(
-        """
-        SELECT 
-            SSAP_NGUID, CountyLocalID, RawAddress, EnhancedAddress,
-            PSAP, ESB_Fire, LandmarkName, ConflationStatus,
-            DisplacementMeters, EnhancementCategory,
-            ST_AsGeoJSON(ST_Geometry) AS geometry
-        FROM mart_ng911_address_enhancements
-        LIMIT 10000
-        """,
-        enhancements_geojson
-    )
-    print(f"  -> Exported Address Enhancements: {enhancements_parquet} & {enhancements_geojson}")
+    print(f"  -> Exported Address Enhancements: {enhancements_parquet}")
 
     # Export Actionable Jurisdiction Remediation Findings & Deliverables
     remediation_dir = os.path.join(OUTPUT_DIR, "remediation")
     os.makedirs(remediation_dir, exist_ok=True)
     remediation_csv = os.path.join(remediation_dir, "county_remediation_action_items.csv")
     remediation_parquet = os.path.join(remediation_dir, "county_remediation_points.parquet")
-    remediation_geojson = os.path.join(remediation_dir, "county_remediation_points_sample.geojson")
 
     conn.sql(f"COPY (SELECT * EXCLUDE (ST_Geometry) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK') TO '{remediation_csv}' (HEADER, DELIMITER ',')")
     conn.sql(f"COPY mart_ng911_county_remediation_export TO '{remediation_parquet}' (FORMAT PARQUET)")
-    export_geojson_feature_collection(
-        """
-        SELECT 
-            SSAP_NGUID, CountyLocalID, OriginalHouseNumber, OriginalStreetName,
-            StandardizedAddress, CommunityName, BuildingFootprintStatus,
-            DiscrepancyType, Severity, SymbologyCategory, MapillaryGroundTruthURL,
-            RecommendedRemediationAction, ST_AsGeoJSON(ST_Geometry) AS geometry
-        FROM mart_ng911_county_remediation_export
-        ORDER BY CASE 
-            WHEN SymbologyCategory = 'CRITICAL_POS_OFFSET' THEN 1 
-            WHEN SymbologyCategory = 'OUTSIDE_BUILDING_FOOTPRINT' THEN 2 
-            WHEN SymbologyCategory = 'MISSING_NENA_MANDATORY_FIELD' THEN 3 
-            ELSE 4 
-        END
-        LIMIT 20000
-        """,
-        remediation_geojson
-    )
-    print(f"  -> Exported Jurisdiction Remediation Deliverables: {remediation_csv}, {remediation_parquet} & {remediation_geojson}")
+    print(f"  -> Exported Jurisdiction Remediation Deliverables: {remediation_csv} & {remediation_parquet}")
 
 
 
