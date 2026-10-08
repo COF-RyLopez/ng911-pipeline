@@ -1138,6 +1138,7 @@
       dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
       caltrans: {
         version: 8,
+        glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
         sources: {
           caltrans_ortho: {
             type: "raster",
@@ -1153,6 +1154,7 @@
       },
       satellite: {
         version: 8,
+        glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
         sources: {
           esri: {
             type: "raster",
@@ -1182,6 +1184,8 @@
       bearing: 0,
       maxPitch: 85
     });
+    window.map = map;
+    window.BASEMAPS = BASEMAPS;
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "bottom-right");
@@ -1415,9 +1419,48 @@
           map.setFilter("ssap_labels", activeFilter);
         }
       }
+
+      // Ensure geometry overlays are strictly placed on top of any basemap layers
+      ensureGeometryOnTop();
+    }
+
+    const OVERLAY_LAYERS = [
+      "buildings_fill",
+      "buildings_line",
+      "rcl_lines",
+      "fishbones_lines",
+      "fishbones_labels",
+      "ssap_points",
+      "ssap_labels"
+    ];
+
+    function ensureGeometryOnTop() {
+      // 1. If any basemap raster layer is present, ensure it sits at the absolute bottom
+      const basemapRasterLayers = ["caltrans-aerial", "esri-satellite"];
+      basemapRasterLayers.forEach(id => {
+        if (map.getLayer(id)) {
+          const firstLayerId = map.getStyle()?.layers?.[0]?.id;
+          if (firstLayerId && firstLayerId !== id) {
+            try { map.moveLayer(id, firstLayerId); } catch (_) {}
+          }
+        }
+      });
+
+      // 2. Elevate all custom NG911 geometry overlays to the top of the stack
+      // Hierarchy: Footprints -> Outlines -> RCL Lines -> Fishbones -> Labels -> Address Points -> Numbers
+      OVERLAY_LAYERS.forEach(id => {
+        if (map.getLayer(id)) {
+          try {
+            map.moveLayer(id);
+          } catch (_) {}
+        }
+      });
     }
 
     // Attach layers when initial or new style finishes loading
+    map.on("load", () => {
+      addCustomLayers();
+    });
     map.on("style.load", () => {
       addCustomLayers();
     });
@@ -1530,12 +1573,67 @@
       document.getElementById("drawer-panel").style.display = "none";
     });
 
-    // 6. Basemap Selector
-    document.getElementById("basemap-select").addEventListener("change", (e) => {
-      const val = e.target.value;
-      if (BASEMAPS[val]) {
-        map.setStyle(BASEMAPS[val]);
+    // 6. Basemap Selector (Strict bottom layer guarantee for all basemaps)
+    function switchBasemap(val) {
+      if (!BASEMAPS[val]) return;
+      const styleDef = BASEMAPS[val];
+
+      const onStyleReady = () => {
+        addCustomLayers();
+        ensureGeometryOnTop();
+
+        // Restore active filter if user had one selected
+        if (activeFilter) {
+          if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+          if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
+        }
+
+        // Re-sync layer toggle visibilities from UI checkboxes
+        if (map.getLayer("ssap_points")) map.setLayoutProperty("ssap_points", "visibility", getToggleState("toggle-ssap") ? "visible" : "none");
+        if (map.getLayer("ssap_labels")) map.setLayoutProperty("ssap_labels", "visibility", getToggleState("toggle-ssap") ? "visible" : "none");
+        if (map.getLayer("rcl_lines")) map.setLayoutProperty("rcl_lines", "visibility", getToggleState("toggle-rcl") ? "visible" : "none");
+        if (map.getLayer("fishbones_lines")) map.setLayoutProperty("fishbones_lines", "visibility", getToggleState("toggle-fishbones") ? "visible" : "none");
+        if (map.getLayer("fishbones_labels")) map.setLayoutProperty("fishbones_labels", "visibility", getToggleState("toggle-fishbones") ? "visible" : "none");
+        if (map.getLayer("buildings_fill")) map.setLayoutProperty("buildings_fill", "visibility", getToggleState("toggle-buildings") ? "visible" : "none");
+        if (map.getLayer("buildings_line")) map.setLayoutProperty("buildings_line", "visibility", getToggleState("toggle-buildings") ? "visible" : "none");
+      };
+
+      map.setStyle(styleDef);
+
+      if (typeof styleDef === "object") {
+        // Synchronous style object (caltrans, satellite)
+        setTimeout(onStyleReady, 60);
+      } else {
+        // Remote vector style URL (positron, liberty, dark)
+        let handled = false;
+        const checkReady = (e) => {
+          if (handled) return;
+          if (e && e.dataType && e.dataType !== "style") return;
+          if (map.isStyleLoaded() || (map.getStyle() && map.getStyle().layers && map.getStyle().layers.length > 0)) {
+            handled = true;
+            map.off("styledata", checkReady);
+            map.off("data", checkReady);
+            onStyleReady();
+          }
+        };
+        map.on("styledata", checkReady);
+        map.on("data", checkReady);
+        // Fallback timeout in case of network latency
+        setTimeout(() => {
+          if (!handled) {
+            handled = true;
+            map.off("styledata", checkReady);
+            map.off("data", checkReady);
+            onStyleReady();
+          }
+        }, 3500);
       }
+    }
+
+    window.switchBasemap = switchBasemap;
+
+    document.getElementById("basemap-select").addEventListener("change", (e) => {
+      switchBasemap(e.target.value);
     });
 
     // 7. Status Filter Pills
