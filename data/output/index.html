@@ -550,8 +550,8 @@
           <label class="layer-label" for="toggle-ssap">
             <span style="display: inline-flex; gap: 3px; align-items: center;">
               <span class="color-dot" style="background: #10b981; width: 7px; height: 7px;"></span>
-              <span class="color-dot" style="background: #ea580c; width: 7px; height: 7px;"></span>
-              <span class="color-dot" style="background: #ef4444; width: 7px; height: 7px;"></span>
+              <span class="color-dot" style="background: #f59e0b; width: 7px; height: 7px;"></span>
+              <span class="color-dot" style="background: #dc2626; width: 7px; height: 7px;"></span>
             </span>
             <span>NG911 Address Remediation</span>
           </label>
@@ -588,7 +588,7 @@
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-fishbones">
-            <span style="display: inline-block; width: 12px; height: 0; border-top: 2px dashed #ef4444;"></span>
+            <span style="display: inline-block; width: 12px; height: 0; border-top: 2px dashed #dc2626;"></span>
             <span>QA/QC Fishbone Connectors</span>
           </label>
           <label class="layer-switch">
@@ -616,7 +616,7 @@
         </div>
         <div class="layer-meta">
           <span>fresno_buildings</span>
-          <span style="color: #ffffff; font-weight: 600;">Zoom 13.5+</span>
+          <span style="color: #ffffff; font-weight: 600;">Zoom 13+</span>
         </div>
       </div>
     </div>
@@ -629,7 +629,7 @@
       <div class="filter-pills">
         <button class="pill-btn active" id="filter-all">All</button>
         <button class="pill-btn" id="filter-violations">Rule Violations Only</button>
-        <button class="pill-btn" id="filter-valid">Valid</button>
+        <button class="pill-btn" id="filter-valid">Valid (Inside Footprint)</button>
       </div>
     </div>
 
@@ -654,7 +654,7 @@
     <div class="detail-grid">
       <div class="detail-card">
         <div class="detail-label">Footprint Status</div>
-        <div class="detail-value" id="drawer-footprint-status">Inside Footprint</div>
+        <div class="detail-value" id="drawer-footprint-status">Inside Footprint (Valid)</div>
       </div>
       <div class="detail-card">
         <div class="detail-label">Road Offset</div>
@@ -686,19 +686,19 @@
       <span>Valid (Inside Footprint)</span>
     </div>
     <div class="legend-item">
-      <span class="color-dot" style="background: #ea580c;"></span>
+      <span class="color-dot" style="background: #f59e0b;"></span>
       <span>Outside Footprint (Audit)</span>
     </div>
     <div class="legend-item">
-      <span class="color-dot" style="background: #ef4444;"></span>
-      <span>Critical Offset (>50m)</span>
+      <span class="color-dot" style="background: #dc2626;"></span>
+      <span>Critical Offset / Error (>50m)</span>
     </div>
     <div class="legend-item">
       <span style="background: #059669; width: 14px; height: 3px; border-radius: 2px;"></span>
       <span>Road Centerline</span>
     </div>
     <div class="legend-item">
-      <span style="width: 14px; height: 0; border-top: 2px dashed #ef4444;"></span>
+      <span style="width: 14px; height: 0; border-top: 2px dashed #dc2626;"></span>
       <span>Fishbone Vector</span>
     </div>
     <div class="legend-item">
@@ -757,7 +757,7 @@
 
     // 3. Add Vector Tile Sources and Layers from R2
     function addCustomLayers() {
-      // 3.1 Buildings Footprints PMTiles (Visible at zoom 13.5+ to prevent black speck clustering)
+      // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
         map.addSource("fresno_buildings_src", {
           type: "vector",
@@ -771,13 +771,13 @@
           type: "fill",
           source: "fresno_buildings_src",
           "source-layer": "buildings",
-          minzoom: 13.5,
+          minzoom: 13.0,
           layout: {
             visibility: getToggleState("toggle-buildings") ? "visible" : "none"
           },
           paint: {
             "fill-color": "#94a3b8",
-            "fill-opacity": 0.28
+            "fill-opacity": 0.32
           }
         });
       }
@@ -788,14 +788,14 @@
           type: "line",
           source: "fresno_buildings_src",
           "source-layer": "buildings",
-          minzoom: 13.5,
+          minzoom: 13.0,
           layout: {
             visibility: getToggleState("toggle-buildings") ? "visible" : "none"
           },
           paint: {
             "line-color": "#64748b",
-            "line-width": 1,
-            "line-opacity": ["interpolate", ["linear"], ["zoom"], 13.5, 0.3, 16, 0.8]
+            "line-width": 1.2,
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], 13.0, 0.4, 15.5, 0.9]
           }
         });
       }
@@ -844,8 +844,8 @@
           paint: {
             "line-color": [
               "case",
-              ["==", ["get", "IsExcessiveOffset"], "True"], "#ef4444",
-              "#ea580c"
+              ["==", ["get", "IsExcessiveOffset"], "True"], "#dc2626",
+              "#f59e0b"
             ],
             "line-width": 2,
             "line-dasharray": [2, 1]
@@ -873,12 +873,24 @@
           paint: {
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2.5, 14, 5, 17, 8],
             "circle-color": [
-              "match",
-              ["get", "SymbologyCategory"],
-              "CRITICAL_ATTENTION", "#ef4444", // Red (>50m displacement or critical issue)
-              "ATTENTION_REQUIRED", "#ea580c", // Orange (Outside building footprint)
-              "VALIDATED_OK", "#10b981",       // Green (Validated OK)
-              "#10b981"                        // Default
+              "case",
+              // 1. Critical Discrepancy / Severe Offset (>50m) -> Deep Crimson Red
+              ["==", ["get", "SymbologyCategory"], "CRITICAL_ATTENTION"], "#dc2626",
+
+              // 2. Any point Outside Building Footprint -> Vivid Amber Gold
+              ["==", ["get", "BuildingFootprintStatus"], "OUTSIDE_BUILDING_FOOTPRINT"], "#f59e0b",
+
+              // 3. Other warnings needing attention -> Vivid Amber Gold
+              ["==", ["get", "SymbologyCategory"], "ATTENTION_REQUIRED"], "#f59e0b",
+
+              // 4. Truly Inside Footprint & Validated OK -> Bright Emerald Green
+              ["all",
+                ["==", ["get", "BuildingFootprintStatus"], "INSIDE_BUILDING_FOOTPRINT"],
+                ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"]
+              ], "#10b981",
+
+              // Fallback
+              "#10b981"
             ],
             "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 1.2,
@@ -911,17 +923,34 @@
 
       const isInside = p.BuildingFootprintStatus === "INSIDE_BUILDING_FOOTPRINT";
       const isCritical = p.SymbologyCategory === "CRITICAL_ATTENTION";
-      const statusText = isCritical 
-        ? "Critical Offset (>50m / Error)" 
-        : (isInside ? "Inside Building Footprint" : "Outside Footprint (Audit Needed)");
-      const actionText = p.RecommendedRemediationAction || (isInside 
-        ? "Validated OK against building footprint & RCL." 
-        : "Driveway access verification required.");
+      
+      let statusText = "";
+      let statusColor = "";
+      if (isCritical) {
+        statusText = "Critical Offset / Error (>50m)";
+        statusColor = "#dc2626";
+      } else if (isInside) {
+        statusText = "Inside Footprint (Valid)";
+        statusColor = "#10b981";
+      } else {
+        statusText = "Outside Footprint (Audit Needed)";
+        statusColor = "#f59e0b";
+      }
+
+      let actionText = p.RecommendedRemediationAction || "";
+      if (!actionText) {
+        actionText = isInside 
+          ? "Validated OK against building footprint & RCL." 
+          : "Address point is outside building footprint; inspect aerial/Mapillary imagery to verify placement.";
+      }
 
       // Update Drawer
       document.getElementById("drawer-address").textContent = address;
       document.getElementById("drawer-nguid").textContent = nguid;
-      document.getElementById("drawer-footprint-status").textContent = statusText;
+      const statusEl = document.getElementById("drawer-footprint-status");
+      statusEl.textContent = statusText;
+      statusEl.style.color = statusColor;
+
       document.getElementById("drawer-offset").textContent = offset;
       document.getElementById("drawer-action").textContent = actionText;
       document.getElementById("drawer-psap").textContent = "Fresno County Sheriff";
@@ -996,13 +1025,21 @@
 
     filterViolations.addEventListener("click", () => {
       setActivePill(filterViolations);
-      activeFilter = ["!=", ["get", "SymbologyCategory"], "VALIDATED_OK"];
+      activeFilter = [
+        "any",
+        ["==", ["get", "BuildingFootprintStatus"], "OUTSIDE_BUILDING_FOOTPRINT"],
+        ["!=", ["get", "SymbologyCategory"], "VALIDATED_OK"]
+      ];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
     });
 
     filterValid.addEventListener("click", () => {
       setActivePill(filterValid);
-      activeFilter = ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"];
+      activeFilter = [
+        "all",
+        ["==", ["get", "BuildingFootprintStatus"], "INSIDE_BUILDING_FOOTPRINT"],
+        ["==", ["get", "SymbologyCategory"], "VALIDATED_OK"]
+      ];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
     });
   </script>
