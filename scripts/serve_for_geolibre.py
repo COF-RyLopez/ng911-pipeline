@@ -18,9 +18,25 @@ PORT = 8088
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "output")
 
 
+class BetterThreadingHTTPServer(ThreadingHTTPServer):
+    request_queue_size = 128
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # Suppress socket broken pipe / reset traces when client aborts tile ranges
+        pass
+
+
 class RangeCORSRequestHandler(SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=OUTPUT_DIR, **kwargs)
+
+    def log_message(self, format, *args):
+        # Filter out 206 tile access spam, but log index and other resources
+        if "206" not in str(args):
+            super().log_message(format, *args)
 
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -93,8 +109,8 @@ class RangeCORSRequestHandler(SimpleHTTPRequestHandler):
                     remaining -= len(chunk)
             else:
                 super().copyfile(source, outputfile)
-        except (BrokenPipeError, ConnectionResetError):
-            pass
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            self.close_connection = True
 
 
 def main():
@@ -120,7 +136,7 @@ def main():
     print("=" * 78)
     print("Server running on http://127.0.0.1:8088/ ... Press Ctrl+C to stop.\n")
 
-    httpd = ThreadingHTTPServer(('127.0.0.1', PORT), RangeCORSRequestHandler)
+    httpd = BetterThreadingHTTPServer(('127.0.0.1', PORT), RangeCORSRequestHandler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
