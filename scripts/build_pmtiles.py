@@ -37,15 +37,15 @@ LAYERS = {
         """SSAP_NGUID, ConflationStatus, Source, HNO, HNS, PRD, STN, STS, POD, Unit,
            Muni, CommunityName, PostCode, PSAP, ESB_Fire, LandmarkName,
            round(SpatialOffsetMeters, 2) AS SpatialOffsetMeters""",
-        # Every point is kept from z13 up; lower zooms thin out for speed.
-        ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
+        # Every point is kept from z13 up; maxzoom 17 enables pin-sharp high-zoom inspection
+        ["-Z9", "-z17", "-B13", "--drop-densest-as-needed", "-r1"],
         "ST_Geometry"
     ),
     "rcl": (
         "mart_ng911_fresno_rcl.parquet",
         """RCL_NGUID, FullStreetName, FromAddr_L, ToAddr_L, FromAddr_R, ToAddr_R,
            Parity_L, Parity_R, RoadClass, SpeedLimit, OneWay""",
-        ["-Z8", "-z15", "--no-line-simplification", "--no-tiny-polygon-reduction",
+        ["-Z8", "-z17", "--no-line-simplification", "--no-tiny-polygon-reduction",
          "--drop-densest-as-needed"],
         "ST_Geometry"
     ),
@@ -53,13 +53,13 @@ LAYERS = {
         "mart_ng911_fresno_fishbones.parquet",
         """FishboneID, SSAP_NGUID, RCL_NGUID, HNO, STN,
            round(DistanceMeters, 1) AS DistanceMeters, IsExcessiveOffset, IsRangeViolation""",
-        ["-Z10", "-z15", "-B12", "--drop-densest-as-needed"],
+        ["-Z10", "-z17", "-B13", "--drop-densest-as-needed"],
         "ST_Geometry"
     ),
     "esb": (
         "mart_ng911_fresno_esb.parquet",
         "ESB_NGUID, Agency_Type, Agency_Name, Agency_Code, ServiceNum, Area_Code",
-        ["-Z6", "-z14", "--no-tiny-polygon-reduction", "--detect-shared-borders"],
+        ["-Z6", "-z15", "--no-tiny-polygon-reduction", "--detect-shared-borders"],
         "ST_Geometry"
     ),
     "remediation": (
@@ -70,13 +70,13 @@ LAYERS = {
            OvertureAddressGERS_ID, OvertureBuildingGERS_ID, RoadCenterlineNGUID,
            IsExcessiveOffset, IsRangeViolation, PSAP, ESB_Fire,
            MapillaryGroundTruthURL, RecommendedRemediationAction""",
-        ["-Z9", "-z15", "-B13", "--drop-densest-as-needed", "-r1"],
+        ["-Z9", "-z17", "-B13", "--drop-densest-as-needed", "-r1"],
         "ST_Geometry"
     ),
     "buildings": (
         "../cache/overture_buildings.parquet",
         "building_id, height, num_floors, building_class",
-        ["-Z13", "-z16", "--drop-densest-as-needed"],
+        ["-Z13", "-z17", "--drop-densest-as-needed"],
         "geom"
     ),
 }

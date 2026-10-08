@@ -434,7 +434,7 @@ def fetch_overture_places():
 
 def fetch_overture_buildings():
     output_parquet = os.path.join(CACHE_DIR, "overture_buildings.parquet")
-    print(f"\n[7/7] Fetching Overture Building Footprints for Fresno metro extent...")
+    print(f"\n[7/7] Fetching Overture Building Footprints for full Fresno County extent...")
     try:
         conn = duckdb.connect()
         conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
@@ -447,9 +447,8 @@ def fetch_overture_buildings():
                 class AS building_class,
                 geometry AS geom
             FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
-            WHERE bbox.xmin >= -119.95 AND bbox.xmax <= -119.60
-              AND bbox.ymin >= 36.60 AND bbox.ymax <= 36.95
-            LIMIT 150000
+            WHERE bbox.xmin >= -120.92 AND bbox.xmax <= -118.73
+              AND bbox.ymin >= 35.91 AND bbox.ymax <= 37.26
         ) TO '{output_parquet}' (FORMAT PARQUET);
         """
         conn.execute(query)
