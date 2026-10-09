@@ -37,23 +37,22 @@ LAYERS = {
         """SSAP_NGUID, ConflationStatus, Source, HNO, HNS, PRD, STN, STS, POD, Unit,
            Muni, CommunityName, PostCode, PSAP, ESB_Fire, LandmarkName,
            round(SpatialOffsetMeters, 2) AS SpatialOffsetMeters""",
-        # Every point is kept from z13 up; maxzoom 17 enables pin-sharp high-zoom inspection
-        ["-Z9", "-z17", "-B13", "--drop-densest-as-needed", "-r1"],
+        ["-Z9", "-z16", "--no-tile-size-limit"],
         "ST_Geometry"
     ),
     "rcl": (
         "mart_ng911_fresno_rcl.parquet",
         """RCL_NGUID, FullStreetName, FromAddr_L, ToAddr_L, FromAddr_R, ToAddr_R,
            Parity_L, Parity_R, RoadClass, SpeedLimit, OneWay""",
-        ["-Z8", "-z17", "--no-line-simplification", "--no-tiny-polygon-reduction",
-         "--drop-densest-as-needed"],
+        ["-Z8", "-z16", "--no-line-simplification", "--no-tiny-polygon-reduction",
+         "--no-tile-size-limit"],
         "ST_Geometry"
     ),
     "fishbones": (
         "mart_ng911_fresno_fishbones.parquet",
         """FishboneID, SSAP_NGUID, RCL_NGUID, HNO, STN,
            round(DistanceMeters, 1) AS DistanceMeters, IsExcessiveOffset, IsRangeViolation""",
-        ["-Z10", "-z17", "-B13", "--drop-densest-as-needed"],
+        ["-Z10", "-z16", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping"],
         "ST_Geometry"
     ),
     "esb": (
@@ -70,19 +69,19 @@ LAYERS = {
            OvertureAddressGERS_ID, OvertureBuildingGERS_ID, RoadCenterlineNGUID,
            IsExcessiveOffset, IsRangeViolation, PSAP, ESB_Fire,
            MapillaryGroundTruthURL, RecommendedRemediationAction""",
-        ["-Z9", "-z17", "-B13", "--drop-densest-as-needed", "-r1"],
+        ["-Z9", "-z16", "--no-tile-size-limit"],
         "ST_Geometry"
     ),
     "buildings": (
         "../cache/overture_buildings.parquet",
         "building_id, height, num_floors, building_class",
-        ["-Z13", "-z17", "--drop-densest-as-needed"],
+        ["-Z13", "-z16", "--no-tile-size-limit"],
         "geom"
     ),
     "parcels": (
         "../cache/county_parcels.parquet",
         "parcel_id, apn, agency_code, roll_year",
-        ["-Z12", "-z17", "--drop-densest-as-needed"],
+        ["-Z12", "-z16", "--no-tile-size-limit"],
         "geom"
     ),
 }
