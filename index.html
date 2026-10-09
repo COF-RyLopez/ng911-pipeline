@@ -315,13 +315,17 @@
       display: inline-block;
     }
 
-    /* Inspection / Remediation Drawer */
+    /* Inspection / Remediation Drawer (BaseAdresseNationale Inspired) */
     .drawer-panel {
       position: absolute;
       top: 86px;
       right: 16px;
-      width: 380px;
+      width: 410px;
       max-height: calc(100vh - 110px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
       background: var(--bg-panel);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -334,6 +338,14 @@
       gap: 14px;
       box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6);
       animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .drawer-panel::-webkit-scrollbar {
+      width: 5px;
+    }
+    .drawer-panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
     }
 
     @keyframes slideIn {
@@ -437,6 +449,383 @@
     .mapillary-btn:hover {
       background: linear-gradient(135deg, #047857, #059669);
       box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    /* BaseAdresseNationale (BAN) Inspired UI Components */
+    .ban-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .ban-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+    .ban-status-certified {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .ban-status-audit {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .ban-status-critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .ban-status-staged {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .ban-placement-pill {
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    /* Position Selector (BAN PositionEditor) */
+    .ban-position-selector-container {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ban-selector-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .ban-position-pills {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .ban-pos-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .ban-pos-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .ban-pos-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+    .ban-coords-readout {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+      font-family: var(--font-mono);
+      background: rgba(0, 0, 0, 0.25);
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .ban-copy-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .ban-copy-btn:hover {
+      background: #38bdf8;
+      color: #090d16;
+      border-color: #38bdf8;
+    }
+
+    /* Road Centerline Parity Card (BAN Voie Component) */
+    .ban-parity-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ban-parity-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 6px;
+    }
+    .ban-parity-badge-aligned {
+      font-size: 10px;
+      font-weight: 700;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .ban-parity-badge-inversion {
+      font-size: 10px;
+      font-weight: 700;
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .ban-parity-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .ban-parity-side {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .ban-parity-side.active-side {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+    }
+    .ban-parity-side-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+    .ban-parity-range {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #f8fafc;
+    }
+    .ban-parity-indicator {
+      font-size: 10px;
+      font-weight: 700;
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .ban-fix-parity-btn {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 5px 8px;
+      cursor: pointer;
+      margin-top: 6px;
+      width: 100%;
+      transition: all 0.2s;
+    }
+    .ban-fix-parity-btn:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    /* Cadastral Parcel Card (BAN Cadastre Layer) */
+    .ban-parcel-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ban-apn-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+    .ban-parcel-zoom-btn {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fde68a;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .ban-parcel-zoom-btn:hover {
+      background: rgba(245, 158, 11, 0.3);
+      color: #ffffff;
+      border-color: #f59e0b;
+    }
+
+    /* Certification Card in Sidebar (BAN CertificationInfos) */
+    .ban-certification-card {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ban-card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .ban-badge-green {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .ban-progress-bar-container {
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .ban-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #059669, #10b981, #34d399);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .ban-counters-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .ban-counter-box {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .ban-counter-value {
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .ban-counter-success .ban-counter-value {
+      color: #34d399;
+    }
+    .ban-counter-warning .ban-counter-value {
+      color: #fbbf24;
+    }
+    .ban-counter-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .ban-card-footnote {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Quick Street Search (BAN SearchBAN) */
+    .ban-street-search-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ban-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 30px 8px 10px;
+      font-size: 12px;
+      color: #ffffff;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .ban-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+    }
+    .ban-clear-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 4px;
+    }
+    .ban-clear-btn:hover {
+      color: #ffffff;
     }
 
     /* Floating Legend */
@@ -895,6 +1284,17 @@
       </div>
     </div>
 
+    <!-- BAN Quick Street Filter / Search -->
+    <div class="ban-street-search-box">
+      <div class="sidebar-section-title">
+        <span>Street Corridor Filter (Voie)</span>
+      </div>
+      <div style="position: relative;">
+        <input type="text" id="ban-street-search" placeholder="Search street (e.g. Fulton, Tulare)..." class="ban-input">
+        <button id="ban-street-clear" class="ban-clear-btn" style="display: none;" title="Clear filter">✕</button>
+      </div>
+    </div>
+
     <!-- Quick Violation Filters -->
     <div>
       <div class="sidebar-section-title">
@@ -907,11 +1307,28 @@
       </div>
     </div>
 
-    <!-- Metric Card -->
-    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px;">
-      <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Cal OES 98% Readiness Audit</div>
-      <div style="font-size: 18px; font-weight: 700; color: #10b981; margin: 4px 0;">98.4% Compliance</div>
-      <div style="font-size: 11px; color: var(--text-muted);">0.00% Critical NGUID or Coordinate Duplicates</div>
+    <!-- BAN-Inspired Certification & Audit Card -->
+    <div class="ban-certification-card">
+      <div class="ban-card-title">
+        <span>🛡️ Cal OES & NENA-STA-006.3</span>
+        <span class="ban-badge-green">98.4% COMPLIANT</span>
+      </div>
+      <div class="ban-progress-bar-container">
+        <div class="ban-progress-bar" style="width: 98.4%;"></div>
+      </div>
+      <div class="ban-counters-grid">
+        <div class="ban-counter-box ban-counter-success">
+          <div class="ban-counter-value">607,587</div>
+          <div class="ban-counter-label">Certified NENA-Ready</div>
+        </div>
+        <div class="ban-counter-box ban-counter-warning">
+          <div class="ban-counter-value">9,880</div>
+          <div class="ban-counter-label">Signalements / Audits</div>
+        </div>
+      </div>
+      <div class="ban-card-footnote">
+        Authoritative local government addresses validated against building footprints & road centerline networks. 100% Cal OES snapping compliant.
+      </div>
     </div>
   </aside>
 
@@ -919,10 +1336,34 @@
   <aside class="drawer-panel" id="drawer-panel">
     <div class="drawer-header">
       <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span id="ban-status-badge" class="ban-status-badge ban-status-certified">
+            <span class="ban-status-dot"></span> CERTIFIED NENA-STA-006.3
+          </span>
+          <span id="ban-placement-badge" class="ban-placement-pill">🏢 Structure</span>
+        </div>
         <div class="drawer-title" id="drawer-address">1234 Main St</div>
         <div class="drawer-subtitle" id="drawer-nguid">urn:emergency:uid:ssap:fresno:123</div>
       </div>
       <button class="drawer-close" id="drawer-close-btn" title="Close details">✕</button>
+    </div>
+
+    <!-- BAN Position Type Selector (PositionEditor) -->
+    <div class="ban-position-selector-container">
+      <div class="ban-selector-label">
+        <span>NENA Placement Type (Position)</span>
+        <span style="font-weight: 500; color: #38bdf8; font-size: 9px;">NENA-STA-006.3</span>
+      </div>
+      <div class="ban-position-pills" id="ban-position-pills">
+        <button class="ban-pos-btn active" data-pos="Structure" id="ban-pos-structure">🏢 Structure</button>
+        <button class="ban-pos-btn" data-pos="PropertyAccess" id="ban-pos-access">📍 Driveway Access</button>
+        <button class="ban-pos-btn" data-pos="Parcel" id="ban-pos-parcel">📜 Parcel Centroid</button>
+        <button class="ban-pos-btn" data-pos="Site" id="ban-pos-site">🚧 Site Gate</button>
+      </div>
+      <div class="ban-coords-readout">
+        <span id="ban-coords-text">Lat: 36.751240  •  Lon: -119.789120</span>
+        <button id="ban-copy-coords-btn" class="ban-copy-btn" title="Copy WGS84 coordinates">📋 Copy</button>
+      </div>
     </div>
 
     <div class="detail-grid">
@@ -933,6 +1374,57 @@
       <div class="detail-card">
         <div class="detail-label">Road Snapping Offset</div>
         <div class="detail-value" id="drawer-offset">14.2 m</div>
+      </div>
+
+      <!-- BAN Road Centerline Parity & Numbering Visualizer -->
+      <div class="detail-card detail-full ban-parity-card" id="ban-parity-card">
+        <div class="ban-parity-header">
+          <span style="font-weight: 700; color: #34d399; font-size: 11px; display: flex; align-items: center; gap: 6px;">
+            <span>🛣️</span> <span id="ban-parity-road-name">Road Centerline Corridor</span>
+          </span>
+          <span id="ban-parity-status-badge" class="ban-parity-badge-aligned">
+            ✅ Parity Aligned
+          </span>
+        </div>
+        <div class="ban-parity-grid">
+          <div class="ban-parity-side" id="ban-parity-left-box">
+            <div class="ban-parity-side-title">👈 Left Side (Odd)</div>
+            <div class="ban-parity-range" id="ban-range-left">1001 ➔ 1099</div>
+            <div class="ban-parity-indicator" id="ban-indicator-left" style="display: none;">📍 Current Address</div>
+          </div>
+          <div class="ban-parity-side" id="ban-parity-right-box">
+            <div class="ban-parity-side-title">👉 Right Side (Even)</div>
+            <div class="ban-parity-range" id="ban-range-right">1000 ➔ 1098</div>
+            <div class="ban-parity-indicator" id="ban-indicator-right">📍 1014 (Even)</div>
+          </div>
+        </div>
+        <div id="ban-parity-warning-box" style="display: none; font-size: 11px; color: #f87171; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 6px 8px;">
+          <span>⚠️ Parity Inversion Detected: Number is on the opposite side of centerline.</span>
+          <button id="ban-flip-parity-btn" class="ban-fix-parity-btn">🔄 Align Parity with Centerline</button>
+        </div>
+      </div>
+
+      <!-- BAN Cadastral Tax Parcel Card -->
+      <div class="detail-card detail-full ban-parcel-card" id="ban-parcel-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 11px; font-weight: 700; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
+            <span>📜</span> Cadastral Tax Parcel
+          </span>
+          <span id="ban-parcel-apn-badge" class="ban-apn-badge">APN: -</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; margin-top: 4px;">
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">Jurisdiction</span>
+            <span id="ban-parcel-agency" style="color: #e2e8f0; font-weight: 500;">Fresno County Assessor</span>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); font-size: 10px; display: block;">Assessment Roll</span>
+            <span id="ban-parcel-roll" style="color: #e2e8f0; font-weight: 500;">2025/2026 Secured Roll</span>
+          </div>
+        </div>
+        <button id="ban-zoom-parcel-btn" class="ban-parcel-zoom-btn" style="margin-top: 4px;">
+          🔍 Fit Map to Parcel Boundary
+        </button>
       </div>
 
       <!-- Interactive NENA & Cal OES Standards Guidance Card -->
@@ -1259,6 +1751,8 @@
 
     // Gamification & Remediation State
     let activeSelectedFeature = null;
+    let activeParcelFeature = null;
+    let activeParcelApn = null;
     let remediationMarker = null;
     let isRemediationActive = false;
     let sessionChangesets = JSON.parse(localStorage.getItem("ng911_changesets") || "[]");
@@ -1313,6 +1807,38 @@
             "line-opacity": ["interpolate", ["linear"], ["zoom"], 12.0, 0.45, 15.0, 0.85, 18.0, 1.0],
             "line-dasharray": [3, 2]
           }
+        });
+      }
+
+      // 3.0b BAN Cadastral Parcel Selection & Dynamic Highlight (PARCELLE_HIGHLIGHTED)
+      if (!map.getLayer("parcels_highlighted_fill")) {
+        map.addLayer({
+          id: "parcels_highlighted_fill",
+          type: "fill",
+          source: "fresno_parcels_src",
+          "source-layer": "parcels",
+          minzoom: 12.0,
+          paint: {
+            "fill-color": "#38bdf8",
+            "fill-opacity": 0.28
+          },
+          filter: ["==", "apn", ""]
+        });
+      }
+
+      if (!map.getLayer("parcels_highlighted_line")) {
+        map.addLayer({
+          id: "parcels_highlighted_line",
+          type: "line",
+          source: "fresno_parcels_src",
+          "source-layer": "parcels",
+          minzoom: 12.0,
+          paint: {
+            "line-color": "#38bdf8",
+            "line-width": ["interpolate", ["linear"], ["zoom"], 12.0, 2.0, 16.0, 3.5, 20.0, 5.0],
+            "line-opacity": 0.95
+          },
+          filter: ["==", "apn", ""]
         });
       }
 
@@ -1609,11 +2135,14 @@
     const OVERLAY_LAYERS = [
       "parcels_fill",
       "parcels_line",
+      "parcels_highlighted_fill",
+      "parcels_highlighted_line",
       "buildings_fill",
       "buildings_line",
       "rcl_lines",
       "fishbones_lines",
       "fishbones_labels",
+      "mapillary_driveways",
       "ssap_points",
       "ssap_labels"
     ];
@@ -1686,7 +2215,40 @@
       // Save active selection for interactive remediation studio
       activeSelectedFeature = f;
 
-      // Update Drawer
+      // Update BaseAdresseNationale Status Badge
+      const banStatusBadge = document.getElementById("ban-status-badge");
+      if (banStatusBadge) {
+        banStatusBadge.className = "ban-status-badge";
+        if (isCritical) {
+          banStatusBadge.classList.add("ban-status-critical");
+          banStatusBadge.innerHTML = '<span class="ban-status-dot"></span> CRITICAL REMEDIATION';
+        } else if (isInside) {
+          banStatusBadge.classList.add("ban-status-certified");
+          banStatusBadge.innerHTML = '<span class="ban-status-dot"></span> CERTIFIED NENA-STA-006.3';
+        } else {
+          banStatusBadge.classList.add("ban-status-audit");
+          banStatusBadge.innerHTML = '<span class="ban-status-dot"></span> SIGNALEMENT / AUDIT';
+        }
+      }
+
+      // Update BAN Placement Method Pill & Position Buttons
+      const placementBadge = document.getElementById("ban-placement-badge");
+      const activePos = p.PlacementMethod || (isInside ? "Structure" : "PropertyAccess");
+      if (placementBadge) {
+        placementBadge.textContent = activePos === "PropertyAccess" ? "📍 PropertyAccess" : (activePos === "Parcel" ? "📜 Parcel Centroid" : (activePos === "Site" ? "🚧 Site Gate" : "🏢 Structure"));
+      }
+      document.querySelectorAll(".ban-pos-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-pos") === activePos);
+      });
+
+      // Update Coordinates Readout
+      const coords = f.geometry.coordinates;
+      const coordsTextEl = document.getElementById("ban-coords-text");
+      if (coordsTextEl) {
+        coordsTextEl.textContent = `Lat: ${coords[1].toFixed(6)}  •  Lon: ${coords[0].toFixed(6)}`;
+      }
+
+      // Update Drawer Texts
       document.getElementById("drawer-address").textContent = address;
       document.getElementById("drawer-nguid").textContent = nguid;
       const statusEl = document.getElementById("drawer-footprint-status");
@@ -1695,6 +2257,111 @@
 
       document.getElementById("drawer-offset").textContent = offset;
       document.getElementById("drawer-action").textContent = actionText;
+
+      // BAN Road Centerline Parity Visualizer (Odd/Left vs Even/Right)
+      const hnoNum = parseInt(p.HNO, 10);
+      const isOdd = !isNaN(hnoNum) && (hnoNum % 2 !== 0);
+      const isEven = !isNaN(hnoNum) && (hnoNum % 2 === 0);
+      const streetName = p.STN || "Road Centerline";
+
+      const rclFeats = map.queryRenderedFeatures({ layers: ["rcl_lines"] });
+      const matchedRcl = rclFeats.find(r => r.properties && r.properties.RCL_NGUID === p.RoadCenterlineNGUID)
+        || rclFeats.find(r => r.properties && r.properties.FullStreetName && streetName && r.properties.FullStreetName.toUpperCase().includes(streetName.toUpperCase()));
+
+      let fromL = 1001, toL = 1099, fromR = 1000, toR = 1098;
+      let roadDisplay = streetName;
+      if (matchedRcl && matchedRcl.properties) {
+        const rp = matchedRcl.properties;
+        if (rp.FullStreetName) roadDisplay = rp.FullStreetName;
+        if (rp.FromAddr_L) fromL = rp.FromAddr_L;
+        if (rp.ToAddr_L) toL = rp.ToAddr_L;
+        if (rp.FromAddr_R) fromR = rp.FromAddr_R;
+        if (rp.ToAddr_R) toR = rp.ToAddr_R;
+      } else if (!isNaN(hnoNum)) {
+        const blockBase = Math.floor(hnoNum / 100) * 100;
+        fromL = blockBase + 1;
+        toL = blockBase + 99;
+        fromR = blockBase;
+        toR = blockBase + 98;
+      }
+
+      document.getElementById("ban-parity-road-name").textContent = roadDisplay;
+      document.getElementById("ban-range-left").textContent = `${fromL} ➔ ${toL}`;
+      document.getElementById("ban-range-right").textContent = `${fromR} ➔ ${toR}`;
+
+      const leftBox = document.getElementById("ban-parity-left-box");
+      const rightBox = document.getElementById("ban-parity-right-box");
+      const indLeft = document.getElementById("ban-indicator-left");
+      const indRight = document.getElementById("ban-indicator-right");
+      const parityBadge = document.getElementById("ban-parity-status-badge");
+      const parityWarning = document.getElementById("ban-parity-warning-box");
+
+      if (leftBox && rightBox && indLeft && indRight && parityBadge) {
+        leftBox.classList.remove("active-side");
+        rightBox.classList.remove("active-side");
+        indLeft.style.display = "none";
+        indRight.style.display = "none";
+
+        const isParityViolation = p.IsRangeViolation || (p.DiscrepancyType && p.DiscrepancyType.includes("PARITY"));
+
+        if (isOdd) {
+          leftBox.classList.add("active-side");
+          indLeft.style.display = "flex";
+          indLeft.textContent = `📍 ${hnoNum} (Odd)`;
+        } else if (isEven) {
+          rightBox.classList.add("active-side");
+          indRight.style.display = "flex";
+          indRight.textContent = `📍 ${hnoNum} (Even)`;
+        }
+
+        if (isParityViolation) {
+          parityBadge.className = "ban-parity-badge-inversion";
+          parityBadge.textContent = "⚠️ Parity Mismatch";
+          if (parityWarning) parityWarning.style.display = "block";
+        } else {
+          parityBadge.className = "ban-parity-badge-aligned";
+          parityBadge.textContent = "✅ Parity Aligned";
+          if (parityWarning) parityWarning.style.display = "none";
+        }
+      }
+
+      // BAN Cadastral Tax Parcel Card & Dynamic Parcel Map Highlighting
+      let matchedApn = p.CountyLocalID || "";
+      let parcelFeature = null;
+
+      const screenPoint = map.project(coords);
+      const parcelHits = map.queryRenderedFeatures(screenPoint, { layers: ["parcels_fill"] });
+      if (parcelHits && parcelHits.length > 0) {
+        parcelFeature = parcelHits[0];
+        if (parcelFeature.properties && parcelFeature.properties.apn) {
+          matchedApn = parcelFeature.properties.apn;
+        }
+      }
+
+      activeParcelFeature = parcelFeature;
+      activeParcelApn = matchedApn;
+
+      const apnBadge = document.getElementById("ban-parcel-apn-badge");
+      const agencyEl = document.getElementById("ban-parcel-agency");
+      const rollEl = document.getElementById("ban-parcel-roll");
+
+      if (matchedApn && matchedApn !== "-") {
+        if (apnBadge) apnBadge.textContent = `APN: ${matchedApn}`;
+        if (agencyEl) agencyEl.textContent = (parcelFeature && parcelFeature.properties.agency_code) ? parcelFeature.properties.agency_code : "Fresno County Assessor";
+        if (rollEl) rollEl.textContent = (parcelFeature && parcelFeature.properties.roll_year) ? `${parcelFeature.properties.roll_year} Secured Roll` : "2025/2026 Secured Roll";
+
+        // Highlight parcel polygon boundary on map (BAN PARCELLE_HIGHLIGHTED)
+        if (map.getLayer("parcels_highlighted_fill")) {
+          map.setFilter("parcels_highlighted_fill", ["==", "apn", matchedApn]);
+          map.setFilter("parcels_highlighted_line", ["==", "apn", matchedApn]);
+        }
+      } else {
+        if (apnBadge) apnBadge.textContent = "APN: Unassigned";
+        if (map.getLayer("parcels_highlighted_fill")) {
+          map.setFilter("parcels_highlighted_fill", ["==", "apn", ""]);
+          map.setFilter("parcels_highlighted_line", ["==", "apn", ""]);
+        }
+      }
 
       // Populate GERS & NG911 Cross-Reference Identifiers
       document.getElementById("drawer-gers-addr").textContent = p.OvertureAddressGERS_ID || "County Authoritative";
@@ -1706,7 +2373,6 @@
       document.getElementById("drawer-esb").textContent = p.ESB_Fire || "Fresno County Fire Protection";
 
       // Mapillary Ground-Truth Street View URL
-      const coords = f.geometry.coordinates;
       const mapillaryUrl = p.MapillaryGroundTruthURL || `https://www.mapillary.com/app/?lat=${coords[1]}&lng=${coords[0]}&z=17`;
       document.getElementById("drawer-mapillary-btn").href = mapillaryUrl;
 
@@ -1835,6 +2501,13 @@
     // 5. Drawer Close
     document.getElementById("drawer-close-btn").addEventListener("click", () => {
       document.getElementById("drawer-panel").style.display = "none";
+      if (map.getLayer("parcels_highlighted_fill")) {
+        map.setFilter("parcels_highlighted_fill", ["==", "apn", ""]);
+        map.setFilter("parcels_highlighted_line", ["==", "apn", ""]);
+      }
+      activeSelectedFeature = null;
+      activeParcelFeature = null;
+      activeParcelApn = null;
     });
 
     // 6. Basemap Selector (Strict bottom layer guarantee for all basemaps)
@@ -2403,6 +3076,112 @@
         updateWalletUI();
         showToast("Structure Centroid Verified!", "Snapped address onto building footprint per NENA-INF-014 §4.", 25);
       });
+    }
+
+    // BaseAdresseNationale (BAN) Action Event Listeners
+    // 1. Copy Coordinates to Clipboard
+    const btnCopyCoords = document.getElementById("ban-copy-coords-btn");
+    if (btnCopyCoords) {
+      btnCopyCoords.addEventListener("click", () => {
+        if (!activeSelectedFeature) return;
+        const c = activeSelectedFeature.geometry.coordinates;
+        const text = `${c[1].toFixed(6)}, ${c[0].toFixed(6)}`;
+        navigator.clipboard.writeText(text).then(() => {
+          showToast("Coordinates Copied!", `${text} copied to clipboard.`, 0);
+        });
+      });
+    }
+
+    // 2. Position Type Segmented Control (BAN PositionEditor)
+    document.querySelectorAll(".ban-pos-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const pos = btn.getAttribute("data-pos");
+        document.querySelectorAll(".ban-pos-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const pBadge = document.getElementById("ban-placement-badge");
+        if (pBadge) {
+          pBadge.textContent = pos === "PropertyAccess" ? "📍 PropertyAccess" : (pos === "Parcel" ? "📜 Parcel Centroid" : (pos === "Site" ? "🚧 Site Gate" : "🏢 Structure"));
+        }
+        if (pos === "PropertyAccess") {
+          showToast("Driveway Access Mode", "Corroborate driveway access curb-cut using Mapillary detections or imagery.", 10);
+        } else if (pos === "Parcel") {
+          showToast("Parcel Centroid Mode", "Address placement associated with cadastral tax parcel centroid.", 10);
+        } else if (pos === "Structure") {
+          showToast("Structure Centroid Mode", "Address placement associated with physical building rooftop centroid.", 10);
+        } else if (pos === "Site") {
+          showToast("Site Access Gate Mode", "Address placement set to campus or property ingress gate.", 10);
+        }
+      });
+    });
+
+    // 3. Zoom / Fit Map to Parcel Boundary (BAN Cadastre)
+    const btnZoomParcel = document.getElementById("ban-zoom-parcel-btn");
+    if (btnZoomParcel) {
+      btnZoomParcel.addEventListener("click", () => {
+        if (activeParcelFeature && activeParcelFeature.geometry && window.turf) {
+          try {
+            const bbox = turf.bbox(activeParcelFeature);
+            map.fitBounds(bbox, { padding: 90, maxZoom: 18.5, duration: 900 });
+            return;
+          } catch (_) {}
+        }
+        if (activeSelectedFeature) {
+          map.flyTo({ center: activeSelectedFeature.geometry.coordinates, zoom: 17.5, duration: 900 });
+        }
+      });
+    }
+
+    // 4. Road Centerline Parity Alignment Action
+    const btnFlipParity = document.getElementById("ban-flip-parity-btn");
+    if (btnFlipParity) {
+      btnFlipParity.addEventListener("click", () => {
+        if (!activeSelectedFeature) return;
+        userWalletTokens += 20;
+        localStorage.setItem("ng911_wallet_tokens", userWalletTokens.toString());
+        updateWalletUI();
+        const parityBadge = document.getElementById("ban-parity-status-badge");
+        if (parityBadge) {
+          parityBadge.className = "ban-parity-badge-aligned";
+          parityBadge.textContent = "✅ Parity Aligned (Corrected)";
+        }
+        const parityWarning = document.getElementById("ban-parity-warning-box");
+        if (parityWarning) parityWarning.style.display = "none";
+        showToast("Parity Corrected!", "Address point parity aligned with road centerline network (+20 FTs).", 20);
+      });
+    }
+
+    // 5. BAN Quick Street Filter / Search (SearchBAN)
+    const streetSearchInput = document.getElementById("ban-street-search");
+    const streetClearBtn = document.getElementById("ban-street-clear");
+    if (streetSearchInput) {
+      streetSearchInput.addEventListener("input", (e) => {
+        const query = e.target.value.trim().toUpperCase();
+        if (streetClearBtn) {
+          streetClearBtn.style.display = query ? "block" : "none";
+        }
+        if (!query) {
+          if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+          if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
+          if (map.getLayer("rcl_lines")) map.setFilter("rcl_lines", null);
+          return;
+        }
+
+        const addrFilter = ["in", query, ["upcase", ["to-string", ["coalesce", ["get", "STN"], ""]]]];
+        const rclFilter = ["in", query, ["upcase", ["to-string", ["coalesce", ["get", "FullStreetName"], ""]]]];
+        if (map.getLayer("ssap_points")) map.setFilter("ssap_points", addrFilter);
+        if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", addrFilter);
+        if (map.getLayer("rcl_lines")) map.setFilter("rcl_lines", rclFilter);
+      });
+
+      if (streetClearBtn) {
+        streetClearBtn.addEventListener("click", () => {
+          streetSearchInput.value = "";
+          streetClearBtn.style.display = "none";
+          if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+          if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
+          if (map.getLayer("rcl_lines")) map.setFilter("rcl_lines", null);
+        });
+      }
     }
 
     // Initial wallet UI sync
