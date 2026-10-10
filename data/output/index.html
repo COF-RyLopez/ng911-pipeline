@@ -460,8 +460,13 @@
       position: absolute;
       bottom: 24px;
       right: 24px;
-      width: 460px;
-      height: 330px;
+      width: 480px;
+      height: 350px;
+      min-width: 320px;
+      min-height: 240px;
+      max-width: 96vw;
+      max-height: 92vh;
+      resize: both;
       background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -472,24 +477,41 @@
       flex-direction: column;
       z-index: 1000;
       overflow: hidden;
-      transition: width 0.25s ease, height 0.25s ease, transform 0.25s ease;
+      transition: width 0.25s ease, height 0.25s ease;
+    }
+
+    .mapillary-viewer-window.expanded {
+      width: 760px;
+      height: 520px;
+    }
+
+    .mapillary-viewer-window.fullscreen {
+      top: 65px !important;
+      left: 20px !important;
+      right: 20px !important;
+      bottom: 20px !important;
+      width: auto !important;
+      height: auto !important;
+      border-radius: 12px !important;
     }
 
     .mapillary-viewer-window.split-view {
-      top: 60px;
-      right: 0;
-      bottom: 0;
-      width: 48vw;
-      height: calc(100vh - 60px);
-      border-radius: 0;
+      top: 60px !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      left: auto !important;
+      width: 48vw !important;
+      height: calc(100vh - 60px) !important;
+      border-radius: 0 !important;
       border-right: none;
       border-top: none;
       border-bottom: none;
     }
 
     .mapillary-viewer-window.minimized {
-      height: 44px;
-      width: 290px;
+      height: 44px !important;
+      width: 290px !important;
+      resize: none !important;
     }
 
     .mapillary-viewer-window.minimized .mly-viewport-wrapper,
@@ -505,6 +527,18 @@
       background: rgba(30, 41, 59, 0.85);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       user-select: none;
+      cursor: move;
+    }
+
+    .mly-resize-handle {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+      pointer-events: none;
+      line-height: 1;
+      z-index: 20;
     }
 
     .mly-header-title {
@@ -1521,13 +1555,18 @@
               <span style="color: #86efac;">Street Tracks</span>
             </label>
           </div>
-          <div style="margin-top: 4px; width: 100%; display: flex; justify-content: space-between; align-items: center;">
-            <button id="btn-mly-open-viewer-floating" style="background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.35); color: #38bdf8; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 600; cursor: pointer;">
-              📷 Street Viewer
+          <div style="margin-top: 6px; width: 100%; display: flex; flex-direction: column; gap: 4px;">
+            <button id="btn-mly-jump-downtown" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(2, 132, 199, 0.3)); border: 1px solid #06b6d4; color: #67e8f9; padding: 5px 8px; border-radius: 5px; font-size: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              🎯 Focus Detections Corridor (Downtown / Blackstone)
             </button>
-            <button id="btn-mly-quick-token" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline;">
-              ⚙️ Token Settings
-            </button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+              <button id="btn-mly-open-viewer-floating" style="background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.35); color: #38bdf8; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 600; cursor: pointer;">
+                📷 Street Viewer
+              </button>
+              <button id="btn-mly-quick-token" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline;">
+                ⚙️ Token Settings
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1595,6 +1634,65 @@
         <div class="drawer-subtitle" id="drawer-nguid">urn:emergency:uid:ssap:fresno:123</div>
       </div>
       <button class="drawer-close" id="drawer-close-btn" title="Close details">✕</button>
+    </div>
+
+    <!-- Quick Action Bar: Edit Address & Changeset Access -->
+    <div style="display: flex; gap: 8px; margin: 10px 0 12px 0;">
+      <button id="drawer-toggle-edit-btn" style="flex: 1; background: linear-gradient(135deg, #0284c7, #06b6d4); color: white; border: none; padding: 7px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        ✏️ Edit Address / Placement
+      </button>
+      <button id="drawer-open-changesets-btn" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #6ee7b7; padding: 7px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;">
+        💾 Changesets (<span id="drawer-changeset-count-badge">0</span>)
+      </button>
+    </div>
+
+    <!-- Inline Address Remediation & Attribute Editor Form -->
+    <div id="drawer-edit-form-panel" style="display: none; background: rgba(30, 41, 59, 0.95); border: 1px solid #38bdf8; border-radius: 8px; padding: 12px; margin-bottom: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
+        <strong style="color: #67e8f9; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+          <span>🛠️</span> Edit Address & Placement
+        </strong>
+        <span style="font-size: 10px; color: #94a3b8;">NENA-STA-006.3</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 80px 1fr 70px; gap: 6px; margin-bottom: 8px;">
+        <div>
+          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">HNO #</label>
+          <input type="text" id="edit-input-hno" style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-subtle); color: #f8fafc; padding: 5px 8px; border-radius: 5px; font-size: 11px;">
+        </div>
+        <div>
+          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Street Name (STN)</label>
+          <input type="text" id="edit-input-stn" style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-subtle); color: #f8fafc; padding: 5px 8px; border-radius: 5px; font-size: 11px;">
+        </div>
+        <div>
+          <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Type (STS)</label>
+          <input type="text" id="edit-input-sts" placeholder="AVE" style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-subtle); color: #f8fafc; padding: 5px 8px; border-radius: 5px; font-size: 11px;">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 8px;">
+        <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Placement Method</label>
+        <select id="edit-select-placement" style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-subtle); color: #f8fafc; padding: 5px 8px; border-radius: 5px; font-size: 11px;">
+          <option value="Structure">Structure (Rooftop / Centroid)</option>
+          <option value="PropertyAccess">PropertyAccess (Driveway Entrance)</option>
+          <option value="Parcel">Parcel (Cadastral Centroid)</option>
+          <option value="Site">Site (Campus / Access Gate)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px;">Auditor / Remediator Notes</label>
+        <input type="text" id="edit-input-notes" placeholder="e.g. Corroborated with Mapillary driveway detection..." style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-subtle); color: #f8fafc; padding: 5px 8px; border-radius: 5px; font-size: 11px;">
+      </div>
+
+      <div style="display: flex; gap: 6px;">
+        <button id="edit-btn-drag-pin" style="flex: 1; background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fde68a; padding: 6px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+          📍 Drag Pin on Map
+        </button>
+        <button id="edit-btn-save" style="flex: 1.2; background: linear-gradient(135deg, #059669, #10b981); border: none; color: white; padding: 6px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+          💾 Save Changes (+50 FTs)
+        </button>
+      </div>
     </div>
 
     <!-- BAN Position Type Selector (PositionEditor) -->
@@ -1903,6 +2001,10 @@
           <strong style="color: #34d399;">NENA-STA-006.3 & Cal OES 98%</strong>
         </div>
       </div>
+      <div id="modal-changeset-items-container" style="max-height: 140px; overflow-y: auto; margin-bottom: 14px; display: none; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px;">
+        <div style="font-size: 11px; font-weight: 600; color: #94a3b8; padding: 4px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">Staged Edits in Current Session:</div>
+        <div id="modal-changeset-list" style="display: flex; flex-direction: column; gap: 4px; padding-top: 4px;"></div>
+      </div>
       <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
         <button id="download-geojson-btn" class="action-btn-primary" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: white; padding: 10px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
           📄 Download GeoJSON Patch (RFC 7946)
@@ -1925,13 +2027,14 @@
 
   <!-- Mapillary In-App Street-Level 360° Viewer Window -->
   <div id="mapillary-viewer-window" class="mapillary-viewer-window" style="display: none;">
-    <div class="mly-window-header">
+    <div class="mly-window-header" id="mly-window-header">
       <div class="mly-header-title">
         <span class="mly-live-dot"></span>
         <strong style="color: #f8fafc; font-size: 12px;">Mapillary Street View</strong>
         <span class="mly-badge" id="mly-header-status">360° Street Level</span>
       </div>
       <div class="mly-header-actions">
+        <button class="mly-icon-btn" id="mly-btn-expand" title="Expand / Maximize Window">⛶</button>
         <button class="mly-icon-btn" id="mly-btn-split" title="Toggle Split View / Floating PIP">◫</button>
         <button class="mly-icon-btn" id="mly-btn-minimize" title="Minimize / Restore">_</button>
         <a href="#" target="_blank" class="mly-icon-btn" id="mly-btn-popout" title="Open on Mapillary.com ↗">↗</a>
@@ -1957,6 +2060,7 @@
         ✨ Corroborate (+25 FTs)
       </button>
     </div>
+    <div class="mly-resize-handle">⋰</div>
   </div>
 
   <!-- Mapillary Configuration Modal -->
@@ -2044,9 +2148,9 @@
       basemapSelectEl.value = initialBasemap;
     }
 
-    const initialLat = parseFloat(urlParams.get("lat")) || 36.675633;
-    const initialLng = parseFloat(urlParams.get("lng")) || -119.873832;
-    const initialZoom = parseFloat(urlParams.get("zoom")) || 14.5;
+    const initialLat = parseFloat(urlParams.get("lat")) || 36.7468;
+    const initialLng = parseFloat(urlParams.get("lng")) || -119.7871;
+    const initialZoom = parseFloat(urlParams.get("zoom")) || 15.5;
 
     // 2. Initialize MapLibre GL Map
     const map = new maplibregl.Map({
@@ -2084,9 +2188,20 @@
     // Mapillary Constants & Helper
     const DEFAULT_MAPILLARY_TOKEN = "MLY|26275324248758064|7819d63bee8179a083cdd76e20557967";
 
+    function isValidMapillaryToken(token) {
+      return typeof token === "string" && token.startsWith("MLY|") && token.length >= 25;
+    }
+
     function getMapillaryToken() {
       const saved = localStorage.getItem("mapillary_token");
-      return (saved && saved.trim()) ? saved.trim() : DEFAULT_MAPILLARY_TOKEN;
+      if (saved && isValidMapillaryToken(saved.trim())) {
+        return saved.trim();
+      }
+      if (saved) {
+        console.warn("Invalid Mapillary token detected in localStorage, resetting to default:", saved);
+        localStorage.removeItem("mapillary_token");
+      }
+      return DEFAULT_MAPILLARY_TOKEN;
     }
 
     // Mapillary AI Detections & Street-Level Coverage Layers
@@ -2132,13 +2247,13 @@
             type: "circle",
             source: "mapillary_coverage_src",
             "source-layer": "image",
-            minzoom: 14.5,
+            minzoom: 13.0,
             layout: {
               visibility: (getToggleState("toggle-mapillary", true) && getToggleState("toggle-mly-coverage", true)) ? "visible" : "none"
             },
             paint: {
               "circle-color": "#05cb63",
-              "circle-radius": ["interpolate", ["linear"], ["zoom"], 14.5, 2.0, 17, 4.5, 20, 7.0],
+              "circle-radius": ["interpolate", ["linear"], ["zoom"], 13.0, 1.8, 16, 4.0, 19, 7.0],
               "circle-stroke-width": 1,
               "circle-stroke-color": "#ffffff",
               "circle-opacity": 0.85
@@ -2153,7 +2268,7 @@
             tiles: [
               `https://tiles.mapillary.com/maps/vtp/mly_map_feature_point/2/{z}/{x}/{y}?access_token=${encodeURIComponent(token)}`
             ],
-            minzoom: 14,
+            minzoom: 11,
             maxzoom: 14
           });
         }
@@ -2164,6 +2279,7 @@
             type: "circle",
             source: "mapillary_features_src",
             "source-layer": "point",
+            minzoom: 11,
             filter: [
               "in",
               ["get", "value"],
@@ -2173,7 +2289,8 @@
                 "object--driveway",
                 "curb_cut",
                 "driveway",
-                "service_entrance"
+                "service_entrance",
+                "access--driveway"
               ]]
             ],
             layout: {
@@ -2181,7 +2298,7 @@
             },
             paint: {
               "circle-color": "#06b6d4",
-              "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.0, 17, 6.0, 20, 9.0],
+              "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 14, 4.5, 17, 7.5, 20, 10.5],
               "circle-stroke-width": 1.5,
               "circle-stroke-color": "#ffffff",
               "circle-opacity": 0.9
@@ -2195,6 +2312,7 @@
             type: "circle",
             source: "mapillary_features_src",
             "source-layer": "point",
+            minzoom: 11,
             filter: [
               "in",
               ["get", "value"],
@@ -2204,7 +2322,13 @@
                 "object--support--utility-pole",
                 "object--manhole",
                 "object--catch-basin",
+                "object--junction-box",
                 "object--traffic-light--general-upright-front",
+                "object--traffic-light--general-upright-side",
+                "object--traffic-cone",
+                "marking--discrete--stop-line",
+                "marking--discrete--crosswalk-zebra",
+                "construction--flat--crosswalk-plain",
                 "fire_hydrant",
                 "street_light"
               ]]
@@ -2214,7 +2338,7 @@
             },
             paint: {
               "circle-color": "#10b981",
-              "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 2.5, 17, 5.0, 20, 7.5],
+              "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.0, 14, 4.0, 17, 6.5, 20, 9.0],
               "circle-stroke-width": 1.5,
               "circle-stroke-color": "#ffffff",
               "circle-opacity": 0.9
@@ -2229,7 +2353,7 @@
             tiles: [
               `https://tiles.mapillary.com/maps/vtp/mly_map_feature_traffic_sign/2/{z}/{x}/{y}?access_token=${encodeURIComponent(token)}`
             ],
-            minzoom: 14,
+            minzoom: 11,
             maxzoom: 14
           });
         }
@@ -2240,12 +2364,13 @@
             type: "circle",
             source: "mapillary_signs_src",
             "source-layer": "traffic_sign",
+            minzoom: 11,
             layout: {
               visibility: (getToggleState("toggle-mapillary", true) && getToggleState("toggle-mly-signs", true)) ? "visible" : "none"
             },
             paint: {
               "circle-color": "#f59e0b",
-              "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.0, 17, 6.0, 20, 9.0],
+              "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 14, 4.5, 17, 7.5, 20, 10.5],
               "circle-stroke-width": 1.5,
               "circle-stroke-color": "#ffffff",
               "circle-opacity": 0.9
@@ -2615,6 +2740,7 @@
 
       // Ensure geometry overlays are strictly placed on top of any basemap layers
       ensureGeometryOnTop();
+      updateEditedFeaturesMapLayer();
     }
 
     const OVERLAY_LAYERS = [
@@ -2633,8 +2759,84 @@
       "mapillary_civic",
       "mapillary_signs",
       "ssap_points",
-      "ssap_labels"
+      "ssap_labels",
+      "edited_points_glow",
+      "edited_points_circle",
+      "edited_points_labels"
     ];
+
+    function updateEditedFeaturesMapLayer() {
+      if (!map) return;
+      const features = sessionChangesets.map(cs => {
+        if (cs.type === "Feature" && cs.geometry) return cs;
+        const coords = cs.new_coordinates || (cs.geometry && cs.geometry.coordinates) || [0,0];
+        return {
+          type: "Feature",
+          id: cs.ssap_nguid || cs.id || `edit_${Date.now()}`,
+          geometry: { type: "Point", coordinates: coords },
+          properties: cs.properties || cs
+        };
+      });
+
+      const geojson = {
+        type: "FeatureCollection",
+        features: features
+      };
+
+      const src = map.getSource("edited_features_src");
+      if (src) {
+        src.setData(geojson);
+      } else if (map.isStyleLoaded()) {
+        try {
+          map.addSource("edited_features_src", {
+            type: "geojson",
+            data: geojson
+          });
+
+          map.addLayer({
+            id: "edited_points_glow",
+            type: "circle",
+            source: "edited_features_src",
+            paint: {
+              "circle-color": "#06b6d4",
+              "circle-radius": 14,
+              "circle-opacity": 0.45,
+              "circle-blur": 0.4
+            }
+          });
+
+          map.addLayer({
+            id: "edited_points_circle",
+            type: "circle",
+            source: "edited_features_src",
+            paint: {
+              "circle-color": "#22d3ee",
+              "circle-radius": 7,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff"
+            }
+          });
+
+          map.addLayer({
+            id: "edited_points_labels",
+            type: "symbol",
+            source: "edited_features_src",
+            layout: {
+              "text-field": ["concat", "✏️ ", ["coalesce", ["get", "StandardizedAddress"], ["get", "OriginalAddress"], "Edited Point"]],
+              "text-size": 11,
+              "text-offset": [0, 1.4],
+              "text-anchor": "top",
+              "text-font": ["Noto Sans Bold", "Open Sans Bold"]
+            },
+            paint: {
+              "text-color": "#67e8f9",
+              "text-halo-color": "#0f172a",
+              "text-halo-width": 2
+            }
+          });
+        } catch (_) {}
+      }
+    }
 
     function ensureGeometryOnTop() {
       // 1. If any basemap raster layer is present, ensure it sits at the absolute bottom
@@ -2649,7 +2851,7 @@
       });
 
       // 2. Elevate all custom NG911 geometry overlays to the top of the stack
-      // Hierarchy: Footprints -> Outlines -> RCL Lines -> Fishbones -> Labels -> Address Points -> Numbers
+      // Hierarchy: Footprints -> Outlines -> RCL Lines -> Fishbones -> Labels -> Address Points -> Numbers -> Edited Points
       OVERLAY_LAYERS.forEach(id => {
         if (map.getLayer(id)) {
           try {
@@ -2660,6 +2862,9 @@
     }
 
     // Attach layers when initial or new style finishes loading
+    if (map.isStyleLoaded()) {
+      addCustomLayers();
+    }
     map.on("load", () => {
       addCustomLayers();
     });
@@ -2746,6 +2951,22 @@
 
       document.getElementById("drawer-offset").textContent = offset;
       document.getElementById("drawer-action").textContent = actionText;
+
+      // Pre-fill Inline Address & Placement Editor
+      const editHno = document.getElementById("edit-input-hno");
+      const editStn = document.getElementById("edit-input-stn");
+      const editSts = document.getElementById("edit-input-sts");
+      const editPlacement = document.getElementById("edit-select-placement");
+      const editNotes = document.getElementById("edit-input-notes");
+      if (editHno) editHno.value = p.HNO || "";
+      if (editStn) editStn.value = p.STN || "";
+      if (editSts) editSts.value = p.STS || "";
+      if (editPlacement) editPlacement.value = activePos;
+      if (editNotes) editNotes.value = "";
+      if (editDraggableMarker) {
+        editDraggableMarker.remove();
+        editDraggableMarker = null;
+      }
 
       // BAN Road Centerline Parity Visualizer (Odd/Left vs Even/Right)
       const hnoNum = parseInt(p.HNO, 10);
@@ -3277,13 +3498,49 @@
       if (modalRankEl) modalRankEl.textContent = rank;
 
       const csCount = sessionChangesets.length;
-      const csTokens = sessionChangesets.reduce((acc, c) => acc + (c.tokens_awarded || 0), 0);
+      const csTokens = sessionChangesets.reduce((acc, c) => {
+        const p = c.properties || c;
+        return acc + (p.tokens_awarded || p.FixTokensAwarded || 50);
+      }, 0);
       const csCountEl = document.getElementById("changeset-count");
       const modalCsCountEl = document.getElementById("modal-changeset-count");
       const modalCsTokensEl = document.getElementById("modal-changeset-tokens");
+      const drawerCsBadge = document.getElementById("drawer-changeset-count-badge");
       if (csCountEl) csCountEl.textContent = csCount;
       if (modalCsCountEl) modalCsCountEl.textContent = csCount;
       if (modalCsTokensEl) modalCsTokensEl.textContent = `${csTokens} FTs`;
+      if (drawerCsBadge) drawerCsBadge.textContent = csCount;
+
+      // Populate staged edits list in Changeset Modal
+      const itemsContainer = document.getElementById("modal-changeset-items-container");
+      const listEl = document.getElementById("modal-changeset-list");
+      if (itemsContainer && listEl) {
+        if (csCount === 0) {
+          itemsContainer.style.display = "none";
+          listEl.innerHTML = "";
+        } else {
+          itemsContainer.style.display = "block";
+          listEl.innerHTML = sessionChangesets.map((cs, i) => {
+            const p = cs.properties || cs;
+            const addr = p.StandardizedAddress || p.OriginalAddress || `${p.HNO || ''} ${p.STN || ''}`.trim() || `Edit #${i+1}`;
+            const type = p.RemediationType || p.remediation_action || "USER_EDIT";
+            const pos = p.PlacementMethod || "Structure";
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 5px; padding: 4px 8px; font-size: 11px;">
+                <div>
+                  <span style="color: #67e8f9; font-weight: 600;">${addr}</span>
+                  <span style="color: #94a3b8; font-size: 10px; margin-left: 6px;">[${pos}]</span>
+                </div>
+                <span style="color: #34d399; font-size: 10px; font-weight: 600;">${type}</span>
+              </div>
+            `;
+          }).join("");
+        }
+      }
+
+      if (typeof updateEditedFeaturesMapLayer === "function") {
+        updateEditedFeaturesMapLayer();
+      }
     }
 
     function showToast(title, msg, tokensEarned) {
@@ -3574,12 +3831,16 @@
       const fc = {
         type: "FeatureCollection",
         name: "Fresno_County_NG911_Remediation_Changeset",
-        features: sessionChangesets.map(cs => ({
-          type: "Feature",
-          id: cs.ssap_nguid,
-          geometry: { type: "Point", coordinates: cs.new_coordinates },
-          properties: cs
-        }))
+        features: sessionChangesets.map(cs => {
+          if (cs.type === "Feature" && cs.geometry) return cs;
+          const coords = cs.new_coordinates || (cs.geometry && cs.geometry.coordinates) || [0, 0];
+          return {
+            type: "Feature",
+            id: cs.ssap_nguid || cs.id || `edit_${Date.now()}`,
+            geometry: { type: "Point", coordinates: coords },
+            properties: cs.properties || cs
+          };
+        })
       };
       downloadBlob(JSON.stringify(fc, null, 2), "fresno_remediation_changeset.geojson", "application/geo+json");
     }
@@ -3588,20 +3849,26 @@
       const payload = {
         applyEdits: [{
           id: 0,
-          updates: sessionChangesets.map(cs => ({
-            geometry: { x: cs.new_coordinates[0], y: cs.new_coordinates[1], spatialReference: { wkid: 4326 } },
-            attributes: {
-              CountyLocalID: cs.county_local_id,
-              APN: cs.apn,
-              SSAP_NGUID: cs.ssap_nguid,
-              GERS_AddressID: cs.gers_address_id,
-              GERS_BuildingID: cs.gers_building_id,
-              RemediationAction: cs.remediation_action,
-              RemediationStatus: "REMEDIATED_VALID",
-              FixTokensAwarded: cs.tokens_awarded,
-              DateUpdated: cs.timestamp
-            }
-          }))
+          updates: sessionChangesets.map(cs => {
+            const p = cs.properties || cs;
+            const coords = (cs.geometry && cs.geometry.coordinates) ? cs.geometry.coordinates : (cs.new_coordinates || [0, 0]);
+            return {
+              geometry: { x: coords[0], y: coords[1], spatialReference: { wkid: 4326 } },
+              attributes: {
+                CountyLocalID: p.CountyLocalID || p.county_local_id || "",
+                APN: p.APN || p.apn || "",
+                SSAP_NGUID: p.SSAP_NGUID || p.ssap_nguid || p.OriginalNGUID || "",
+                HNO: p.HNO || "",
+                STN: p.STN || "",
+                STS: p.STS || "",
+                PlacementMethod: p.PlacementMethod || "Structure",
+                RemediationAction: p.RemediationType || p.remediation_action || "USER_EDIT",
+                RemediationStatus: "REMEDIATED_VALID",
+                FixTokensAwarded: p.tokens_awarded || 50,
+                DateUpdated: p.Timestamp || p.timestamp || new Date().toISOString()
+              }
+            };
+          })
         }]
       };
       downloadBlob(JSON.stringify(payload, null, 2), "esri_arcgis_apply_edits.json", "application/json");
@@ -3778,6 +4045,25 @@
           if (popout) popout.href = `https://www.mapillary.com/app/?pKey=${e.image.id}`;
         });
 
+        async function syncViewerOrientation() {
+          if (!mlyViewer || !mlyCameraMarker) return;
+          try {
+            const pov = await mlyViewer.getPointOfView();
+            if (pov && typeof pov.bearing === "number") {
+              mlyCameraMarker.setRotation(pov.bearing);
+              const seqInfo = document.getElementById("mly-seq-info");
+              if (seqInfo && seqInfo.textContent.includes("·")) {
+                const parts = seqInfo.textContent.split("·");
+                seqInfo.textContent = `${parts[0].trim()} · ${pov.bearing.toFixed(0)}°`;
+              }
+            }
+          } catch (_) {}
+        }
+
+        mlyViewer.on("pov", async () => {
+          await syncViewerOrientation();
+        });
+
         mlyViewer.on("bearing", (e) => {
           if (typeof e.bearing === "number" && mlyCameraMarker) {
             mlyCameraMarker.setRotation(e.bearing);
@@ -3789,6 +4075,24 @@
             updateCameraCone([e.position.lng, e.position.lat]);
           }
         });
+
+        let orientationThrottle = false;
+        container.addEventListener("pointermove", () => {
+          if (orientationThrottle) return;
+          orientationThrottle = true;
+          requestAnimationFrame(async () => {
+            orientationThrottle = false;
+            await syncViewerOrientation();
+          });
+        });
+        container.addEventListener("wheel", () => {
+          if (orientationThrottle) return;
+          orientationThrottle = true;
+          requestAnimationFrame(async () => {
+            orientationThrottle = false;
+            await syncViewerOrientation();
+          });
+        }, { passive: true });
 
         return mlyViewer;
       } catch (err) {
@@ -3926,6 +4230,277 @@
         mlyBtnCorroborate.style.borderColor = "#10b981";
         mlyBtnCorroborate.style.color = "#34d399";
         showToast("Ground-Truth Corroborated!", `Mapillary street photo #${currentMlyImageId ? currentMlyImageId.slice(-6) : ''} validated site attributes.`, 25);
+      });
+    }
+
+    // Expand / Maximize Viewer Window
+    const mlyBtnExpand = document.getElementById("mly-btn-expand");
+    if (mlyBtnExpand) {
+      mlyBtnExpand.addEventListener("click", () => {
+        const win = document.getElementById("mapillary-viewer-window");
+        if (!win) return;
+        if (!win.classList.contains("expanded") && !win.classList.contains("fullscreen")) {
+          win.classList.add("expanded");
+          win.classList.remove("fullscreen", "split-view");
+          mlyBtnExpand.textContent = "🗖";
+          mlyBtnExpand.title = "Maximize Fullscreen";
+        } else if (win.classList.contains("expanded")) {
+          win.classList.remove("expanded");
+          win.classList.add("fullscreen");
+          win.classList.remove("split-view");
+          mlyBtnExpand.textContent = "❐";
+          mlyBtnExpand.title = "Restore Default Size";
+        } else {
+          win.classList.remove("fullscreen", "expanded");
+          mlyBtnExpand.textContent = "⛶";
+          mlyBtnExpand.title = "Expand Window";
+        }
+        setTimeout(() => {
+          if (mlyViewer) mlyViewer.resize();
+        }, 280);
+      });
+    }
+
+    // Draggable Viewer Window Header
+    const mlyHeader = document.querySelector(".mly-window-header");
+    const mlyWin = document.getElementById("mapillary-viewer-window");
+    if (mlyHeader && mlyWin) {
+      let isDragging = false, startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+      mlyHeader.addEventListener("mousedown", (e) => {
+        if (e.target.closest("button") || e.target.closest("a")) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = mlyWin.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        mlyWin.style.bottom = "auto";
+        mlyWin.style.right = "auto";
+        mlyWin.style.left = `${initialLeft}px`;
+        mlyWin.style.top = `${initialTop}px`;
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        mlyWin.style.left = `${Math.max(10, Math.min(window.innerWidth - mlyWin.offsetWidth - 10, initialLeft + dx))}px`;
+        mlyWin.style.top = `${Math.max(60, Math.min(window.innerHeight - mlyWin.offsetHeight - 10, initialTop + dy))}px`;
+      });
+      window.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+    }
+
+    // Auto-Resize Mapillary Canvas when Window is Resized via Corner Handle
+    if (window.ResizeObserver && mlyWin) {
+      const ro = new ResizeObserver(() => {
+        if (mlyViewer) mlyViewer.resize();
+      });
+      ro.observe(mlyWin);
+    }
+
+    // Sidebar Mapillary Jump & Open Controls
+    const btnMlyJumpDowntown = document.getElementById("btn-mly-jump-downtown");
+    if (btnMlyJumpDowntown) {
+      btnMlyJumpDowntown.addEventListener("click", () => {
+        map.flyTo({ center: [-119.7871, 36.7468], zoom: 15.5, duration: 1000 });
+        showToast("Downtown Detections Corridor", "Navigated to dense Mapillary detections & street coverage.");
+      });
+    }
+
+    const btnMlyOpenViewerFloating = document.getElementById("btn-mly-open-viewer-floating");
+    if (btnMlyOpenViewerFloating) {
+      btnMlyOpenViewerFloating.addEventListener("click", () => {
+        const center = map.getCenter();
+        openMapillaryViewerAtCoords(center.lng, center.lat);
+      });
+    }
+
+    // Interactive Mapillary Detection Popups & Hover Cursor
+    const mlyDetectionsLayers = ["mapillary_driveways", "mapillary_civic", "mapillary_signs"];
+    mlyDetectionsLayers.forEach(lId => {
+      map.on("click", lId, (e) => {
+        if (!e.features || !e.features.length) return;
+        const f = e.features[0];
+        const val = f.properties.value || "Detected Object";
+        const label = val.replace(/^(object|construction|marking|regulatory|warning|information)--/g, "").replace(/--/g, " ").replace(/-/g, " ").toUpperCase();
+        const coords = f.geometry.coordinates;
+
+        new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 12 })
+          .setLngLat(coords)
+          .setHTML(`
+            <div style="font-family: sans-serif; font-size: 11px; color: #f8fafc; padding: 4px; min-width: 170px;">
+              <div style="font-weight: 700; color: #38bdf8; margin-bottom: 2px;">Mapillary AI Detection</div>
+              <div style="font-weight: 600; margin-bottom: 6px; font-size: 12px; color: #fef08a;">${label}</div>
+              <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px;">Coords: ${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}</div>
+              <button class="popup-inspect-mly-btn" style="background: linear-gradient(135deg, #0284c7, #06b6d4); color: white; border: none; padding: 6px 10px; border-radius: 5px; font-size: 10px; font-weight: 600; cursor: pointer; width: 100%;">
+                📷 View in 360° Street View
+              </button>
+            </div>
+          `)
+          .addTo(map);
+
+        setTimeout(() => {
+          const btn = document.querySelector(".popup-inspect-mly-btn");
+          if (btn) {
+            btn.onclick = () => {
+              openMapillaryViewerAtCoords(coords[0], coords[1]);
+            };
+          }
+        }, 50);
+      });
+
+      map.on("mouseenter", lId, () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", lId, () => { map.getCanvas().style.cursor = ""; });
+    });
+
+    // Inline Address Remediation Form Handlers
+    let editDraggableMarker = null;
+    let editMarkerCoords = null;
+
+    const btnToggleEdit = document.getElementById("drawer-toggle-edit-btn");
+    const editFormPanel = document.getElementById("drawer-edit-form-panel");
+    if (btnToggleEdit && editFormPanel) {
+      btnToggleEdit.addEventListener("click", () => {
+        const isHidden = editFormPanel.style.display === "none";
+        editFormPanel.style.display = isHidden ? "block" : "none";
+        btnToggleEdit.textContent = isHidden ? "✕ Close Edit Form" : "✏️ Edit Address / Placement";
+      });
+    }
+
+    const btnDrawerOpenChangesets = document.getElementById("drawer-open-changesets-btn");
+    if (btnDrawerOpenChangesets) {
+      btnDrawerOpenChangesets.addEventListener("click", () => {
+        updateWalletUI();
+        document.getElementById("changeset-modal").style.display = "flex";
+      });
+    }
+
+    const btnDragEditPin = document.getElementById("edit-btn-drag-pin");
+    if (btnDragEditPin) {
+      btnDragEditPin.addEventListener("click", () => {
+        if (!activeSelectedFeature) {
+          showToast("Select Address First", "Please click an address point on the map.");
+          return;
+        }
+        const coords = activeSelectedFeature.geometry.coordinates;
+        if (editDraggableMarker) {
+          editDraggableMarker.remove();
+        }
+        editMarkerCoords = [...coords];
+
+        const el = document.createElement("div");
+        el.className = "edit-draggable-pin";
+        el.innerHTML = `
+          <div style="cursor: grab; transform: translate(-50%, -100%);">
+            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.6); display: flex; align-items: center; gap: 4px; border: 1.5px solid #ffffff;">
+              <span>📍 Drag to Reposition</span>
+            </div>
+            <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #d97706; margin: 0 auto;"></div>
+          </div>
+        `;
+
+        editDraggableMarker = new maplibregl.Marker({ element: el, draggable: true })
+          .setLngLat(coords)
+          .addTo(map);
+
+        editDraggableMarker.on("drag", () => {
+          const lngLat = editDraggableMarker.getLngLat();
+          editMarkerCoords = [lngLat.lng, lngLat.lat];
+          const coordsEl = document.getElementById("ban-coords-text");
+          if (coordsEl) {
+            coordsEl.textContent = `Lat: ${lngLat.lat.toFixed(6)}  •  Lon: ${lngLat.lng.toFixed(6)}`;
+          }
+        });
+
+        editDraggableMarker.on("dragend", () => {
+          const lngLat = editDraggableMarker.getLngLat();
+          editMarkerCoords = [lngLat.lng, lngLat.lat];
+          showToast("Pin Repositioned", `New placement: [${lngLat.lat.toFixed(6)}, ${lngLat.lng.toFixed(6)}]. Click Save Changes to record edit.`, 10);
+        });
+
+        showToast("Drag Mode Active", "Move the amber pin on the map to place address.", 10);
+      });
+    }
+
+    const btnSaveEdit = document.getElementById("edit-btn-save");
+    if (btnSaveEdit) {
+      btnSaveEdit.addEventListener("click", () => {
+        const feat = activeSelectedFeature || window.activeSelectedFeature;
+        if (!feat) {
+          showToast("Select Address First", "Please click an address point to edit.");
+          return;
+        }
+        const p = feat.properties;
+        const origCoords = feat.geometry.coordinates;
+        const finalCoords = editMarkerCoords ? [...editMarkerCoords] : [...origCoords];
+
+        const hno = document.getElementById("edit-input-hno").value.trim() || p.HNO || "";
+        const stn = document.getElementById("edit-input-stn").value.trim() || p.STN || "";
+        const sts = document.getElementById("edit-input-sts").value.trim() || p.STS || "";
+        const placement = document.getElementById("edit-select-placement").value || "Structure";
+        const notes = document.getElementById("edit-input-notes").value.trim();
+
+        const fullAddr = `${hno} ${stn} ${sts}`.trim() || p.StandardizedAddress || "Edited Address";
+
+        let distanceMeters = 0;
+        if (window.turf && turf.distance) {
+          distanceMeters = Number(turf.distance(turf.point(origCoords), turf.point(finalCoords), { units: "kilometers" }) * 1000).toFixed(1);
+        }
+
+        const editRecord = {
+          id: `edit_${p.SSAP_NGUID || p.CountyLocalID || Date.now()}`,
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: finalCoords
+          },
+          properties: {
+            OriginalNGUID: p.SSAP_NGUID || p.CountyLocalID || "UNKNOWN",
+            OriginalAddress: p.StandardizedAddress || `${p.HNO || ''} ${p.STN || ''}`.trim(),
+            HNO: hno,
+            STN: stn,
+            STS: sts,
+            StandardizedAddress: fullAddr,
+            PlacementMethod: placement,
+            PointType: placement,
+            RemediationType: "USER_EDIT",
+            Notes: notes || "Manual remediator edit via NextGen-911 Auditor",
+            OriginalCoordinates: origCoords,
+            EditedCoordinates: finalCoords,
+            DistanceMovedMeters: Number(distanceMeters),
+            tokens_awarded: 50,
+            Timestamp: new Date().toISOString()
+          }
+        };
+
+        // Replace any prior edit for this address
+        sessionChangesets = sessionChangesets.filter(c => {
+          const cp = c.properties || c;
+          return cp.OriginalNGUID !== editRecord.properties.OriginalNGUID;
+        });
+        sessionChangesets.push(editRecord);
+
+        userWalletTokens += 50;
+        localStorage.setItem("ng911_changesets", JSON.stringify(sessionChangesets));
+        localStorage.setItem("ng911_wallet_tokens", userWalletTokens.toString());
+        updateWalletUI();
+
+        if (editDraggableMarker) {
+          editDraggableMarker.remove();
+          editDraggableMarker = null;
+        }
+
+        // Update active drawer details
+        const addrTitle = document.getElementById("drawer-address");
+        if (addrTitle) addrTitle.textContent = fullAddr;
+        const pBadge = document.getElementById("ban-placement-badge");
+        if (pBadge) pBadge.textContent = `📍 ${placement} (Edited)`;
+
+        if (editFormPanel) editFormPanel.style.display = "none";
+        if (btnToggleEdit) btnToggleEdit.textContent = "✏️ Edit Address / Placement";
+
+        showToast("Edit Saved & Persisted!", `${fullAddr} recorded to changeset (+50 FTs).`, 50);
       });
     }
 
