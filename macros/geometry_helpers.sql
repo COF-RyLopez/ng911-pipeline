@@ -55,3 +55,25 @@
         ELSE upper(trim({{ type_col }}))
     END
 {% endmacro %}
+
+{% macro dirs() %}
+    ('N','S','E','W','NE','NW','SE','SW','NORTH','SOUTH','EAST','WEST','NORTHEAST','NORTHWEST','SOUTHEAST','SOUTHWEST',
+     'NB','SB','EB','WB','AL')  -- travel-direction and alley codes: peeled like the old county staging, normalize_direction() maps them to NULL
+{% endmacro %}
+
+{% macro street_types() %}
+    ('ST','STREET','AVE','AV','AVENUE','BLVD','BOULEVARD','RD','ROAD','DR','DRIVE','LN','LANE','WAY','CT','COURT',
+     'PL','PLACE','CIR','CIRCLE','HWY','HIGHWAY','PKWY','PARKWAY','TRL','TRAIL','LOOP','TER','TERRACE','ALY','ALLEY',
+     'EXPY','EXPRESSWAY','FWY','FREEWAY','PLZ','PLAZA','SQ','SQUARE','CV','COVE','PATH','WALK','ROW','RUN','XING',
+     -- additional types used in Fresno County's STR_TYPE field
+     'SR','ON','OFF','ONRP','OFRP','GRD','FTRD','TRFY','BYP','MALL','VW','PT','CRT','STR','BKRT','CIRC','AVE.')
+{% endmacro %}
+
+{% macro parity(from_col, to_col) %}
+    CASE
+        WHEN {{ from_col }} IS NULL AND {{ to_col }} IS NULL THEN 'Z'
+        WHEN {{ from_col }} % 2 = 0 AND {{ to_col }} % 2 = 0 THEN 'E'
+        WHEN {{ from_col }} % 2 = 1 AND {{ to_col }} % 2 = 1 THEN 'O'
+        ELSE 'B'
+    END
+{% endmacro %}

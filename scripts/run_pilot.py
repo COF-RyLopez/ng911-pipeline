@@ -43,7 +43,7 @@ def main():
     # 1. Check data cache
     required_caches = [
         os.path.join(CACHE_DIR, "county_addresses.parquet"),
-        os.path.join(CACHE_DIR, "county_streets.parquet"),
+        os.path.join(CACHE_DIR, "oa_centerlines.parquet"),
         os.path.join(CACHE_DIR, "overture_addresses.parquet"),
         os.path.join(CACHE_DIR, "overture_transportation.parquet")
     ]

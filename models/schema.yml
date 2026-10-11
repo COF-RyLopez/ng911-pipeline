@@ -22,10 +22,10 @@ models:
           - not_null
 
   - name: stg_county_streets
-    description: "Authoritative street centerlines ingested from Fresno County ArcGIS FeatureServer."
+    description: "Road centerlines from OpenAddresses processed county sources (Fresno, plus Kings and Tulare when include_surrounding_counties), with names split into NENA components."
     columns:
       - name: street_segment_id
-        description: "Primary segment identifier from County of Fresno GIS."
+        description: "Stable segment key: county + md5 of the geometry."
         tests:
           - not_null
       - name: street_name

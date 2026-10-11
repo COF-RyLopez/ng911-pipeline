@@ -4,7 +4,7 @@ scripts/fetch_pilot_data.py
 
 Ingests and caches authoritative geospatial data for Fresno County NG911:
 1. Ingests Fresno County Site/Structure Address Points (REGIONAL_ADDRESS_VW/FeatureServer/1).
-2. Ingests Fresno County Authoritative Street Centerlines (REGIONAL_STREETS_VW/FeatureServer/1).
+2. Ingests road centerlines for Fresno, Kings and Tulare from OpenAddresses' processed county sources.
 3. Ingests Fresno County Emergency Service Boundaries (CAD/PSAP, Fire, City Limits).
 4. Ingests Overture Maps Address Points (S3 GeoParquet scoped to county extent).
 5. Ingests Overture Maps Transportation Segments (S3 GeoParquet scoped to county extent).
@@ -226,81 +226,58 @@ def fetch_tulare_county_addresses():
     return len(df)
 
 
-def fetch_fresno_county_streets():
-    output_parquet = os.path.join(CACHE_DIR, "county_streets.parquet")
-    print(f"\n[2/6] Fetching all Fresno County street centerlines from ArcGIS FeatureServer...")
+# Road centerlines come from OpenAddresses' processed output for each county
+# (sources/us/ca/<county>.json -> centerlines). OpenAddresses re-runs the county
+# endpoints on a schedule, so we download one gzip per county instead of
+# paginating each county ArcGIS server ourselves.
+OA_CENTERLINE_SOURCES = {"fresno": "FRESNO", "kings": "KINGS", "tulare": "TULARE"}
+OA_API = "https://batch.openaddresses.io/api"
+OA_FIELDS = ["id", "name", "classification", "oneway", "speed",
+             "addr_from_left", "addr_to_left", "addr_from_right", "addr_to_right",
+             "zip_left", "zip_right"]
 
 
-    base_url = "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/REGIONAL_STREETS_VW/FeatureServer/1/query"
-    req = urllib.request.Request(
-        f"{base_url}?where=STR_NAME+IS+NOT+NULL&returnCountOnly=true&f=json",
-        headers={"User-Agent": "Fresno-NG911/1.0"}
-    )
-    with urllib.request.urlopen(req) as resp:
-        total_count = json.loads(resp.read().decode("utf-8"))["count"]
-    print(f"  Target record count: {total_count:,} streets")
+def _oa_get(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "Fresno-NG911/1.0"})
+    return urllib.request.urlopen(req, timeout=120)
 
-    offsets = list(range(0, total_count, 2000))
 
-    def fetch_page(offset):
-        params = {
-            "where": "STR_NAME IS NOT NULL",
-            "outFields": "OBJECTID,STR_ID,STR_SEG,AGENCY_CODE,STR_DIR,STR_NAME,STR_TYPE,STR_POST_DIR,DS_REGIONAL_TYPE",
-            "outSR": "4326",
-            "resultOffset": offset,
-            "resultRecordCount": 2000,
-            "f": "geojson"
-        }
-        full_url = f"{base_url}?{urllib.parse.urlencode(params)}"
-        req = urllib.request.Request(full_url, headers={"User-Agent": "Fresno-NG911/1.0"})
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            records = []
-            for f in data.get("features", []):
-                props = f.get("properties", {})
-                geom = f.get("geometry", {})
-                records.append({
-                    "street_segment_id": str(props.get("OBJECTID")),
-                    "str_id": str(props.get("STR_ID") or ""),
-                    "agency_code": str(props.get("AGENCY_CODE") or "FR"),
-                    "pre_directional": props.get("STR_DIR"),
-                    "street_name": props.get("STR_NAME"),
-                    "street_type": props.get("STR_TYPE"),
-                    "post_directional": props.get("STR_POST_DIR"),
-                    "road_class": props.get("DS_REGIONAL_TYPE") or "Local",
-                    "geom_geojson": json.dumps(geom)
-                })
-            return records
+def fetch_oa_centerlines():
+    import gzip
+    output_parquet = os.path.join(CACHE_DIR, "oa_centerlines.parquet")
+    print(f"\n[2/6] Fetching road centerlines from OpenAddresses ({', '.join(OA_CENTERLINE_SOURCES)})...")
+    records = []
+    for src, county in OA_CENTERLINE_SOURCES.items():
+        with _oa_get(f"{OA_API}/data?source=us/ca/{src}") as r:
+            entry = next(d for d in json.load(r) if d["layer"] == "centerlines")
+        url = f"https://v2.openaddresses.io/batch-prod/job/{entry['job']}/source.geojson.gz"
+        n = 0
+        with _oa_get(url) as r, gzip.open(r, "rt") as lines:
+            for line in lines:
+                if not line.strip():
+                    continue
+                f = json.loads(line)
+                p = f.get("properties") or {}
+                rec = {k: (p.get(k) or None) for k in OA_FIELDS}
+                rec.update(county_name=county, oa_source=f"us/ca/{src}", oa_job=entry["job"],
+                           oa_hash=p.get("hash"), geom_geojson=json.dumps(f.get("geometry")))
+                records.append(rec)
+                n += 1
+        print(f"  us/ca/{src}: {n:,} segments (OA job {entry['job']}, updated {entry['updated'][:10]})")
 
-    t0 = time.time()
-    all_records = []
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        for batch in ex.map(fetch_page, offsets):
-            all_records.extend(batch)
-    print(f"  Retrieved {len(all_records):,} streets in {time.time()-t0:.2f}s")
-
-    df = pd.DataFrame(all_records)
+    df = pd.DataFrame(records)
     conn = duckdb.connect()
     conn.sql("INSTALL spatial; LOAD spatial;")
-    conn.register("df_streets", df)
+    conn.register("df_cl", df)
     conn.execute(f"""
         COPY (
-            SELECT 
-                street_segment_id,
-                str_id,
-                agency_code,
-                pre_directional,
-                street_name,
-                street_type,
-                post_directional,
-                road_class,
-                ST_GeomFromGeoJSON(geom_geojson) AS geom
-            FROM df_streets
-            WHERE geom_geojson != '{{}}'
+            SELECT * EXCLUDE (geom_geojson), ST_GeomFromGeoJSON(geom_geojson) AS geom
+            FROM df_cl WHERE geom_geojson NOT IN ('null', '{{}}')
         ) TO '{output_parquet}' (FORMAT PARQUET)
     """)
     print(f"  -> Saved {len(df):,} centerlines to {output_parquet}")
     return len(df)
+
 
 def fetch_fresno_county_boundaries():
     print("\n[3/6] Fetching Fresno County CAD/PSAP, Fire, and City Limits boundaries...")
@@ -467,7 +444,7 @@ if __name__ == "__main__":
     county_addr_cnt = fetch_fresno_county_addresses()
     kings_addr_cnt = fetch_kings_county_addresses()
     tulare_addr_cnt = fetch_tulare_county_addresses()
-    county_street_cnt = fetch_fresno_county_streets()
+    county_street_cnt = fetch_oa_centerlines()
     boundary_counts = fetch_fresno_county_boundaries()
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
@@ -478,7 +455,7 @@ if __name__ == "__main__":
     print(f"  - Fresno County Addresses:      {county_addr_cnt:,}")
     print(f"  - Kings County Addresses:       {kings_addr_cnt:,}")
     print(f"  - Tulare County Addresses:      {tulare_addr_cnt:,}")
-    print(f"  - Fresno County Streets:        {county_street_cnt:,}")
+    print(f"  - OA Road Centerlines:          {county_street_cnt:,}")
     print(f"  - County CAD / PSAP:           {boundary_counts.get('CAD/PSAP', 0):,}")
     print(f"  - County Fire Districts:       {boundary_counts.get('Fire Districts', 0):,}")
     print(f"  - County City Limits:          {boundary_counts.get('City Limits', 0):,}")

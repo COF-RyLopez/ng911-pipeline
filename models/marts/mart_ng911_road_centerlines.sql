@@ -59,31 +59,32 @@ SELECT
     s.post_directional AS St_PosDir,
     s.full_street_name AS FullStreetName,
 
-    -- 3. Synthesized NENA Address Ranges & Parity
-    r.from_addr_l AS FromAddr_L,
-    r.to_addr_l AS ToAddr_L,
-    r.from_addr_r AS FromAddr_R,
-    r.to_addr_r AS ToAddr_R,
-    CASE WHEN r.from_addr_l IS NOT NULL THEN 'E' ELSE 'Z' END AS Parity_L,
-    CASE WHEN r.from_addr_r IS NOT NULL THEN 'O' ELSE 'Z' END AS Parity_R,
+    -- 3. NENA Address Ranges & Parity: county-published ranges when present, else synthesized from address points
+    rg.FromAddr_L,
+    rg.ToAddr_L,
+    rg.FromAddr_R,
+    rg.ToAddr_R,
+    {{ parity('rg.FromAddr_L', 'rg.ToAddr_L') }} AS Parity_L,
+    {{ parity('rg.FromAddr_R', 'rg.ToAddr_R') }} AS Parity_R,
+    rg.RangeSource,
     coalesce(r.mapped_address_count, 0) AS AddressPointsCount,
 
     -- 4. Jurisdictional Attribution
-    'FRESNO' AS County_L,
-    'FRESNO' AS County_R,
+    s.county_name AS County_L,
+    s.county_name AS County_R,
     'CA' AS State_L,
     'CA' AS State_R,
     'US' AS Country_L,
     'US' AS Country_R,
 
     -- 5. Operational Dispatch Attributes
-    CASE upper(s.road_class)
+    coalesce(s.speed_mph, CASE upper(s.road_class)
         WHEN 'EXPRESSWAY' THEN 65
         WHEN 'ARTERIAL' THEN 45
         WHEN 'COLLECTOR' THEN 35
         ELSE 25
-    END AS SpeedLimit,
-    'B' AS OneWay, -- Both directions by default
+    END) AS SpeedLimit,
+    coalesce(s.one_way, 'B') AS OneWay, -- published one-way where available, else both directions
     s.road_class AS RoadClass,
 
     -- 6. 100% Authoritative County Geometry (Zero ODbL / OSM Licensing Contamination)
@@ -92,3 +93,11 @@ SELECT
 
 FROM county_streets s
 LEFT JOIN address_ranges r ON s.street_segment_id = r.street_segment_id
+CROSS JOIN LATERAL (
+    SELECT
+        CASE WHEN s.has_published_ranges THEN 'Published' ELSE 'Synthesized' END AS RangeSource,
+        CASE WHEN s.has_published_ranges THEN s.pub_from_addr_l ELSE r.from_addr_l END AS FromAddr_L,
+        CASE WHEN s.has_published_ranges THEN s.pub_to_addr_l ELSE r.to_addr_l END AS ToAddr_L,
+        CASE WHEN s.has_published_ranges THEN s.pub_from_addr_r ELSE r.from_addr_r END AS FromAddr_R,
+        CASE WHEN s.has_published_ranges THEN s.pub_to_addr_r ELSE r.to_addr_r END AS ToAddr_R
+) rg

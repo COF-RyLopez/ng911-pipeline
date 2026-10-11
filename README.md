@@ -18,7 +18,7 @@ ng911_pipeline/
 │   ├── schema.yml           # Data tests & NENA compliance assertions (83 tests)
 │   ├── staging/
 │   │   ├── stg_county_addresses.sql       # Authoritative Fresno County ArcGIS addresses (238k points)
-│   │   ├── stg_county_streets.sql         # Authoritative Fresno County street centerlines (53k segments)
+│   │   ├── stg_county_streets.sql         # Road centerlines from OpenAddresses county sources (Fresno 53k; +Kings/Tulare with published ranges)
 │   │   ├── stg_county_boundaries.sql      # Authoritative CAD/PSAP, Fire District & City Limits
 │   │   ├── stg_regional_addresses.sql     # Unified Central Valley addresses (Fresno, Kings, Tulare: 386k points)
 │   │   ├── stg_overture_addresses.sql     # Bounded Overture GeoParquet address queries
