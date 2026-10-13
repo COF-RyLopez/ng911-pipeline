@@ -300,10 +300,6 @@ models:
       - name: NGUID
         tests:
           - not_null
-      - name: AliasSet_ID
-        tests:
-          - not_null
-          - relationships: {arguments: {to: ref('mart_nena3_aliasset'), field: ID}}
       - name: GEOMETRY
         tests:
           - not_null
@@ -311,6 +307,10 @@ models:
   - name: mart_nena3_stseg
     description: "NENA v3.0 Relational Street Segment (ng911.StSeg) table."
     columns:
+      - name: AliasSet_ID
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('mart_nena3_aliasset'), field: ID}}
       - name: ID
         tests:
           - not_null
