@@ -15,6 +15,10 @@ import sys
 import subprocess
 import time
 import duckdb
+import json
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "data", "output")
@@ -22,6 +26,50 @@ CACHE_DIR = os.path.join(PROJECT_DIR, "data", "cache")
 DB_PATH = os.path.join(PROJECT_DIR, "ng911_database.duckdb")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# County ArcGIS layers this pipeline consumes (centerlines arrive via OpenAddresses).
+FRESNO = "https://services3.arcgis.com/ibgDyuD2DLBge82s/ArcGIS/rest/services"
+KINGS = "https://services3.arcgis.com/24gLq1DBBzDfd0cZ/ArcGIS/rest/services"
+TULARE = "https://services2.arcgis.com/bYBANhmQGwSSLC0l/ArcGIS/rest/services"
+SOURCES = {
+    "Fresno addresses":     f"{FRESNO}/REGIONAL_ADDRESS_VW/FeatureServer/1",
+    "Fresno centerlines":   f"{FRESNO}/REGIONAL_STREETS_VW/FeatureServer/1",
+    "Fresno parcels":       f"{FRESNO}/REGIONAL_PARCELS_VW/FeatureServer/11",
+    "Fresno city limits":   f"{FRESNO}/REGIONAL_CITY_LIMITS_VW/FeatureServer/1",
+    "Fresno fire districts": f"{FRESNO}/ELECTIONS_FIRE_DISTRICTS_VW/FeatureServer/41",
+    "Fresno CAD/PSAP":      f"{FRESNO}/City_County_CAD/FeatureServer/78",
+    "Kings addresses":      f"{KINGS}/Address_Kings_County/FeatureServer/4",
+    "Kings centerlines":    f"{KINGS}/Streets/FeatureServer/0",
+    "Tulare addresses":     f"{TULARE}/SiteStructureAddressPoints/FeatureServer/0",
+    "Tulare centerlines":   f"{TULARE}/RoadCenterLine/FeatureServer/0",
+}
+STALE_DAYS = 365
+
+
+def last_published(url):
+    """Layer's last data edit (UTC date), or None if unreachable. Hosted views report the overwrite date."""
+    try:
+        with urllib.request.urlopen(url + "?f=json", timeout=20) as r:
+            e = json.load(r).get("editingInfo", {})
+        ms = e.get("dataLastEditDate") or e.get("lastEditDate")
+        return datetime.fromtimestamp(ms / 1000, timezone.utc).date() if ms else None
+    except Exception:
+        return None
+
+
+def source_freshness():
+    with ThreadPoolExecutor(8) as ex:
+        dates = dict(zip(SOURCES, ex.map(last_published, SOURCES.values())))
+    today = datetime.now(timezone.utc).date()
+    rows = []
+    for name, d in dates.items():
+        age = (today - d).days if d else None
+        flag = "unreachable" if d is None else ("STALE" if age > STALE_DAYS else "ok")
+        rows.append({"source": name, "url": SOURCES[name], "last_published": str(d) if d else None,
+                     "age_days": age, "status": flag})
+    with open(os.path.join(OUTPUT_DIR, "source_freshness.json"), "w") as f:
+        json.dump({"checked": str(today), "stale_days": STALE_DAYS, "sources": rows}, f, indent=2)
+    return rows
 
 def run_cmd(cmd_list, desc):
     print(f"\n[RUNNING] {desc}...")
@@ -273,6 +321,11 @@ def main():
     print(f"  - ng911.DiscrpAg:         3 authority domains (fresnocountyca.gov, kingscountyca.gov, tularecountyca.gov)")
     print(f"  - ng911.ServiceURN:       4 IETF emergency service types (sos, sos.fire, sos.police, sos.ambulance)")
     print(f"  - Deliverables:           data/output/nena_v3/*.parquet (3NF Relational Data Model)")
+    print("-" * 75)
+    print(f"  SOURCE FRESHNESS (last published; STALE > {STALE_DAYS} days):")
+    for r in source_freshness():
+        age = f"{r['age_days']:>4}d" if r["age_days"] is not None else "    -"
+        print(f"  - {r['source']:<22} {r['last_published'] or '?':<11} {age}  {r['status']}")
     print("-" * 75)
     print(f"  Deliverables Generated:   SSAP (Parquet/GeoJSON), RCL (Parquet/GeoJSON),")
     print(f"                            ESB (Parquet/GeoJSON), Fishbones (Parquet/GeoJSON),")
