@@ -9,7 +9,7 @@ WITH county_streets AS (
         geom,
         floor(ST_X(ST_Centroid(geom)) * 50)::INTEGER AS gx,
         floor(ST_Y(ST_Centroid(geom)) * 50)::INTEGER AS gy
-    FROM {{ ref('stg_county_streets') }}
+    FROM {{ ref('int_road_centerlines') }}
 ),
 
 overture_roads AS (

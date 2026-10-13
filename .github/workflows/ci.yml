@@ -32,7 +32,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
-          uv pip install --system dbt-duckdb duckdb pydantic overture-schema pyarrow pandas requests fastapi uvicorn httpx boto3
+          uv pip install --system dbt-duckdb duckdb pydantic overture-schema pyarrow pandas requests fastapi uvicorn httpx boto3 tylertoo
 
       - name: Validate Overture Maps Schema v2
         run: |

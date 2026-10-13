@@ -3,7 +3,7 @@
 ) }}
 
 WITH county_streets AS (
-    SELECT * FROM {{ ref('stg_county_streets') }}
+    SELECT * FROM {{ ref('int_road_centerlines') }}
 ),
 
 county_addresses AS (
@@ -58,6 +58,8 @@ SELECT
     s.street_type AS St_Typ,
     s.post_directional AS St_PosDir,
     s.full_street_name AS FullStreetName,
+    s.alias_names AS AliasNames,               -- other names on this geometry (NENA Alias via StSeg.AliasSet_ID)
+    s.primary_name_method AS PrimaryNameMethod,
 
     -- 3. NENA Address Ranges & Parity: county-published ranges when present, else synthesized from address points
     rg.FromAddr_L,

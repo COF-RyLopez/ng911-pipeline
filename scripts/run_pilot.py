@@ -147,7 +147,9 @@ def main():
         "mart_nena3_completestnam",
         "mart_nena3_completeadnum",
         "mart_nena3_discrpag",
-        "mart_nena3_serviceurn"
+        "mart_nena3_serviceurn",
+        "mart_nena3_alias",
+        "mart_nena3_aliasset"
     ]
     for tbl in nena3_tables:
         nena_out = os.path.join(nena_v3_dir, f"{tbl}.parquet")

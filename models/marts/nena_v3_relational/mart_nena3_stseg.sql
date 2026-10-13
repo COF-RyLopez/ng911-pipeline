@@ -30,6 +30,7 @@ SELECT
     current_timestamp AS DateUpdate,
     r.RCL_NGUID AS NGUID,
     sn.CompleteStNam_ID,
+    coalesce(als.AliasSet_ID, 0)::BIGINT AS AliasSet_ID,
     r.FromAddr_L,
     r.ToAddr_L,
     r.FromAddr_R,
@@ -41,6 +42,8 @@ SELECT
     r.OneWay,
     r.SpeedLimit
 FROM rcl r
+LEFT JOIN (SELECT DISTINCT street_segment_id, AliasSet_ID FROM {{ ref('int_alias_sets') }}) als
+  ON r.CountyLocalID = als.street_segment_id
 LEFT JOIN agencies ag
   ON r.DisclID = ag.DiscrpAgID
 LEFT JOIN st_names sn

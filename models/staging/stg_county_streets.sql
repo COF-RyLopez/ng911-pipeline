@@ -3,6 +3,8 @@
 -- Road centerlines from OpenAddresses' processed county sources
 -- (scripts/fetch_pilot_data.py -> fetch_oa_centerlines). OA delivers one joined
 -- street name, so it is split back into NENA components here.
+-- One row per source record: shared geometries (duplicates and alias names) are resolved in
+-- int_road_centerlines.
 -- ponytail: suffix-type list is a common-USPS subset; extend it if parsed types look wrong.
 
 WITH raw AS (
@@ -80,6 +82,3 @@ FROM pre
 WHERE len(t3) > 0
   -- unnamed segments arrive named by their type alone (e.g. Fresno's 1,408 'Aly'); the county leaves STR_NAME empty
   AND NOT (len(t0) = 1 AND t0[1] IN {{ street_types() }})
--- the county sources repeat some geometries: exact duplicates (37 in Fresno, mostly SR-168 ramps) and
--- alias-name copies (Kings/Tulare); keep one segment per geometry
-QUALIFY row_number() OVER (PARTITION BY street_segment_id ORDER BY full_street_name, oa_hash) = 1

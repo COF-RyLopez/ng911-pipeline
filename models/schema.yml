@@ -300,6 +300,10 @@ models:
       - name: NGUID
         tests:
           - not_null
+      - name: AliasSet_ID
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('mart_nena3_aliasset'), field: ID}}
       - name: GEOMETRY
         tests:
           - not_null
@@ -317,6 +321,35 @@ models:
       - name: GEOMETRY
         tests:
           - not_null
+
+  - name: mart_nena3_aliasset
+    description: "NENA v3.0 Relational Alias Set (ng911.AliasSet). ID 0 is the empty set for segments without aliases."
+    columns:
+      - name: ID
+        tests: [not_null, unique]
+
+  - name: mart_nena3_alias
+    description: "NENA v3.0 Relational Alias (ng911.Alias): which CompleteStNam names belong to each AliasSet."
+    columns:
+      - name: ID
+        tests: [not_null, unique]
+      - name: AliasSet_ID
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('mart_nena3_aliasset'), field: ID}}
+      - name: CompleteStNam_ID
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('mart_nena3_completestnam'), field: CompleteStNam_ID}}
+
+  - name: mart_ng911_alias_review
+    description: "Road geometries with more than one street name, categorized for county GIS review."
+    columns:
+      - name: CountyLocalID
+        tests: [not_null, unique]
+      - name: ReviewCategory
+        tests:
+          - accepted_values: {arguments: {values: ['UNRESOLVED', 'NAME_CONFLICT', 'ALIAS']}}
 
   - name: mart_nena3_serviceboundary
     description: "NENA v3.0 Relational Service Boundary (ng911.ServiceBoundary) table."
