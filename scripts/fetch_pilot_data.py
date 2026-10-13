@@ -53,6 +53,7 @@ def fetch_fresno_county_addresses():
         params = {
             "where": where_filter,
             "outFields": "OBJECTID,ADDRESS_NUMBER,ADDRESS_FRACTION,STREET_DIRECTION,STREET_NAME,STREET_TYPE,STREET_POST_DIRECTION,ADDRESS_UNIT,ADDRESS_ZIP5,ADDRESS_ZIPCITY,AGENCY_NAME,AGENCY_CODE,ADDRESS_STATUS",
+            "orderByFields": "OBJECTID",
             "outSR": "4326",
             "resultOffset": offset,
             "resultRecordCount": 2000,
@@ -119,7 +120,8 @@ def fetch_kings_county_addresses():
         def fetch_page(offset):
             params = {
                 "where": "STREET_NBR IS NOT NULL",
-                "outFields": "OBJECTID,STREET_NBR,STREET_DIR,STREET_NAM,STREET_TYP,COMMUNITY,ZIPCODE",
+                "outFields": "GlobalID,STREET_NBR,STREET_DIR,STREET_NAM,STREET_TYP,COMMUNITY,ZIPCODE",
+                "orderByFields": "OBJECTID_1",  # layer OID; stable paging
                 "outSR": "4326",
                 "resultOffset": offset,
                 "resultRecordCount": 2000,
@@ -134,7 +136,8 @@ def fetch_kings_county_addresses():
                     attr = feat.get("attributes", {})
                     geom = feat.get("geometry", {})
                     records.append({
-                        "county_id": str(attr.get("OBJECTID")),
+                        # ponytail: OBJECTID here is a stale non-unique attribute (OID is OBJECTID_1); GlobalID survives republish
+                        "county_id": attr["GlobalID"].strip("{}").lower(),
                         "house_number": str(attr.get("STREET_NBR") or ""),
                         "pre_directional": attr.get("STREET_DIR"),
                         "street_name": attr.get("STREET_NAM"),
@@ -179,6 +182,7 @@ def fetch_tulare_county_addresses():
             params = {
                 "where": "Add_Number IS NOT NULL",
                 "outFields": "OBJECTID,Add_Number,AddNum_Suf,St_PreDir,St_Name,St_PosTyp,LSt_Typ,Post_Comm,Post_Code,Longitude,Latitude",
+                "orderByFields": "OBJECTID",
                 "outSR": "4326",
                 "resultOffset": offset,
                 "resultRecordCount": 2000,
