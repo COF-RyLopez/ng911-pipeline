@@ -184,6 +184,8 @@ def main():
 
     total_roads = conn.sql("SELECT count(*) FROM mart_ng911_road_centerlines").fetchone()[0]
     mapped_roads = conn.sql("SELECT count(*) FROM mart_ng911_road_centerlines WHERE FromAddr_L IS NOT NULL OR FromAddr_R IS NOT NULL").fetchone()[0]
+    range_src = dict(conn.sql("SELECT RangeSource, count(*) FROM mart_ng911_road_centerlines WHERE FromAddr_L IS NOT NULL OR FromAddr_R IS NOT NULL GROUP BY 1").fetchall())
+    rcl_src = ", ".join(r[0] for r in conn.sql("SELECT DISTINCT County_L FROM mart_ng911_road_centerlines ORDER BY 1").fetchall())
 
     qa_metrics = conn.sql("""
         SELECT DiscrepancyType, count(*) FROM mart_ng911_qa_discrepancies GROUP BY DiscrepancyType
@@ -233,8 +235,8 @@ def main():
     print("-" * 75)
     print(f"  LAYER 2: ROAD CENTERLINES (RCL):")
     print(f"  - Centerline Segments:    {total_roads:,}")
-    print(f"  - Range Synthesized:      {mapped_roads:,} segments mapped with From/To ranges")
-    print(f"  - Geometry Attribution:   100% Fresno County REGIONAL_STREETS_VW")
+    print(f"  - Address Ranges:         {mapped_roads:,} segments ({range_src.get('Published', 0):,} published, {range_src.get('Synthesized', 0):,} synthesized)")
+    print(f"  - Geometry Attribution:   100% county centerlines via OpenAddresses ({rcl_src})")
     print("-" * 75)
     print(f"  LAYER 3: EMERGENCY SERVICE BOUNDARIES (ESB & CAD/PSAP):")
     esb_counts = conn.sql("SELECT Agency_Type, count(*) FROM mart_ng911_emergency_boundaries GROUP BY Agency_Type").fetchall()

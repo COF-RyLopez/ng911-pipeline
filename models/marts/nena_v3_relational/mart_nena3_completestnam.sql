@@ -24,9 +24,10 @@ names_from_streets AS (
 ),
 
 all_names AS (
-    SELECT * FROM names_from_addresses
-    UNION
-    SELECT * FROM names_from_streets
+    -- '' and NULL are the same name part; normalize so StSeg/AdPt joins match one row
+    SELECT DISTINCT nullif(St_PreDir, '') AS St_PreDir, St_Name,
+           nullif(St_Typ, '') AS St_Typ, nullif(St_PosDir, '') AS St_PosDir
+    FROM (SELECT * FROM names_from_addresses UNION ALL SELECT * FROM names_from_streets)
 )
 
 SELECT

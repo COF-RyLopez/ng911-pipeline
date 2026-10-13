@@ -318,6 +318,7 @@ models:
       - name: NGUID
         tests:
           - not_null
+          - unique
       - name: GEOMETRY
         tests:
           - not_null
