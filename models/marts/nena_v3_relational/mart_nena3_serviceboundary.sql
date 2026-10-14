@@ -28,7 +28,7 @@ SELECT
     'sip:' || lower(coalesce(b.Agency_Code, 'dispatch')) || '@' || b.DisclID AS ServiceURI,
     CASE b.Agency_Type
         WHEN 'FIRE' THEN 2
-        WHEN 'PSAP' THEN 3
+        WHEN 'LAW' THEN 3
         ELSE 1
     END AS ServiceURN_ID,
     b.ServiceNum,

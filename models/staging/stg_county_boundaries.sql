@@ -1,14 +1,16 @@
 {{ config(materialized='view') }}
 
-WITH cad_psap AS (
+-- City_County_CAD ("Dispatch Areas: City vs County") holds law enforcement dispatch areas
+-- (Sheriff, city PDs, SCCCD, CSUF, Coalinga State Hospital), not PSAP boundaries: NENA's ESB Law layer.
+WITH cad_law AS (
     SELECT 
-        'PSAP' AS agency_type,
-        coalesce(LE_NGUID, 'urn:emergency:uid:gis:PSAP:' || OBJECTID || ':{{ var("agency_domain", "fresnocountyca.gov") }}') AS esb_nguid,
+        'LAW' AS agency_type,
+        coalesce(LE_NGUID, 'urn:emergency:uid:gis:LAW:' || OBJECTID || ':{{ var("agency_domain", "fresnocountyca.gov") }}') AS esb_nguid,
         upper(trim(NAME)) AS agency_name,
         coalesce(trim(AGENCY), 'SO') AS agency_code,
         trim(ServiceNum) AS service_number,
         trim(NO_AREA) AS area_code,
-        geom
+        ST_MakeValid(geom) AS geom  -- 6 source polygons are invalid; see mart_ng911_esb_qa
     FROM read_parquet('data/cache/county_cad_psap.parquet')
     WHERE geom IS NOT NULL
 ),
@@ -39,7 +41,7 @@ city_limits AS (
     WHERE geom IS NOT NULL
 )
 
-SELECT * FROM cad_psap
+SELECT * FROM cad_law
 UNION ALL
 SELECT * FROM fire_districts
 UNION ALL

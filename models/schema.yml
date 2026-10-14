@@ -36,7 +36,7 @@ models:
           - not_null
 
   - name: stg_county_boundaries
-    description: "Authoritative Emergency Service Boundaries (ESBs) and CAD/PSAP boundaries from Fresno County."
+    description: "Authoritative Emergency Service Boundaries (ESBs) from Fresno County: law enforcement dispatch areas, fire districts, city limits."
     columns:
       - name: esb_nguid
         tests:
@@ -46,7 +46,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ['PSAP', 'FIRE', 'MUNICIPAL']
+                values: ['LAW', 'FIRE', 'MUNICIPAL']
       - name: agency_name
         tests:
           - not_null
@@ -402,3 +402,13 @@ models:
 
 
 
+
+  - name: mart_ng911_esb_qa
+    description: "Topology QA for the law enforcement dispatch layer (City_County_CAD): invalid polygons, duplicate polygons and overlaps over 0.1 ha."
+    columns:
+      - name: IssueType
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['INVALID_GEOMETRY', 'DUPLICATE_POLYGON', 'OVERLAP']

@@ -414,7 +414,7 @@ def build_project(base_url, is_local=False, is_r2=False):
                         {"field": "County", "label": "County"},
                         {"field": "CommunityName", "label": "Community/City"},
                         {"field": "PostCode", "label": "ZIP Code"},
-                        {"field": "PSAP", "label": "Responsible PSAP (911)"},
+                        {"field": "PSAP", "label": "Law dispatch area (PSAP stand-in)"},
                         {"field": "SSAP_NGUID", "label": "NENA SSAP NGUID"}
                     ]
                 },

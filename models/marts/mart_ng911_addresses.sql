@@ -17,7 +17,8 @@ landmarks AS (
     SELECT * FROM {{ ref('int_address_landmarks') }}
 ),
 
--- Point-in-Polygon: Exact CAD / PSAP Boundary
+-- Point-in-Polygon: law enforcement dispatch area (City_County_CAD).
+-- ponytail: output columns keep the PSAP_* names for the Esri ADM / remediation exports; no PSAP boundary layer exists yet.
 addr_psap_exact AS (
     SELECT
         c.addr_uid,
@@ -26,7 +27,7 @@ addr_psap_exact AS (
         b.service_number AS psap_phone
     FROM conflated_data c
     JOIN boundaries b 
-      ON b.agency_type = 'PSAP' 
+      ON b.agency_type = 'LAW' 
      AND ST_Within(c.geom, b.geom)
 ),
 
@@ -40,7 +41,7 @@ addr_psap_fallback AS (
         ROW_NUMBER() OVER (PARTITION BY c.addr_uid ORDER BY b.agency_name) AS rn
     FROM conflated_data c
     JOIN boundaries b 
-      ON b.agency_type = 'PSAP' 
+      ON b.agency_type = 'LAW' 
      AND ST_Within(c.geom, ST_Buffer(b.geom, 0.01))
     WHERE c.addr_uid NOT IN (SELECT addr_uid FROM addr_psap_exact)
 ),

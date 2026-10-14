@@ -7,7 +7,7 @@ WITH county_boundaries AS (
         agency_name AS CountyName,
         geom
     FROM {{ ref('stg_county_boundaries') }}
-    WHERE agency_type = 'MUNICIPAL' OR agency_type = 'CAD_PSAP'
+    WHERE agency_type = 'MUNICIPAL' OR agency_type = 'LAW'
 ),
 
 ssap_addrs AS (

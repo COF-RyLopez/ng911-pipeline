@@ -37,7 +37,7 @@ SOURCES = {
     "Fresno parcels":       f"{FRESNO}/REGIONAL_PARCELS_VW/FeatureServer/11",
     "Fresno city limits":   f"{FRESNO}/REGIONAL_CITY_LIMITS_VW/FeatureServer/1",
     "Fresno fire districts": f"{FRESNO}/ELECTIONS_FIRE_DISTRICTS_VW/FeatureServer/41",
-    "Fresno CAD/PSAP":      f"{FRESNO}/City_County_CAD/FeatureServer/78",
+    "Fresno CAD law dispatch": f"{FRESNO}/City_County_CAD/FeatureServer/78",
     "Kings addresses":      f"{KINGS}/Address_Kings_County/FeatureServer/4",
     "Kings centerlines":    f"{KINGS}/Streets/FeatureServer/0",
     "Tulare addresses":     f"{TULARE}/SiteStructureAddressPoints/FeatureServer/0",
@@ -152,6 +152,9 @@ def main():
     esb_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb.parquet")
     conn.sql(f"COPY mart_ng911_emergency_boundaries TO '{esb_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Emergency Service Boundaries: {esb_parquet}")
+    esb_qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb_qa.parquet")
+    conn.sql(f"COPY mart_ng911_esb_qa TO '{esb_qa_parquet}' (FORMAT PARQUET)")
+    print(f"  -> Exported ESB Topology QA: {esb_qa_parquet}")
 
     # Export QA Discrepancies
     qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_qa_discrepancies.parquet")
@@ -286,12 +289,15 @@ def main():
     print(f"  - Address Ranges:         {mapped_roads:,} segments ({range_src.get('Published', 0):,} published, {range_src.get('Synthesized', 0):,} synthesized)")
     print(f"  - Geometry Attribution:   100% county centerlines via OpenAddresses ({rcl_src})")
     print("-" * 75)
-    print(f"  LAYER 3: EMERGENCY SERVICE BOUNDARIES (ESB & CAD/PSAP):")
+    print(f"  LAYER 3: EMERGENCY SERVICE BOUNDARIES (LAW / FIRE / MUNICIPAL):")
     esb_counts = conn.sql("SELECT Agency_Type, count(*) FROM mart_ng911_emergency_boundaries GROUP BY Agency_Type").fetchall()
     for atype, acnt in esb_counts:
         print(f"  - {atype} Polygons:       {acnt:,}")
-    print(f"  - Authoritative PSAP Attributed: {audit_row['Authoritative_PSAP_Attributed']:,} ({audit_row['Authoritative_Pct_PSAP_Attributed']}%)")
-    print(f"  - Combined Dataset PSAP:  {audit_row['Total_Combined_Addresses']:,} ({audit_row['Pct_PSAP_Attributed_Combined']}%)")
+    print(f"  - Law Dispatch Attributed: {audit_row['Authoritative_PSAP_Attributed']:,} ({audit_row['Authoritative_Pct_PSAP_Attributed']}%) authoritative points")
+    print(f"  - Combined Dataset:        {audit_row['Total_Combined_Addresses']:,} ({audit_row['Pct_PSAP_Attributed_Combined']}%)")
+    esb_qa = dict(conn.sql("SELECT IssueType, count(*) FROM mart_ng911_esb_qa GROUP BY 1").fetchall())
+    print(f"  - Law Layer Topology QA:   {esb_qa.get('INVALID_GEOMETRY', 0)} invalid, {esb_qa.get('DUPLICATE_POLYGON', 0)} duplicate, {esb_qa.get('OVERLAP', 0)} overlaps (repaired/flagged)")
+    print(f"  - PSAP Boundaries:         none published; PSAP fields use law dispatch areas as a stand-in")
     print("-" * 75)
     print(f"  LAYER 4: NENA QA/QC FISHBONE VALIDATION:")
     print(f"  - Fishbone Vectors:       {fishbone_metrics[0]:,} addresses snapped to centerlines")
@@ -305,7 +311,7 @@ def main():
     print("-" * 75)
     print(f"  CAL OES 98% NG911 TRANSITION READINESS SCORECARD:")
     print(f"  - RCL Snapping (>= 98%):   {audit_row['Pct_SSAP_Remediated_Access_Snapped']}% -> {'[PASS]' if audit_row['Snapping_Threshold_Passed'] else '[FAIL]'}")
-    print(f"  - PSAP Coverage (>= 98%):  {audit_row['Authoritative_Pct_PSAP_Attributed']}% -> {'[PASS]' if audit_row['PSAP_Coverage_Passed'] else '[FAIL]'}")
+    print(f"  - Dispatch Coverage (>=98%): {audit_row['Authoritative_Pct_PSAP_Attributed']}% -> {'[PASS]' if audit_row['PSAP_Coverage_Passed'] else '[FAIL]'}")
     print(f"  - Inverted Ranges (= 0):   {audit_row['Road_Range_Inversions']} -> {'[PASS]' if audit_row['Zero_Range_Inversions_Passed'] else '[FAIL]'}")
     print(f"  - Cal OES Readiness:       {audit_row['Cal_OES_Readiness_Status']}")
     print("-" * 75)
