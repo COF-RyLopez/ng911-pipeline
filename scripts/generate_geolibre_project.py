@@ -12,9 +12,9 @@ Includes:
   4. QA/QC Fishbone Vectors (snapping distances and offset flags)
 - 100% of features for every layer:
   - ESB (80 polygons) is small enough to inline as GeoJSON.
-  - RCL, SSAP and Fishbones are streamed as PMTiles vector tiles from GitHub
+  - RCL, SSAP and Fishbones are streamed as PMTiles vector tiles from Cloudflare R2
     (built by scripts/build_pmtiles.py). Inlining them as GeoJSON caps out at a
-    sample of ~40k features before the project exceeds GitHub's file limits,
+    sample of ~40k features before the project gets too large,
     which is why earlier versions of the map looked incomplete.
 - Detailed NENA attribute popup configurations
 - Default map extent centered on Fresno County metro
@@ -29,7 +29,8 @@ import json
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-GITHUB_BASE_URL = "https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output"
+# Outputs are built by CI and published to Cloudflare R2 (scripts/publish_to_r2.py), not committed.
+GITHUB_BASE_URL = os.environ.get("R2_PUBLIC_URL", "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev").rstrip("/")
 TILES_BASE_URL = f"{GITHUB_BASE_URL}/tiles"
 
 

@@ -125,14 +125,14 @@ To allow anyone—especially non-ESRI agencies and dispatch centers across Calif
 ### Option 1: 1-Click Complete Map Project
 Open the pre-styled, self-contained project (amber boundary polygons, green centerlines, blue address points with dispatch popups, red fishbones, and a 3-widget dashboard) directly in GeoLibre:
 ```text
-https://web.geolibre.app/?url=https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/fresno_ng911_pilot.geolibre.json
+https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/fresno_ng911_pilot.geolibre.json
 ```
-*(Or drag and drop `data/output/fresno_ng911_pilot.geolibre` straight into [web.geolibre.app](https://web.geolibre.app/)).*
+*(Outputs are rebuilt by CI on every push to `main` and published to Cloudflare R2; they are not committed to git. After a local `run_pilot.py`, you can also drag `data/output/fresno_ng911_pilot.geolibre` into [web.geolibre.app](https://web.geolibre.app/).)*
 
 ### Option 2: 1-Click Visual Address QA/QC & BYOD Comparison Hub
 Open the interactive visual comparison project comparing raw municipal addresses vs NG911 enhanced addresses (with displacement vector lines and color-coded enhancement categories):
 ```text
-https://web.geolibre.app/?url=https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/ng911_address_comparison.geolibre.json
+https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/ng911_address_comparison_r2.geolibre.json
 ```
 
 **Bring Your Own Data (BYOD) Local Comparison:**
@@ -142,21 +142,21 @@ Generate a 1-click comparison project for any local user address dataset (`.csv`
 ```
 
 ### Option 3: Additive Layer Streaming (No Workspace Reset)
-In GeoLibre, open **Add Vector Layer**, paste any of the public GitHub endpoints below, and check **"Stream GeoParquet (no copy)"**:
+In GeoLibre, open **Add Vector Layer**, paste any of the public Cloudflare R2 endpoints below, and check **"Stream GeoParquet (no copy)"**:
 - **NENA Emergency Service Boundaries (1.0 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_esb.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/mart_ng911_fresno_esb.parquet`
 - **NENA SSAP Address Points with Dispatch Routing (16 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_ssap.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/mart_ng911_fresno_ssap.parquet`
 - **Address Enhancements & QA/QC Displacement (17 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_enhancements.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/mart_ng911_fresno_enhancements.parquet`
 - **NENA Road Centerlines (6.7 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_rcl.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/mart_ng911_fresno_rcl.parquet`
 - **QA/QC Fishbone Vectors (8.0 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/mart_ng911_fresno_fishbones.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/mart_ng911_fresno_fishbones.parquet`
 - **Regional Central Valley Addresses (15.5 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/regional_central_valley_addresses.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/regional_central_valley_addresses.parquet`
 - **NENA v3.0 AdPt Normalized (16.8 MB GeoParquet):**
-  `https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/nena_v3/mart_nena3_adpt.parquet`
+  `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/nena_v3/mart_nena3_adpt.parquet`
 
 
 ---

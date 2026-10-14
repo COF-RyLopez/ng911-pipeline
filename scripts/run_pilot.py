@@ -338,7 +338,7 @@ def main():
     print(f"                            QA (Parquet), Readiness Audit (Parquet),")
     print(f"                            Regional Addresses (Parquet), NENA v3.0 Tables (Parquet)")
     print(f"  GeoLibre Project:         data/output/fresno_ng911_pilot.geolibre (.json)")
-    print(f"  GeoLibre 1-Click URL:     https://web.geolibre.app/?url=https://raw.githubusercontent.com/COF-RyLopez/ng911-pipeline/main/data/output/fresno_ng911_pilot.geolibre.json")
+    print(f"  GeoLibre 1-Click URL:     https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/fresno_ng911_pilot.geolibre.json")
     print("=" * 75 + "\n")
 
 

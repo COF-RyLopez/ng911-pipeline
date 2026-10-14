@@ -20,12 +20,8 @@ data/cache/
 .DS_Store
 Thumbs.db
 
-# Pipeline large deliverables published directly to Cloudflare R2
-data/output/tiles/
-data/output/remediation/
-data/output/esri_adm/
-data/output/**/*.csv
-data/output/**/*.geojson
+# Pipeline outputs: rebuilt by CI and published to Cloudflare R2 (scripts/publish_to_r2.py)
+data/output/
 *.pmtiles
 
 # Scratch directory
