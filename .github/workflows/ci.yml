@@ -42,10 +42,6 @@ jobs:
         run: |
           python scripts/fetch_pilot_data.py
 
-      - name: Test NENA STA-005.1.2 ECRF/LVF Microservice
-        run: |
-          python scripts/test_nena_service.py
-
       - name: Execute dbt Transformations
         run: |
           dbt run --profiles-dir .
@@ -57,6 +53,10 @@ jobs:
       - name: Run NG911 Pilot & Cal OES 98% Readiness Audit
         run: |
           python scripts/run_pilot.py
+
+      - name: Test NENA STA-005.1.2 ECRF/LVF Microservice (reads the outputs run_pilot.py just built)
+        run: |
+          python scripts/test_nena_service.py
 
       - name: Publish GeoParquet & PMTiles to Cloudflare R2
         if: github.ref == 'refs/heads/main'
