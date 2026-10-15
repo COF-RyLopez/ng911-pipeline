@@ -63,6 +63,8 @@ fishbones AS (
         DistanceMeters, 
         IsExcessiveOffset, 
         IsRangeViolation,
+        RoadSide,
+        IsWrongSide,
         ROW_NUMBER() OVER (PARTITION BY SSAP_NGUID ORDER BY DistanceMeters ASC) AS rn
     FROM {{ ref('mart_ng911_qa_fishbones') }}
 ),
@@ -118,9 +120,12 @@ SELECT
     f.RCL_NGUID AS RoadCenterlineNGUID,
     coalesce(f.IsExcessiveOffset, TRUE) AS IsExcessiveOffset,
     coalesce(f.IsRangeViolation, FALSE) AS IsRangeViolation,
+    f.RoadSide,
+    coalesce(f.IsWrongSide, FALSE) AS IsWrongSide,
 
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'UNRESOLVED_ROAD_CENTERLINE'
+        WHEN f.IsWrongSide THEN 'WRONG_SIDE_OF_ROAD'
         WHEN f.IsRangeViolation = TRUE THEN 'ADDRESS_RANGE_VIOLATION'
         WHEN d.Severity IN ('CRITICAL', 'HIGH') THEN d.DiscrepancyType
         WHEN f.IsExcessiveOffset AND bi.building_id IS NULL THEN 'EXCESSIVE_OFFSET'
@@ -131,6 +136,7 @@ SELECT
 
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'CRITICAL'
+        WHEN f.IsWrongSide THEN 'HIGH'
         WHEN f.IsRangeViolation = TRUE THEN 'HIGH'
         WHEN d.Severity IN ('CRITICAL', 'HIGH') THEN d.Severity
         WHEN f.IsExcessiveOffset AND bi.building_id IS NULL THEN 'MEDIUM'
@@ -141,6 +147,7 @@ SELECT
 
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'CRITICAL_ATTENTION'
+        WHEN f.IsWrongSide THEN 'CRITICAL_ATTENTION'
         WHEN f.IsRangeViolation = TRUE THEN 'CRITICAL_ATTENTION'
         WHEN d.Severity IN ('CRITICAL', 'HIGH') THEN 'CRITICAL_ATTENTION'
         WHEN bi.building_id IS NULL THEN 'ATTENTION_REQUIRED'
@@ -159,7 +166,8 @@ SELECT
     -- Actionable Fix Guidance for Jurisdiction GIS Analysts
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'Address point failed to resolve to named road centerline within 200m; verify street name and spatial alignment'
-        WHEN f.IsRangeViolation = TRUE THEN 'House number is outside the address range of the snapping road centerline segment'
+        WHEN f.IsWrongSide THEN 'House number is odd/even opposite to the side of the road it sits on; check the number or move the point to the correct side'
+        WHEN f.IsRangeViolation = TRUE THEN 'House number is outside the address range of its side of the road segment'
         WHEN d.DiscrepancyType = 'CIVIC_ADDRESS_AMBIGUITY' THEN 'Another point has this same complete address (including unit); remove the duplicate or assign distinct unit numbers'
         WHEN f.IsExcessiveOffset AND bi.building_id IS NULL THEN 'Over 50 m from the road centerline and not inside a building; move a structure point into its building, or a driveway point to where the driveway meets the road'
         WHEN bi.building_id IS NULL THEN 'Address point is outside building footprint; inspect aerial/Mapillary imagery to verify placement'

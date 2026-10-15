@@ -2892,6 +2892,7 @@
         UNRESOLVED_ROAD_CENTERLINE: "No Matching Road (>200m)",
         ADDRESS_RANGE_VIOLATION: "Outside Road Address Range",
         CIVIC_ADDRESS_AMBIGUITY: "Duplicate Address",
+        WRONG_SIDE_OF_ROAD: "Wrong Side of Road",
         UNPROVISIONABLE_RECORD: "Unprovisionable Record",
         EXCESSIVE_OFFSET: "Far From Road, Outside Footprint (>50m)",
       };
@@ -2976,36 +2977,23 @@
         editDraggableMarker = null;
       }
 
-      // BAN Road Centerline Parity Visualizer (Odd/Left vs Even/Right)
+      // Road side card: each side's range and odd/even come from the matched centerline;
+      // the highlighted side is where the point actually sits (RoadSide, along the road's drawn direction).
       const hnoNum = parseInt(p.HNO, 10);
-      const isOdd = !isNaN(hnoNum) && (hnoNum % 2 !== 0);
-      const isEven = !isNaN(hnoNum) && (hnoNum % 2 === 0);
+      const parityOf = n => isNaN(n) ? "" : (n % 2 === 0 ? "Even" : "Odd");
       const streetName = p.STN || "Road Centerline";
 
       const rclFeats = map.queryRenderedFeatures({ layers: ["rcl_lines"] });
       const matchedRcl = rclFeats.find(r => r.properties && r.properties.RCL_NGUID === p.RoadCenterlineNGUID)
         || rclFeats.find(r => r.properties && r.properties.FullStreetName && streetName && r.properties.FullStreetName.toUpperCase().includes(streetName.toUpperCase()));
+      const rp = (matchedRcl && matchedRcl.properties) || {};
+      const PARITY = { E: "Even", O: "Odd", B: "Mixed", Z: "No addresses" };
+      const rangeText = (a, b) => (a != null && a !== "" && b != null && b !== "") ? `${a} ➔ ${b}` : "No range";
+      const sideTitle = (arrow, label, code) => `${arrow} ${label} Side${PARITY[code] ? " (" + PARITY[code] + ")" : ""}`;
 
-      let fromL = 1001, toL = 1099, fromR = 1000, toR = 1098;
-      let roadDisplay = streetName;
-      if (matchedRcl && matchedRcl.properties) {
-        const rp = matchedRcl.properties;
-        if (rp.FullStreetName) roadDisplay = rp.FullStreetName;
-        if (rp.FromAddr_L) fromL = rp.FromAddr_L;
-        if (rp.ToAddr_L) toL = rp.ToAddr_L;
-        if (rp.FromAddr_R) fromR = rp.FromAddr_R;
-        if (rp.ToAddr_R) toR = rp.ToAddr_R;
-      } else if (!isNaN(hnoNum)) {
-        const blockBase = Math.floor(hnoNum / 100) * 100;
-        fromL = blockBase + 1;
-        toL = blockBase + 99;
-        fromR = blockBase;
-        toR = blockBase + 98;
-      }
-
-      document.getElementById("ban-parity-road-name").textContent = roadDisplay;
-      document.getElementById("ban-range-left").textContent = `${fromL} ➔ ${toL}`;
-      document.getElementById("ban-range-right").textContent = `${fromR} ➔ ${toR}`;
+      document.getElementById("ban-parity-road-name").textContent = rp.FullStreetName || streetName;
+      document.getElementById("ban-range-left").textContent = rangeText(rp.FromAddr_L, rp.ToAddr_L);
+      document.getElementById("ban-range-right").textContent = rangeText(rp.FromAddr_R, rp.ToAddr_R);
 
       const leftBox = document.getElementById("ban-parity-left-box");
       const rightBox = document.getElementById("ban-parity-right-box");
@@ -3015,30 +3003,42 @@
       const parityWarning = document.getElementById("ban-parity-warning-box");
 
       if (leftBox && rightBox && indLeft && indRight && parityBadge) {
+        leftBox.querySelector(".ban-parity-side-title").textContent = sideTitle("👈", "Left", rp.Parity_L);
+        rightBox.querySelector(".ban-parity-side-title").textContent = sideTitle("👉", "Right", rp.Parity_R);
         leftBox.classList.remove("active-side");
         rightBox.classList.remove("active-side");
         indLeft.style.display = "none";
         indRight.style.display = "none";
 
-        const isParityViolation = p.IsRangeViolation || (p.DiscrepancyType && p.DiscrepancyType.includes("PARITY"));
-
-        if (isOdd) {
-          leftBox.classList.add("active-side");
-          indLeft.style.display = "flex";
-          indLeft.textContent = `📍 ${hnoNum} (Odd)`;
-        } else if (isEven) {
-          rightBox.classList.add("active-side");
-          indRight.style.display = "flex";
-          indRight.textContent = `📍 ${hnoNum} (Even)`;
+        const side = p.RoadSide;  // "L" / "R" from the pipeline; missing on older tiles
+        const box = side === "L" ? leftBox : side === "R" ? rightBox : null;
+        const ind = side === "L" ? indLeft : side === "R" ? indRight : null;
+        if (box && ind) {
+          box.classList.add("active-side");
+          ind.style.display = "flex";
+          ind.textContent = `📍 ${p.HNO} (${parityOf(hnoNum)}) is on this side`;
         }
 
-        if (isParityViolation) {
+        const wrongSide = p.IsWrongSide === true || p.IsWrongSide === "true";
+        const outOfRange = p.IsRangeViolation === true || p.IsRangeViolation === "true";
+        const sideName = side === "L" ? "left" : "right";
+        const sideParity = PARITY[side === "L" ? rp.Parity_L : rp.Parity_R] || "";
+        const sideRange = side === "L" ? rangeText(rp.FromAddr_L, rp.ToAddr_L) : rangeText(rp.FromAddr_R, rp.ToAddr_R);
+        const warnText = parityWarning && parityWarning.querySelector("span");
+
+        if (wrongSide) {
           parityBadge.className = "ban-parity-badge-inversion";
-          parityBadge.textContent = "⚠️ Parity Mismatch";
+          parityBadge.textContent = "⚠️ Wrong Side of Road";
+          if (warnText) warnText.textContent = `⚠️ ${p.HNO} is ${parityOf(hnoNum).toLowerCase()}, but it sits on the ${sideName} side, which is ${sideParity.toLowerCase()} (${sideRange}).`;
+          if (parityWarning) parityWarning.style.display = "block";
+        } else if (outOfRange && side) {
+          parityBadge.className = "ban-parity-badge-inversion";
+          parityBadge.textContent = "⚠️ Outside Range";
+          if (warnText) warnText.textContent = `⚠️ ${p.HNO} is outside the ${sideName} side's range (${sideRange}).`;
           if (parityWarning) parityWarning.style.display = "block";
         } else {
           parityBadge.className = "ban-parity-badge-aligned";
-          parityBadge.textContent = "✅ Parity Aligned";
+          parityBadge.textContent = side ? "✅ Correct Side & Range" : "Side unknown";
           if (parityWarning) parityWarning.style.display = "none";
         }
       }
@@ -3130,7 +3130,10 @@
         guidanceCard.style.borderColor = color + "66";
       };
       const dt = p.DiscrepancyType;
-      if (dt === "CIVIC_ADDRESS_AMBIGUITY") {
+      if (dt === "WRONG_SIDE_OF_ROAD") {
+        setCard("NENA-STA-006.3 validation", "#ef4444", "WRONG SIDE", "House number on the wrong side of the road",
+          "This number is odd/even opposite to the other addresses on its side of the road segment. Check the house number, or whether the point belongs on the other side of the street.");
+      } else if (dt === "CIVIC_ADDRESS_AMBIGUITY") {
         setCard("NENA-INF-014.1 §3.6.1", "#ef4444", "DUPLICATE ADDRESS", "Same complete address as another point",
           "Each unique address should be represented by one and only one address point. Another point has the same house number, street, unit and community; remove the duplicate or give each its own unit number.");
       } else if (dt === "UNRESOLVED_ROAD_CENTERLINE") {

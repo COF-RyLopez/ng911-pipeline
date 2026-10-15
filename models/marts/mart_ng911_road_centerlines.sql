@@ -22,6 +22,8 @@ addr_street_matches AS (
     SELECT
         s.street_segment_id,
         a.addr_num,
+        s.geom AS seg_geom,
+        a.geom AS addr_geom,
         ROW_NUMBER() OVER (
             PARTITION BY a.county_id 
             ORDER BY ST_Distance(a.geom, s.geom) ASC
@@ -32,18 +34,37 @@ addr_street_matches AS (
        AND ST_DWithin(a.geom, s.geom, {{ var('conflation_distance_degrees', 0.00015) }} * 3) -- ~45m corridor
 ),
 
--- Calculate Left (Even) and Right (Odd) address ranges per segment
-address_ranges AS (
+-- Which side of the segment (along its digitized direction) each matched address sits on.
+-- Multi-part segments have no side; they fall back to even-left / odd-right.
+addr_sides AS (
     SELECT
         street_segment_id,
-        count(addr_num) AS mapped_address_count,
-        min(CASE WHEN addr_num % 2 = 0 THEN addr_num END) AS from_addr_l,
-        max(CASE WHEN addr_num % 2 = 0 THEN addr_num END) AS to_addr_l,
-        min(CASE WHEN addr_num % 2 = 1 THEN addr_num END) AS from_addr_r,
-        max(CASE WHEN addr_num % 2 = 1 THEN addr_num END) AS to_addr_r
+        addr_num,
+        coalesce({{ road_side('seg_geom', 'addr_geom') }},
+                 CASE WHEN addr_num % 2 = 0 THEN 'L' ELSE 'R' END) AS side
     FROM addr_street_matches
-    WHERE rn = 1
-    GROUP BY street_segment_id
+    WHERE rn = 1 AND addr_num IS NOT NULL
+),
+
+-- Each side's parity is whatever most of its addresses use; minority-parity points are wrong-side errors.
+side_parity AS (
+    SELECT street_segment_id, side, mode(addr_num % 2) AS par
+    FROM addr_sides
+    GROUP BY 1, 2
+),
+
+-- Left and right ranges from the addresses actually on each side
+address_ranges AS (
+    SELECT
+        a.street_segment_id,
+        count(*) AS mapped_address_count,
+        min(addr_num) FILTER (WHERE a.side = 'L' AND addr_num % 2 = sp.par) AS from_addr_l,
+        max(addr_num) FILTER (WHERE a.side = 'L' AND addr_num % 2 = sp.par) AS to_addr_l,
+        min(addr_num) FILTER (WHERE a.side = 'R' AND addr_num % 2 = sp.par) AS from_addr_r,
+        max(addr_num) FILTER (WHERE a.side = 'R' AND addr_num % 2 = sp.par) AS to_addr_r
+    FROM addr_sides a
+    JOIN side_parity sp USING (street_segment_id, side)
+    GROUP BY a.street_segment_id
 )
 
 SELECT

@@ -75,7 +75,7 @@ LAYERS = {
            round(SpatialOffsetMeters, 1) AS SpatialOffsetMeters,
            BuildingFootprintStatus, SymbologyCategory, DiscrepancyType, Severity,
            OvertureAddressGERS_ID, OvertureBuildingGERS_ID, RoadCenterlineNGUID,
-           IsExcessiveOffset, IsRangeViolation, PSAP, ESB_Fire,
+           IsExcessiveOffset, IsRangeViolation, RoadSide, IsWrongSide, PSAP, ESB_Fire,
            MapillaryGroundTruthURL, RecommendedRemediationAction""",
         ["-Z9", "-z16", "--no-tile-size-limit"],
         "ST_Geometry"

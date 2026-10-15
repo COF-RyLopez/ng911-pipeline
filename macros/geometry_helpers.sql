@@ -77,3 +77,18 @@
         ELSE 'B'
     END
 {% endmacro %}
+
+{# Which side of a road line a point is on, looking along the line's digitized direction
+   (from its first vertex to its last): 'L' or 'R'. NULL for multi-part lines. #}
+{% macro road_side(line, pt) -%}
+(CASE WHEN ST_GeometryType({{ line }}) = 'LINESTRING' THEN
+  CASE WHEN
+      (ST_X(ST_LineInterpolatePoint({{ line }}, least(ST_LineLocatePoint({{ line }}, {{ pt }}) + 0.001, 1.0)))
+     - ST_X(ST_LineInterpolatePoint({{ line }}, greatest(ST_LineLocatePoint({{ line }}, {{ pt }}) - 0.001, 0.0))))
+    * (ST_Y({{ pt }}) - ST_Y(ST_LineInterpolatePoint({{ line }}, greatest(ST_LineLocatePoint({{ line }}, {{ pt }}) - 0.001, 0.0))))
+    - (ST_Y(ST_LineInterpolatePoint({{ line }}, least(ST_LineLocatePoint({{ line }}, {{ pt }}) + 0.001, 1.0)))
+     - ST_Y(ST_LineInterpolatePoint({{ line }}, greatest(ST_LineLocatePoint({{ line }}, {{ pt }}) - 0.001, 0.0))))
+    * (ST_X({{ pt }}) - ST_X(ST_LineInterpolatePoint({{ line }}, greatest(ST_LineLocatePoint({{ line }}, {{ pt }}) - 0.001, 0.0))))
+  > 0 THEN 'L' ELSE 'R' END
+END)
+{%- endmacro %}

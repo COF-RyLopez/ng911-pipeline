@@ -23,6 +23,8 @@ roads AS (
         ToAddr_L,
         FromAddr_R,
         ToAddr_R,
+        Parity_L,
+        Parity_R,
         ST_Geometry AS road_geom
     FROM {{ ref('mart_ng911_road_centerlines') }}
 ),
@@ -40,6 +42,10 @@ candidate_connections AS (
         r.ToAddr_L,
         r.FromAddr_R,
         r.ToAddr_R,
+        r.Parity_L,
+        r.Parity_R,
+        a.addr_geom,
+        r.road_geom,
         round(ST_Distance(a.addr_geom, r.road_geom) * 111320.0, 2) AS distance_meters,
         ST_MakeLine(a.addr_geom, ST_ClosestPoint(r.road_geom, a.addr_geom)) AS fishbone_geom,
         ROW_NUMBER() OVER (
@@ -58,7 +64,8 @@ candidate_connections AS (
 ),
 
 best_connections AS (
-    SELECT *
+    SELECT *,
+        {{ road_side('road_geom', 'addr_geom') }} AS road_side
     FROM candidate_connections
     WHERE rn = 1
 )
@@ -75,12 +82,23 @@ SELECT
     -- NENA QA/QC Assertion: Flags points sitting > 50m from road centerline
     CASE WHEN distance_meters > 50.0 THEN TRUE ELSE FALSE END AS IsExcessiveOffset,
     
-    -- NENA QA/QC Assertion: Flags house numbers outside synthesized address ranges
-    CASE 
+    -- Side of the road the point is on, along the segment's digitized direction ('L'/'R')
+    road_side AS RoadSide,
+
+    -- House number's odd/even doesn't match the side of the road it sits on
+    coalesce(CASE road_side
+        WHEN 'L' THEN (Parity_L = 'E' AND addr_num % 2 = 1) OR (Parity_L = 'O' AND addr_num % 2 = 0)
+        WHEN 'R' THEN (Parity_R = 'E' AND addr_num % 2 = 1) OR (Parity_R = 'O' AND addr_num % 2 = 0)
+    END, FALSE) AS IsWrongSide,
+
+    -- House number outside the range of the side it sits on (both sides when the side is unknown)
+    CASE
+        WHEN road_side = 'L' AND FromAddr_L IS NOT NULL THEN addr_num NOT BETWEEN least(FromAddr_L, ToAddr_L) AND greatest(FromAddr_L, ToAddr_L)
+        WHEN road_side = 'R' AND FromAddr_R IS NOT NULL THEN addr_num NOT BETWEEN least(FromAddr_R, ToAddr_R) AND greatest(FromAddr_R, ToAddr_R)
         WHEN (FromAddr_L IS NOT NULL AND (addr_num < FromAddr_L OR addr_num > ToAddr_L))
-         AND (FromAddr_R IS NOT NULL AND (addr_num < FromAddr_R OR addr_num > ToAddr_R)) 
-        THEN TRUE 
-        ELSE FALSE 
+         AND (FromAddr_R IS NOT NULL AND (addr_num < FromAddr_R OR addr_num > ToAddr_R))
+        THEN TRUE
+        ELSE FALSE
     END AS IsRangeViolation,
 
     -- Vector Line connecting the address point to the road centerline
