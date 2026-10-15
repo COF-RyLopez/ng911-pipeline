@@ -138,18 +138,16 @@ def main():
         uploaded_count += 1
         total_bytes += file_size
 
-    # Remote cleanup: prune obsolete remote files from Cloudflare R2 bucket
+    # Remote cleanup: the bucket mirrors this run's outputs, so any key this run didn't
+    # upload (any file type) is left over from an older pipeline version and is removed.
     local_rel_keys = set(rel for _, rel in files_to_upload)
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         remote_keys_to_delete = []
         for page in paginator.paginate(Bucket=bucket_name):
             for obj in page.get("Contents", []):
-                key = obj["Key"]
-                ext = os.path.splitext(key)[1].lower()
-                if ext in [".geojson", ".geolibre", ".pmtiles", ".parquet", ".csv", ".gpkg"] or key == "index.html":
-                    if key not in local_rel_keys:
-                        remote_keys_to_delete.append(key)
+                if obj["Key"] not in local_rel_keys:
+                    remote_keys_to_delete.append(obj["Key"])
 
         if remote_keys_to_delete:
             print(f"\nPruning {len(remote_keys_to_delete)} obsolete files from Cloudflare R2...")
