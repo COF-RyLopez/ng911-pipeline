@@ -93,7 +93,8 @@ def main():
         os.path.join(CACHE_DIR, "county_addresses.parquet"),
         os.path.join(CACHE_DIR, "oa_centerlines.parquet"),
         os.path.join(CACHE_DIR, "overture_addresses.parquet"),
-        os.path.join(CACHE_DIR, "overture_transportation.parquet")
+        os.path.join(CACHE_DIR, "overture_transportation.parquet"),
+        os.path.join(CACHE_DIR, "county_parcels.parquet"),
     ]
     if not all(os.path.exists(p) for p in required_caches):
         fetch_script = os.path.join(PROJECT_DIR, "scripts", "fetch_pilot_data.py")

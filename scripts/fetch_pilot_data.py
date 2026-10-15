@@ -21,6 +21,7 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 import duckdb
 import pandas as pd
+from fetch_county_parcels import fetch_parcels
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -454,6 +455,7 @@ if __name__ == "__main__":
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
     bldg_cnt = fetch_overture_buildings()
+    parcel_cnt = fetch_parcels()
     print("\n" + "=" * 70)
     print("All Central Valley Region datasets cached successfully:")
     print(f"  - Fresno County Addresses:      {county_addr_cnt:,}")
@@ -467,6 +469,7 @@ if __name__ == "__main__":
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
     print(f"  - Overture Building Footprints: {bldg_cnt:,}")
+    print(f"  - County Parcels:               {parcel_cnt:,}")
     print("=" * 70)
 
 

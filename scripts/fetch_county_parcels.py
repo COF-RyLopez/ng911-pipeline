@@ -20,28 +20,22 @@ CACHE_DIR = os.path.join(BASE_DIR, "data", "cache")
 OUTPUT_PARQUET = os.path.join(CACHE_DIR, "county_parcels.parquet")
 SERVICE_URL = "https://services3.arcgis.com/ibgDyuD2DLBge82s/ArcGIS/rest/services/REGIONAL_PARCELS_VW/FeatureServer/11/query"
 
-# Default to metro Fresno / Clovis extent or full county
-# Metro BBOX: [-119.95, 36.65, -119.60, 36.95]
+# Optional metro Fresno / Clovis extent for quick local tests: fetch_parcels(bbox=METRO_BBOX)
 METRO_BBOX = "-119.95,36.65,-119.60,36.95"
 
-def fetch_parcels(bbox=METRO_BBOX, max_records=15000):
+def fetch_parcels(bbox=None, max_records=None):
+    """Whole county by default (~316k parcels). Returns the number of parcels cached."""
     os.makedirs(CACHE_DIR, exist_ok=True)
     print("=" * 70)
     print("Fetching Fresno County Authoritative Tax Parcels (Layer 11)")
     print(f"Service URL: {SERVICE_URL}")
-    print(f"Bounding Box: {bbox}")
+    print(f"Extent: {bbox or 'whole county'}")
     print("=" * 70)
+    extent = {"geometry": bbox, "geometryType": "esriGeometryEnvelope", "inSR": "4326",
+              "spatialRel": "esriSpatialRelIntersects"} if bbox else {}
 
     # 1. Check total count
-    count_params = {
-        "where": "1=1",
-        "geometry": bbox,
-        "geometryType": "esriGeometryEnvelope",
-        "inSR": "4326",
-        "spatialRel": "esriSpatialRelIntersects",
-        "returnCountOnly": "true",
-        "f": "json"
-    }
+    count_params = {"where": "1=1", **extent, "returnCountOnly": "true", "f": "json"}
     req = urllib.request.Request(
         f"{SERVICE_URL}?{urllib.parse.urlencode(count_params)}",
         headers={"User-Agent": "Fresno-NG911/1.0"}
@@ -51,7 +45,7 @@ def fetch_parcels(bbox=METRO_BBOX, max_records=15000):
         total_available = res.get("count", 0)
     
     print(f"Total parcels intersecting extent: {total_available:,}")
-    limit = min(total_available, max_records)
+    limit = min(total_available, max_records) if max_records else total_available
     batch_size = 1000
     print(f"Fetching {limit:,} parcel polygons (batches of {batch_size})...")
 
@@ -61,11 +55,9 @@ def fetch_parcels(bbox=METRO_BBOX, max_records=15000):
     def fetch_page(offset):
         params = {
             "where": "1=1",
-            "geometry": bbox,
-            "geometryType": "esriGeometryEnvelope",
-            "inSR": "4326",
-            "spatialRel": "esriSpatialRelIntersects",
+            **extent,
             "outFields": "OBJECTID,APN,AGENCY_CODE,ROLL_YEAR",
+            "orderByFields": "OBJECTID",  # stable paging
             "outSR": "4326",
             "resultOffset": offset,
             "resultRecordCount": batch_size,
@@ -78,21 +70,23 @@ def fetch_parcels(bbox=METRO_BBOX, max_records=15000):
                 with urllib.request.urlopen(req, timeout=45) as resp:
                     data = json.loads(resp.read().decode())
                     features = data.get("features", [])
-                    print(f"  Offset {offset:6d}: received {len(features)} parcels")
+                    if offset % 50000 == 0:
+                        print(f"  Offset {offset:6d}: received {len(features)} parcels")
                     return features
             except Exception as e:
                 print(f"  Offset {offset:6d} retry {attempt+1}: {e}")
                 time.sleep(2.0)
-        return []
+        # A silently missing page would leave holes in the parcel fabric; fail loudly instead.
+        raise RuntimeError(f"Parcel page at offset {offset} failed after 3 attempts")
 
-    with ThreadPoolExecutor(max_workers=3) as ex:
+    with ThreadPoolExecutor(max_workers=8) as ex:
         for batch in ex.map(fetch_page, offsets):
             all_features.extend(batch)
 
     print(f"\nTotal raw parcel features fetched: {len(all_features):,}")
     if not all_features:
         print("No parcel features retrieved.")
-        return
+        return 0
 
     # Process and write to DuckDB GeoParquet
     print(f"Converting GeoJSON to DuckDB geometry and saving to {OUTPUT_PARQUET}...")
@@ -132,7 +126,7 @@ def fetch_parcels(bbox=METRO_BBOX, max_records=15000):
     print(f"Successfully cached {count:,} parcel polygons to {OUTPUT_PARQUET}!")
     if os.path.exists(temp_json):
         os.remove(temp_json)
+    return count
 
 if __name__ == "__main__":
-    max_rec = int(sys.argv[1]) if len(sys.argv) > 1 else 30000
-    fetch_parcels(max_records=max_rec)
+    fetch_parcels()
