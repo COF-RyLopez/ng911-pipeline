@@ -75,7 +75,8 @@ unprovisionable_records AS (
        OR street_name IS NULL OR trim(street_name) = ''
 ),
 
--- 4. Civic Address Ambiguity: Duplicate address points sharing house number, street name, and community (NENA STA-005.1.2 Sec 7)
+-- 4. Civic Address Ambiguity: two or more points with the same complete address, unit included
+--    (NENA-INF-014.1 §3.6.1: each unique address should be represented by one and only one address point)
 ambiguous_addresses AS (
     SELECT
         'CIVIC_ADDRESS_AMBIGUITY' AS DiscrepancyType,
@@ -84,19 +85,21 @@ ambiguous_addresses AS (
         NULL::VARCHAR AS OvertureFeatureID,
         a.HNO || ' ' || a.STN || ' (' || a.CommunityName || ')' AS CountyValue,
         NULL::VARCHAR AS OvertureValue,
-        'Multiple SSAP address points share the identical house number, street name, and community' AS Description,
+        'Two or more SSAP address points share the same complete address (house number, street, unit, community)' AS Description,
         a.ST_Geometry
     FROM {{ ref('mart_ng911_addresses') }} a
     INNER JOIN (
-        SELECT HNO, STN, CommunityName
+        SELECT HNO, STN, coalesce(CommunityName, '') AS comm, coalesce(Unit, '') AS unit
         FROM {{ ref('mart_ng911_addresses') }}
         WHERE HNO IS NOT NULL AND STN IS NOT NULL
-        GROUP BY HNO, STN, CommunityName
-        HAVING count(*) > 5
-    ) d ON a.HNO = d.HNO AND a.STN = d.STN AND a.CommunityName = d.CommunityName
+        GROUP BY 1, 2, 3, 4
+        HAVING count(*) > 1
+    ) d ON a.HNO = d.HNO AND a.STN = d.STN
+       AND coalesce(a.CommunityName, '') = d.comm AND coalesce(a.Unit, '') = d.unit
 ),
 
--- 5. Excessive Offset Discrepancies: Address points positioned >50m from centerline (NENA 02-014.1 Sec 4.3)
+-- 5. Far-from-road points: >50m from the matched centerline. Pipeline review threshold only;
+--    NENA sets no distance limit (structure points belong inside the footprint, NENA-INF-014.1 §3.4.4).
 excessive_offsets AS (
     SELECT
         'EXCESSIVE_OFFSET_DISCREPANCY' AS DiscrepancyType,

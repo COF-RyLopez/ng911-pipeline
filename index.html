@@ -1909,11 +1909,11 @@
     </div>
     <div class="legend-item">
       <span class="color-dot" style="background: #f59e0b;"></span>
-      <span>Outside Footprint (Audit)</span>
+      <span>Review (outside footprint)</span>
     </div>
     <div class="legend-item">
       <span class="color-dot" style="background: #dc2626;"></span>
-      <span>Critical Offset / Error (>50m)</span>
+      <span>Critical (duplicate, range, no road match)</span>
     </div>
     <div class="legend-item">
       <span style="background: #059669; width: 14px; height: 3px; border-radius: 2px;"></span>
@@ -2888,14 +2888,22 @@
       
       let statusText = "";
       let statusColor = "";
+      const REASONS = {
+        UNRESOLVED_ROAD_CENTERLINE: "No Matching Road (>200m)",
+        ADDRESS_RANGE_VIOLATION: "Outside Road Address Range",
+        CIVIC_ADDRESS_AMBIGUITY: "Duplicate Address",
+        UNPROVISIONABLE_RECORD: "Unprovisionable Record",
+        EXCESSIVE_OFFSET: "Far From Road, Outside Footprint (>50m)",
+      };
+      const reason = REASONS[p.DiscrepancyType] || (p.DiscrepancyType || "").replace(/_/g, " ");
       if (isCritical) {
-        statusText = !hasOffset ? "Unresolved Road (>200m)" : "Critical Offset / Error (>50m)";
+        statusText = reason || "Critical Discrepancy";
         statusColor = "#dc2626";
       } else if (isInside) {
         statusText = "Inside Footprint (Valid)";
         statusColor = "#10b981";
       } else {
-        statusText = "Outside Footprint (Audit Needed)";
+        statusText = p.DiscrepancyType === "EXCESSIVE_OFFSET" ? reason : "Outside Footprint (Review)";
         statusColor = "#f59e0b";
       }
 
@@ -3109,37 +3117,37 @@
       const ruleDesc = document.getElementById("guidance-rule-desc");
       const guidanceCard = document.getElementById("standards-guidance-card");
 
-      const offsetNum = hasOffset ? Number(p.SpatialOffsetMeters) : 999;
-      if (offsetNum > 50.0) {
-        stdBadge.textContent = "NENA-INF-014.1 §5 & Cal OES 98%";
-        stdBadge.style.color = "#f87171";
-        stdBadge.style.borderColor = "rgba(239, 68, 68, 0.4)";
-        stdBadge.style.background = "rgba(239, 68, 68, 0.15)";
-        sevBadge.textContent = "CRITICAL OFFSET ANOMALY";
-        sevBadge.style.color = "#ef4444";
-        ruleTitle.textContent = `Excessive Centerline Offset (${offsetNum.toFixed(1)}m > 50m)`;
-        ruleDesc.textContent = "Cal OES & NENA-INF-014 require address points to sit within 50m of the road centerline. For long driveways or rural acreage, NENA-STA-006.3 §5.79 advises placing a companion 'PropertyAccess' point at the driveway curb to prevent CAD apparatus misrouting.";
-        guidanceCard.style.borderColor = "rgba(239, 68, 68, 0.4)";
+      // NENA sets no road-distance limit; the card explains the actual reason this point was flagged.
+      const setCard = (badge, color, sev, title, desc) => {
+        stdBadge.textContent = badge;
+        stdBadge.style.color = color;
+        stdBadge.style.borderColor = color + "66";
+        stdBadge.style.background = color + "26";
+        sevBadge.textContent = sev;
+        sevBadge.style.color = color;
+        ruleTitle.textContent = title;
+        ruleDesc.textContent = desc;
+        guidanceCard.style.borderColor = color + "66";
+      };
+      const dt = p.DiscrepancyType;
+      if (dt === "CIVIC_ADDRESS_AMBIGUITY") {
+        setCard("NENA-INF-014.1 §3.6.1", "#ef4444", "DUPLICATE ADDRESS", "Same complete address as another point",
+          "Each unique address should be represented by one and only one address point. Another point has the same house number, street, unit and community; remove the duplicate or give each its own unit number.");
+      } else if (dt === "UNRESOLVED_ROAD_CENTERLINE") {
+        setCard("NENA-STA-006.3 validation", "#ef4444", "NO MATCHING ROAD", "No road centerline with this street name nearby",
+          "No road centerline with this street name was found within 200 m. Check the street name spelling and type against the road centerline.");
+      } else if (dt === "ADDRESS_RANGE_VIOLATION") {
+        setCard("NENA-STA-006.3 validation", "#ef4444", "OUT OF RANGE", "House number outside the road segment's range",
+          "The house number falls outside the address range of the matched road centerline segment. Either the point's address or the segment's range needs correcting.");
+      } else if (dt === "EXCESSIVE_OFFSET") {
+        setCard("Pipeline review threshold", "#f59e0b", "REVIEW", `Far from road and not inside a building (${hasOffset ? Number(p.SpatialOffsetMeters).toFixed(1) : '?'} m)`,
+          "NENA sets no distance limit from the road. This pipeline flags points over 50 m from the centerline that are not inside a building. A structure point belongs inside its building (NENA-INF-014.1 §3.4.4); a driveway point belongs where the driveway meets the road (§3.4.5).");
       } else if (!isInside) {
-        stdBadge.textContent = "NENA-STA-006.3 §4.2 & §5.79";
-        stdBadge.style.color = "#fbbf24";
-        stdBadge.style.borderColor = "rgba(245, 158, 11, 0.4)";
-        stdBadge.style.background = "rgba(245, 158, 11, 0.15)";
-        sevBadge.textContent = "AUDIT REQUIRED";
-        sevBadge.style.color = "#f59e0b";
-        ruleTitle.textContent = "Outside Verified Building Footprint";
-        ruleDesc.textContent = "Point does not intersect any authoritative building footprint polygon. Under NENA-STA-006.3, address points with PlacementMethod 'Structure' must reside inside the physical building perimeter.";
-        guidanceCard.style.borderColor = "rgba(245, 158, 11, 0.4)";
+        setCard("NENA-INF-014.1 §3.4.4", "#f59e0b", "REVIEW", "Outside any building footprint",
+          "Structure address points should be located within the structure's footprint. Check imagery: move the point into the building, or mark it as a site, parcel or driveway (property access) point.");
       } else {
-        stdBadge.textContent = "NENA-STA-006.3 & Cal OES 98%";
-        stdBadge.style.color = "#34d399";
-        stdBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
-        stdBadge.style.background = "rgba(16, 185, 129, 0.15)";
-        sevBadge.textContent = "COMPLIANT";
-        sevBadge.style.color = "#10b981";
-        ruleTitle.textContent = "Structure Centroid Validated";
-        ruleDesc.textContent = `Point resides within building footprint (${p.OvertureBuildingGERS_ID ? p.OvertureBuildingGERS_ID.substring(0, 12) + '...' : 'Building Polygon'}) and road displacement is within Cal OES threshold (${offsetNum.toFixed(1)}m ≤ 50m).`;
-        guidanceCard.style.borderColor = "rgba(16, 185, 129, 0.4)";
+        setCard("NENA-INF-014.1 §3.4.4", "#10b981", "COMPLIANT", "Inside building footprint",
+          `Point is inside building footprint ${p.OvertureBuildingGERS_ID ? p.OvertureBuildingGERS_ID.substring(0, 12) + '...' : ''} and matched to its road centerline${hasOffset ? ' (' + Number(p.SpatialOffsetMeters).toFixed(1) + ' m away)' : ''}.`);
       }
 
       // Show drawer

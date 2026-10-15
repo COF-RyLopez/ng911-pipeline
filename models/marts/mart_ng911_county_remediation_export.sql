@@ -83,6 +83,7 @@ discrepancies AS (
             END ASC
         ) AS rn
     FROM {{ ref('mart_ng911_qa_discrepancies') }}
+    WHERE DiscrepancyType <> 'EXCESSIVE_OFFSET_DISCREPANCY'  -- handled below with the footprint check
 )
 
 SELECT
@@ -90,7 +91,7 @@ SELECT
     a.CountyLocalID,
     r.raw_hno AS OriginalHouseNumber,
     r.raw_stn AS OriginalStreetName,
-    a.HNO || ' ' || a.STN || coalesce(' ' || a.STS, '') AS StandardizedAddress,
+    a.HNO || ' ' || a.STN || coalesce(' ' || a.STS, '') || coalesce(' UNIT ' || nullif(trim(a.Unit), ''), '') AS StandardizedAddress,
     a.HNO,
     a.HNS,
     a.PRD,
@@ -121,8 +122,8 @@ SELECT
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'UNRESOLVED_ROAD_CENTERLINE'
         WHEN f.IsRangeViolation = TRUE THEN 'ADDRESS_RANGE_VIOLATION'
-        WHEN f.IsExcessiveOffset = TRUE THEN 'EXCESSIVE_OFFSET'
         WHEN d.Severity IN ('CRITICAL', 'HIGH') THEN d.DiscrepancyType
+        WHEN f.IsExcessiveOffset AND bi.building_id IS NULL THEN 'EXCESSIVE_OFFSET'
         WHEN bi.building_id IS NULL THEN 'OUTSIDE_BUILDING_FOOTPRINT'
         WHEN d.DiscrepancyType IS NOT NULL THEN d.DiscrepancyType
         ELSE 'NONE'
@@ -131,8 +132,8 @@ SELECT
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'CRITICAL'
         WHEN f.IsRangeViolation = TRUE THEN 'HIGH'
-        WHEN f.IsExcessiveOffset = TRUE THEN 'HIGH'
         WHEN d.Severity IN ('CRITICAL', 'HIGH') THEN d.Severity
+        WHEN f.IsExcessiveOffset AND bi.building_id IS NULL THEN 'MEDIUM'
         WHEN bi.building_id IS NULL THEN 'MEDIUM'
         WHEN d.Severity IS NOT NULL THEN d.Severity
         ELSE 'OK'
@@ -141,7 +142,6 @@ SELECT
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'CRITICAL_ATTENTION'
         WHEN f.IsRangeViolation = TRUE THEN 'CRITICAL_ATTENTION'
-        WHEN f.IsExcessiveOffset = TRUE THEN 'CRITICAL_ATTENTION'
         WHEN d.Severity IN ('CRITICAL', 'HIGH') THEN 'CRITICAL_ATTENTION'
         WHEN bi.building_id IS NULL THEN 'ATTENTION_REQUIRED'
         WHEN d.DiscrepancyType IS NOT NULL THEN 'ATTENTION_REQUIRED'
@@ -160,8 +160,8 @@ SELECT
     CASE
         WHEN f.DistanceMeters IS NULL THEN 'Address point failed to resolve to named road centerline within 200m; verify street name and spatial alignment'
         WHEN f.IsRangeViolation = TRUE THEN 'House number is outside the address range of the snapping road centerline segment'
-        WHEN f.IsExcessiveOffset = TRUE THEN 'Relocate address point to driveway access or structure centroid (offset >50m)'
-        WHEN d.DiscrepancyType = 'CIVIC_ADDRESS_AMBIGUITY' THEN 'Assign unit/suite numbers to resolve duplicate address points'
+        WHEN d.DiscrepancyType = 'CIVIC_ADDRESS_AMBIGUITY' THEN 'Another point has this same complete address (including unit); remove the duplicate or assign distinct unit numbers'
+        WHEN f.IsExcessiveOffset AND bi.building_id IS NULL THEN 'Over 50 m from the road centerline and not inside a building; move a structure point into its building, or a driveway point to where the driveway meets the road'
         WHEN bi.building_id IS NULL THEN 'Address point is outside building footprint; inspect aerial/Mapillary imagery to verify placement'
         WHEN a.PSAP IS NULL THEN 'Verify municipal boundary for PSAP dispatch assignment'
         ELSE 'Validated OK against building footprint & road centerline'
