@@ -69,8 +69,8 @@ address_ranges AS (
 
 SELECT
     -- 1. NENA Mandatory Agency and Globally Unique Identifiers
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS DisclID,
-    'urn:emergency:uid:gis:RCL:' || s.street_segment_id || ':{{ var("agency_domain", "fresnocountyca.gov") }}' AS RCL_NGUID,
+    '{{ county("agency_domain") }}' AS DisclID,
+    'urn:emergency:uid:gis:RCL:' || s.street_segment_id || ':{{ county("agency_domain") }}' AS RCL_NGUID,
     s.street_segment_id AS CountyLocalID,
 
     -- 2. NENA-STA-010 Standardized Road Name Elements

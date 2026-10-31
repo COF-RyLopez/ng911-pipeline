@@ -23,17 +23,15 @@ import duckdb
 import pandas as pd
 from fetch_county_parcels import fetch_parcels
 import fetch_mapillary_coverage
+import county_config
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-# Full Fresno County Extent (EPSG:4326)
-FRESNO_COUNTY_BBOX = {
-    "minx": -120.92,
-    "maxx": -118.36,
-    "miny": 35.91,
-    "maxy": 37.58
-}
+# Overture reference data is fetched once for the extent of every county in the registry
+# (dbt_project.yml `counties`), so any registered county can be built from the same cache.
+_minx, _miny, _maxx, _maxy = county_config.union_bbox()
+OVERTURE_BBOX = {"minx": _minx, "maxx": _maxx, "miny": _miny, "maxy": _maxy}
 
 def fetch_fresno_county_addresses():
     output_parquet = os.path.join(CACHE_DIR, "county_addresses.parquet")
@@ -322,7 +320,7 @@ def fetch_fresno_county_boundaries():
 
 def fetch_overture_addresses():
     output_parquet = os.path.join(CACHE_DIR, "overture_addresses.parquet")
-    print(f"\n[4/6] Fetching Overture Maps addresses for Fresno County extent...")
+    print(f"\n[4/6] Fetching Overture Maps addresses for the registered counties' extent...")
     conn = duckdb.connect()
     conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
     
@@ -340,8 +338,8 @@ def fetch_overture_addresses():
             bbox.ymin AS miny,
             bbox.ymax AS maxy
         FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=addresses/type=address/*.parquet')
-        WHERE bbox.xmin >= {FRESNO_COUNTY_BBOX['minx']} AND bbox.xmax <= {FRESNO_COUNTY_BBOX['maxx']}
-          AND bbox.ymin >= {FRESNO_COUNTY_BBOX['miny']} AND bbox.ymax <= {FRESNO_COUNTY_BBOX['maxy']}
+        WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
+          AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
         LIMIT 100000
     ) TO '{output_parquet}' (FORMAT PARQUET);
     """
@@ -352,7 +350,7 @@ def fetch_overture_addresses():
 
 def fetch_overture_transportation():
     output_parquet = os.path.join(CACHE_DIR, "overture_transportation.parquet")
-    print(f"\n[5/6] Fetching Overture Maps road segments for Fresno County extent...")
+    print(f"\n[5/6] Fetching Overture Maps road segments for the registered counties' extent...")
     conn = duckdb.connect()
     conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
 
@@ -369,8 +367,8 @@ def fetch_overture_transportation():
             bbox.ymin AS miny,
             bbox.ymax AS maxy
         FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=transportation/type=segment/*.parquet')
-        WHERE bbox.xmin >= {FRESNO_COUNTY_BBOX['minx']} AND bbox.xmax <= {FRESNO_COUNTY_BBOX['maxx']}
-          AND bbox.ymin >= {FRESNO_COUNTY_BBOX['miny']} AND bbox.ymax <= {FRESNO_COUNTY_BBOX['maxy']}
+        WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
+          AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
         LIMIT 50000
     ) TO '{output_parquet}' (FORMAT PARQUET);
     """
@@ -381,7 +379,7 @@ def fetch_overture_transportation():
 
 def fetch_overture_places():
     output_parquet = os.path.join(CACHE_DIR, "overture_places.parquet")
-    print(f"\n[6/6] Fetching Overture Places (Landmarks/POIs) for Fresno County extent...")
+    print(f"\n[6/6] Fetching Overture Places (Landmarks/POIs) for the registered counties' extent...")
     conn = duckdb.connect()
     conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
     
@@ -397,8 +395,8 @@ def fetch_overture_places():
             ST_X(geometry) AS longitude,
             ST_Y(geometry) AS latitude
         FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=places/type=place/*.parquet')
-        WHERE bbox.xmin >= {FRESNO_COUNTY_BBOX['minx']} AND bbox.xmax <= {FRESNO_COUNTY_BBOX['maxx']}
-          AND bbox.ymin >= {FRESNO_COUNTY_BBOX['miny']} AND bbox.ymax <= {FRESNO_COUNTY_BBOX['maxy']}
+        WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
+          AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
           AND (
             basic_category IN ('hospital', 'school', 'emergency_service', 'college_or_university', 'airport', 'library', 'fire_station', 'police_station')
             OR taxonomy.primary LIKE '%hospital%' 
@@ -417,7 +415,7 @@ def fetch_overture_places():
 
 def fetch_overture_buildings():
     output_parquet = os.path.join(CACHE_DIR, "overture_buildings.parquet")
-    print(f"\n[7/7] Fetching Overture Building Footprints for full Fresno County extent...")
+    print(f"\n[7/7] Fetching Overture Building Footprints for the registered counties' extent...")
     try:
         conn = duckdb.connect()
         conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
@@ -430,8 +428,8 @@ def fetch_overture_buildings():
                 class AS building_class,
                 geometry AS geom
             FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
-            WHERE bbox.xmin >= -120.92 AND bbox.xmax <= -118.73
-              AND bbox.ymin >= 35.91 AND bbox.ymax <= 37.26
+            WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
+              AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
         ) TO '{output_parquet}' (FORMAT PARQUET);
         """
         conn.execute(query)

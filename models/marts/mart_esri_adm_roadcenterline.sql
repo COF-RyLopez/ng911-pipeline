@@ -10,7 +10,7 @@
 SELECT
     CountyLocalID AS centerlineid,
     RCL_NGUID AS rclnguid,
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS discrpagid,
+    '{{ county("agency_domain") }}' AS discrpagid,
     NULL::VARCHAR AS rangeprefixleft,
     -- 0-0 is how ADM stores "no range" (AddressParity domain: Z = Address Range 0-0)
     coalesce(try_cast(FromAddr_L AS INTEGER), 0) AS fromleft,

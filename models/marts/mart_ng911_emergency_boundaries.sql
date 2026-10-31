@@ -7,7 +7,7 @@ WITH staged_boundaries AS (
 )
 
 SELECT
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS DisclID,
+    '{{ county("agency_domain") }}' AS DisclID,
     esb_nguid AS ESB_NGUID,
     agency_type AS Agency_Type,
     agency_name AS Agency_Name,

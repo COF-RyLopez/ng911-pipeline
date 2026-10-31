@@ -17,16 +17,30 @@ clean-targets:
 
 vars:
   pilot_mode: true
-  pilot_county: "Fresno"
-  agency_domain: "fresnocountyca.gov"
-  agency_name: "County of Fresno"
   use_cached_data: true
-  bbox_minx: -119.95
-  bbox_maxx: -119.65
-  bbox_miny: 36.65
-  bbox_maxy: 36.90
   conflation_distance_degrees: 0.00015  # ~15 meters
   include_surrounding_counties: false
+
+  # County this run builds (5-digit FIPS, as a string): dbt run --vars '{"county": "06031"}'.
+  # scripts/county_config.py reads this same registry, so it is the one place a county is defined.
+  # boundary_layers: county publishes the law dispatch / fire / city limits layers the ESB marts use.
+  # bbox: [minx, miny, maxx, maxy] in EPSG:4326, used to fetch the Overture reference data.
+  county: "06019"
+  counties:
+    "06019":
+      name: FRESNO
+      label: "Fresno County, CA"
+      agency_domain: fresnocountyca.gov
+      agency_name: County of Fresno
+      boundary_layers: true
+      bbox: [-120.92, 35.91, -118.36, 37.58]
+    "06031":
+      name: KINGS
+      label: "Kings County, CA"
+      agency_domain: countyofkings.com
+      agency_name: County of Kings
+      boundary_layers: false
+      bbox: [-120.32, 35.78, -119.47, 36.49]
 
 models:
   ng911_pipeline:

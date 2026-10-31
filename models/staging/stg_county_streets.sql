@@ -12,7 +12,7 @@ WITH raw AS (
     FROM read_parquet('data/cache/oa_centerlines.parquet')
     WHERE name IS NOT NULL
     {% if not var('include_surrounding_counties', false) %}
-      AND county_name = upper('{{ var("pilot_county", "Fresno") }}')
+      AND county_name = '{{ county("name") }}'
     {% endif %}
 ),
 

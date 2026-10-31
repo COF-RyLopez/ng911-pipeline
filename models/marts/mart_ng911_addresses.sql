@@ -89,16 +89,16 @@ addr_muni AS (
 
 SELECT
     -- 1. NENA Mandatory Agency and Globally Unique Identifiers
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS DisclID,
-    'urn:emergency:uid:gis:SSAP:' || c.addr_uid || ':{{ var("agency_domain", "fresnocountyca.gov") }}' AS SSAP_NGUID,
+    '{{ county("agency_domain") }}' AS DisclID,
+    'urn:emergency:uid:gis:SSAP:' || c.addr_uid || ':{{ county("agency_domain") }}' AS SSAP_NGUID,
 
     -- 2. External Federation & Conflation Lineage Identifiers
     c.county_id AS CountyLocalID,
     c.gers_id AS GERS_ID,
     c.conflation_status AS ConflationStatus,
     CASE c.conflation_status
-        WHEN 'CONFLATED' THEN 'FRESNO_COUNTY_GIS_OVERTURE_CONFLATED'
-        WHEN 'COUNTY_ONLY' THEN 'FRESNO_COUNTY_GIS'
+        WHEN 'CONFLATED' THEN '{{ county("name") }}_COUNTY_GIS_OVERTURE_CONFLATED'
+        WHEN 'COUNTY_ONLY' THEN '{{ county("name") }}_COUNTY_GIS'
         WHEN 'OVERTURE_ONLY' THEN 'OVERTURE_MAPS'
     END AS Source,
 

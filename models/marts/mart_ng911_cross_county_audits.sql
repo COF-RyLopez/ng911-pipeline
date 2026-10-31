@@ -90,7 +90,7 @@ combined_audits AS (
 )
 
 SELECT
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS DisclID,
+    '{{ county("agency_domain") }}' AS DisclID,
     'AUDIT:' || ROW_NUMBER() OVER (ORDER BY DiscrepancyType, FeatureNGUID) AS DiscrepancyID,
     FeatureNGUID,
     DiscrepancyType,

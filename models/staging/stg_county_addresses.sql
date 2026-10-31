@@ -1,31 +1,26 @@
 {{ config(materialized='view') }}
 
-WITH raw_county AS (
-    SELECT *
-    FROM read_parquet('data/cache/county_addresses.parquet')
-)
-
+-- Addresses of the county this run builds (var `county`); each county's source mapping lives in
+-- stg_regional_addresses.
 SELECT
     county_id,
-    upper(trim(house_number)) AS house_number,
-    nullif(upper(trim(house_number_suffix)), '') AS house_number_suffix,
-    {{ normalize_direction('pre_directional') }} AS pre_directional,
-    upper(trim(street_name)) AS street_name,
-    {{ normalize_street_type('street_type') }} AS street_type,
-    {{ normalize_direction('post_directional') }} AS post_directional,
-    nullif(upper(trim(unit)), '') AS unit,
-    coalesce(upper(trim(community_name)), 'FRESNO') AS community_name,
-    nullif(trim(postcode), '') AS postcode,
-    'FRESNO' AS county,
-    'CA' AS state,
-    'US' AS country,
+    house_number,
+    house_number_suffix,
+    pre_directional,
+    street_name,
+    street_type,
+    post_directional,
+    unit,
+    community_name,
+    postcode,
+    county,
+    state,
+    country,
     longitude,
     latitude,
-    ST_Point(longitude, latitude) AS geom,
-    coalesce(source_agency, 'County of Fresno') AS source_agency,
-    coalesce(nullif(upper(trim(address_status)), ''), 'ACTIVE') AS address_status
-FROM raw_county
-WHERE house_number IS NOT NULL 
-  AND street_name IS NOT NULL
-  AND longitude IS NOT NULL 
-  AND latitude IS NOT NULL
+    geom,
+    source_agency,
+    address_status
+FROM {{ ref('stg_regional_addresses') }}
+WHERE county = '{{ county("name") }}'
+  AND longitude IS NOT NULL AND latitude IS NOT NULL
