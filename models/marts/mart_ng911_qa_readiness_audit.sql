@@ -29,14 +29,6 @@ fishbones AS (
     FROM {{ ref('mart_ng911_qa_fishbones') }}
 ),
 
--- Authoritative county points that matched a same-named centerline (have a fishbone)
-auth_snap AS (
-    SELECT count(f.SSAP_NGUID) AS snapped
-    FROM {{ ref('mart_ng911_addresses') }} a
-    LEFT JOIN {{ ref('mart_ng911_qa_fishbones') }} f USING (SSAP_NGUID)
-    WHERE a.ConflationStatus != 'OVERTURE_ONLY'
-),
-
 roads AS (
     SELECT 
         count(*) AS total_road_segments,
@@ -64,15 +56,16 @@ SELECT
     -- Fishbones & Remediated Driveway Access Point Snapping
     f.compliant_snapped AS SSAP_Snapped_Within_50m_Physical,
     round((f.compliant_snapped * 100.0) / nullif(f.total_fishbones, 0), 2) AS Pct_Fishbones_Within_50m,
-    s.snapped AS SSAP_Remediated_Access_Snapped,
-    round((s.snapped * 100.0) / nullif(a_co.total_addresses, 0), 2) AS Pct_SSAP_Remediated_Access_Snapped,
+    -- Every address point (county + Overture) that matched a same-named centerline has one fishbone
+    f.total_fishbones AS SSAP_Remediated_Access_Snapped,
+    round((f.total_fishbones * 100.0) / nullif(a_comb.total_addresses, 0), 2) AS Pct_SSAP_Remediated_Access_Snapped,
     
     -- RCL Topology & Range Inversions
     r.total_road_segments AS Total_Road_Segments,
     r.range_inversions AS Road_Range_Inversions,
 
     -- Cal OES 98% Readiness Gates (Authoritative County GIS Data)
-    coalesce((s.snapped * 100.0) / nullif(a_co.total_addresses, 0) >= 98.0, FALSE) AS Snapping_Threshold_Passed,
+    coalesce((f.total_fishbones * 100.0) / nullif(a_comb.total_addresses, 0) >= 98.0, FALSE) AS Snapping_Threshold_Passed,
 
     CASE 
         WHEN round((a_co.psap_attributed * 100.0) / nullif(a_co.total_addresses, 0), 2) >= 98.0 
@@ -87,7 +80,7 @@ SELECT
     -- Composite Statewide NG911 Transition Verdict
     CASE 
         WHEN (a_co.psap_attributed * 100.0 / nullif(a_co.total_addresses, 0) >= 98.0)
-         AND (s.snapped * 100.0 / nullif(a_co.total_addresses, 0) >= 98.0)
+         AND (f.total_fishbones * 100.0 / nullif(a_comb.total_addresses, 0) >= 98.0)
          AND (r.range_inversions = 0)
         THEN 'PASSED_CAL_OES_98_PERCENT_READY'
         ELSE 'ACTION_REQUIRED_DEFICIENT'
@@ -98,5 +91,4 @@ SELECT
 FROM county_addrs a_co
 CROSS JOIN combined_addrs a_comb
 CROSS JOIN fishbones f
-CROSS JOIN auth_snap s
 CROSS JOIN roads r

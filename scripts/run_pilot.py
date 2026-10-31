@@ -320,7 +320,7 @@ def main():
     print(f"  - Street Name Mismatches: {name_mismatches_cnt:,} (Spelling / alias discrepancies)")
     print("-" * 75)
     print(f"  CAL OES 98% NG911 TRANSITION READINESS SCORECARD:")
-    print(f"  - RCL Snapping (>= 98%):   {audit_row['Pct_SSAP_Remediated_Access_Snapped']}% of county points -> {'[PASS]' if audit_row['Snapping_Threshold_Passed'] else '[FAIL]'}")
+    print(f"  - RCL Snapping (>= 98%):   {audit_row['Pct_SSAP_Remediated_Access_Snapped']}% of all address points -> {'[PASS]' if audit_row['Snapping_Threshold_Passed'] else '[FAIL]'}")
     print(f"  - Dispatch Coverage (>=98%): {audit_row['Authoritative_Pct_PSAP_Attributed']}% -> {'[PASS]' if audit_row['PSAP_Coverage_Passed'] else '[FAIL]'}")
     print(f"  - Inverted Ranges (= 0):   {audit_row['Road_Range_Inversions']} -> {'[PASS]' if audit_row['Zero_Range_Inversions_Passed'] else '[FAIL]'}")
     print(f"  - Cal OES Readiness:       {audit_row['Cal_OES_Readiness_Status']}")
