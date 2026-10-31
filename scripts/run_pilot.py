@@ -287,6 +287,31 @@ def main():
     nena3_stseg_cnt = conn.sql("SELECT count(*) FROM mart_nena3_stseg").fetchall()[0][0]
     nena3_stnam_cnt = conn.sql("SELECT count(*) FROM mart_nena3_completestnam").fetchall()[0][0]
 
+    # Live numbers for the web app (index.html reads scorecard.json beside it instead of hardcoding them)
+    parcels_cache = os.path.join(CACHE_DIR, "county_parcels.parquet")
+    pct = lambda v: None if v is None else float(v)
+    scorecard = {
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "county": county["label"],
+        "fips": county["fips"],
+        "address_points": total_addr,
+        "remediation_points": conn.sql("SELECT count(*) FROM mart_ng911_county_remediation_export").fetchall()[0][0],
+        "flagged_points": flagged,
+        "flagged_with_street_imagery": with_img,
+        "road_segments": total_roads,
+        "fishbones": fishbone_metrics[0],
+        "parcels": conn.sql(f"SELECT count(*) FROM '{parcels_cache}'").fetchall()[0][0] if os.path.exists(parcels_cache) else None,
+        "gates": {
+            "rcl_snapping": {"pct": pct(audit_row["Pct_SSAP_Remediated_Access_Snapped"]), "passed": bool(audit_row["Snapping_Threshold_Passed"])},
+            "dispatch_coverage": {"pct": pct(audit_row["Authoritative_Pct_PSAP_Attributed"]), "passed": bool(audit_row["PSAP_Coverage_Passed"])},
+            "range_inversions": {"count": int(audit_row["Road_Range_Inversions"]), "passed": bool(audit_row["Zero_Range_Inversions_Passed"])},
+        },
+        "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
+        "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+    }
+    with open(os.path.join(OUTPUT_DIR, "scorecard.json"), "w") as f:
+        json.dump(scorecard, f, indent=2)
+
     print("\n" + "=" * 75)
     print("                       PILOT EVALUATION SCORECARD")
     print("=" * 75)

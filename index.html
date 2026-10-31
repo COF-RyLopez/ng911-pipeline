@@ -1335,6 +1335,70 @@
       from { transform: translateX(50px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+
+    /* ---- Layout: one header height that the panels and map controls are placed from ---- */
+    :root {
+      --nav-h: 64px;
+      --panel-top: calc(16px + var(--nav-h) + 10px);
+    }
+    .top-nav { height: var(--nav-h); gap: 16px; }
+    .brand-group { min-width: 0; flex-shrink: 1; }
+    .brand-text { min-width: 0; }
+    .brand-text h1, .brand-subtitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { min-width: 0; flex-wrap: nowrap; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+    .header-actions::-webkit-scrollbar { display: none; }
+    .action-btn, .basemap-picker { white-space: nowrap; flex-shrink: 0; }
+    /* these buttons mix text and counters; flex split them into separately spaced pieces */
+    .wallet-btn, .changeset-btn { display: inline-block; }
+    .sidebar-panel, .drawer-panel {
+      top: var(--panel-top);
+      max-height: calc(100vh - var(--panel-top) - 16px);
+    }
+    .maplibregl-ctrl-top-right { top: var(--panel-top); }
+    .remediation-banner { top: var(--panel-top); }
+    /* legend sits to the right of the layer panel instead of underneath it */
+    .legend-panel {
+      left: calc(16px + 320px + 12px);
+      max-width: calc(100vw - 16px - 320px - 12px - 16px);
+      flex-wrap: wrap;
+      row-gap: 8px;
+    }
+    .layers-toggle { display: none; }
+    .filter-pills { flex-wrap: wrap; }
+    .layer-count { color: #ffffff; font-weight: 600; white-space: nowrap; }
+    .ban-badge-red {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .readiness-gates { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 10px 0 6px; font-size: 11px; }
+    .readiness-gates li { display: flex; justify-content: space-between; gap: 8px; color: var(--text-muted); }
+    .readiness-gates .gate-pass { color: #34d399; font-weight: 600; }
+    .readiness-gates .gate-fail { color: #f87171; font-weight: 600; }
+
+    @media (max-width: 1280px) {
+      .brand-subtitle { display: none; }
+    }
+
+    /* ---- Phones: header on two rows, layers panel and details as full-width sheets ---- */
+    @media (max-width: 768px) {
+      :root { --nav-h: 100px; --panel-top: calc(8px + var(--nav-h) + 8px); }
+      .top-nav { top: 8px; left: 8px; right: 8px; padding: 8px 10px; flex-wrap: wrap; row-gap: 8px; align-content: center; }
+      .brand-group { flex: 1; gap: 10px; }
+      .logo-badge { width: 32px; height: 32px; font-size: 16px; }
+      .brand-text h1 { font-size: 14px; }
+      .layers-toggle { display: inline-flex; }
+      .header-actions { order: 3; width: 100%; }
+      .sidebar-panel { display: none; left: 8px; right: 8px; width: auto; bottom: 8px; max-height: none; }
+      .sidebar-panel.open { display: flex; }
+      .drawer-panel { left: 8px; right: 8px; width: auto; max-height: calc(100vh - var(--panel-top) - 8px); }
+      .legend-panel { display: none; }
+      .maplibregl-ctrl-top-right { right: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -1348,19 +1412,18 @@
       <div class="logo-badge">📍</div>
       <div class="brand-text">
         <h1>County of Fresno · NG911 Remediation Hub</h1>
-        <p>Authoritative Address Remediation & Building Containment · Cal OES Standards</p>
+        <p class="brand-subtitle">Address points checked against buildings, road centerlines and Cal OES readiness</p>
       </div>
-      <span class="badge-pill badge-r2">Cloudflare R2 PMTiles</span>
-      <span class="badge-pill badge-live"><span class="live-dot"></span> Streaming</span>
     </div>
+    <button class="action-btn layers-toggle" id="btn-toggle-sidebar" aria-controls="sidebar-panel" aria-expanded="false">☰ Layers</button>
 
     <div class="header-actions">
       <select id="basemap-select" class="basemap-picker" aria-label="Select Basemap">
-        <option value="positron" selected>Light (Carto Positron)</option>
-        <option value="caltrans">Caltrans Aerial (California 30cm Ortho)</option>
-        <option value="liberty">Streets (OpenFreeMap)</option>
-        <option value="satellite">Satellite (ESRI Imagery)</option>
-        <option value="dark">Dark Matter (Carto)</option>
+        <option value="positron" selected>Light map</option>
+        <option value="caltrans">Caltrans aerial (30 cm)</option>
+        <option value="liberty">Streets</option>
+        <option value="satellite">Satellite</option>
+        <option value="dark">Dark map</option>
       </select>
       <button class="action-btn wallet-btn" id="wallet-btn" title="View Fix Tokens & Reputation Rank">
         🪙 <span id="wallet-tokens">0</span> FTs · <span id="wallet-rank">Novice</span>
@@ -1376,7 +1439,7 @@
       </button>
       <a href="https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/ng911_address_comparison_r2.geolibre.json" 
          target="_blank" class="action-btn" id="open-geolibre-btn" title="Open project in GeoLibre Web">
-        Open in GeoLibre ↗
+        GeoLibre ↗
       </a>
       <a href="https://github.com/COF-RyLopez/ng911-pipeline" target="_blank" class="action-btn" id="github-btn" title="View Source on GitHub">
         GitHub ↗
@@ -1405,8 +1468,7 @@
   <aside class="sidebar-panel" id="sidebar-panel">
     <div>
       <div class="sidebar-section-title">
-        <span>Authoritative Layers</span>
-        <span style="font-size: 10px; color: var(--color-primary)">PMTiles HTTP Range</span>
+        <span>Map layers</span>
       </div>
 
       <!-- Address Points Layer -->
@@ -1426,8 +1488,8 @@
           </label>
         </div>
         <div class="layer-meta">
-          <span>mart_ng911_county_remediation</span>
-          <span style="color: #ffffff; font-weight: 600;">395,970 pts</span>
+          <span title="mart_ng911_county_remediation_export">Every county address point, colored by status</span>
+          <span class="layer-count" data-stat="remediation_points" data-unit="pts">—</span>
         </div>
       </div>
 
@@ -1444,8 +1506,8 @@
           </label>
         </div>
         <div class="layer-meta">
-          <span>mart_ng911_fresno_rcl</span>
-          <span style="color: #ffffff; font-weight: 600;">53,474 lines</span>
+          <span title="mart_ng911_fresno_rcl">County centerlines with address ranges</span>
+          <span class="layer-count" data-stat="road_segments" data-unit="segments">—</span>
         </div>
       </div>
 
@@ -1462,8 +1524,8 @@
           </label>
         </div>
         <div class="layer-meta">
-          <span>mart_ng911_fresno_fishbones</span>
-          <span style="color: #ffffff; font-weight: 600;">365,319 vectors</span>
+          <span title="mart_ng911_fresno_fishbones">Each address linked to its matched road</span>
+          <span class="layer-count" data-stat="fishbones" data-unit="links">—</span>
         </div>
       </div>
 
@@ -1480,7 +1542,7 @@
           </label>
         </div>
         <div class="layer-meta">
-          <span>fresno_buildings</span>
+          <span title="fresno_buildings.pmtiles">Overture building outlines</span>
           <span style="color: #ffffff; font-weight: 600;">Zoom 13+</span>
         </div>
       </div>
@@ -1499,7 +1561,7 @@
         </div>
         <div class="layer-meta">
           <span>Fresno County Assessor (APN)</span>
-          <span style="color: #ffffff; font-weight: 600;">15,000 parcels</span>
+          <span class="layer-count" data-stat="parcels" data-unit="parcels">—</span>
         </div>
       </div>
 
@@ -1558,10 +1620,10 @@
     <!-- BAN Quick Street Filter / Search -->
     <div class="ban-street-search-box">
       <div class="sidebar-section-title">
-        <span>Street Corridor Filter (Voie)</span>
+        <span>Find a street</span>
       </div>
       <div style="position: relative;">
-        <input type="text" id="ban-street-search" placeholder="Search street (e.g. Fulton, Tulare)..." class="ban-input">
+        <input type="text" id="ban-street-search" placeholder="Street name, e.g. Fulton or Tulare" class="ban-input">
         <button id="ban-street-clear" class="ban-clear-btn" style="display: none;" title="Clear filter">✕</button>
       </div>
     </div>
@@ -1569,37 +1631,38 @@
     <!-- Quick Violation Filters -->
     <div>
       <div class="sidebar-section-title">
-        <span>Validation Status Filter</span>
+        <span>Show points</span>
       </div>
       <div class="filter-pills">
         <button class="pill-btn active" id="filter-all">All</button>
-        <button class="pill-btn" id="filter-violations">Rule Violations Only</button>
-        <button class="pill-btn" id="filter-valid">Valid (Inside Footprint)</button>
-        <button class="pill-btn" id="filter-imagery" title="Flagged points with Mapillary street imagery within 50 m">Violations with Street View</button>
+        <button class="pill-btn" id="filter-violations" title="Points flagged for county review">Needs review</button>
+        <button class="pill-btn" id="filter-valid" title="Points inside a building footprint with no issues">Valid</button>
+        <button class="pill-btn" id="filter-imagery" title="Flagged points with Mapillary street imagery within 50 m">Needs review + street view</button>
       </div>
     </div>
 
     <!-- BAN-Inspired Certification & Audit Card -->
-    <div class="ban-certification-card">
+    <div class="ban-certification-card" id="readiness-card">
       <div class="ban-card-title">
-        <span>🛡️ Cal OES & NENA-STA-006.3</span>
-        <span class="ban-badge-green">98.4% COMPLIANT</span>
+        <span>🛡️ Cal OES readiness (NENA-STA-006.x)</span>
+        <span class="ban-badge-green" id="readiness-status">Loading…</span>
       </div>
-      <div class="ban-progress-bar-container">
-        <div class="ban-progress-bar" style="width: 98.4%;"></div>
+      <div class="ban-progress-bar-container" title="Address points matched to a same-named road centerline">
+        <div class="ban-progress-bar" id="readiness-bar" style="width: 0%;"></div>
       </div>
       <div class="ban-counters-grid">
         <div class="ban-counter-box ban-counter-success">
-          <div class="ban-counter-value">607,587</div>
-          <div class="ban-counter-label">Certified NENA-Ready</div>
+          <div class="ban-counter-value" data-stat="address_points">—</div>
+          <div class="ban-counter-label">Address points</div>
         </div>
         <div class="ban-counter-box ban-counter-warning">
-          <div class="ban-counter-value">9,880</div>
-          <div class="ban-counter-label">Signalements / Audits</div>
+          <div class="ban-counter-value" data-stat="flagged_points">—</div>
+          <div class="ban-counter-label">Flagged for review</div>
         </div>
       </div>
-      <div class="ban-card-footnote">
-        Authoritative local government addresses validated against building footprints & road centerline networks. 100% Cal OES snapping compliant.
+      <ul class="readiness-gates" id="readiness-gates"></ul>
+      <div class="ban-card-footnote" id="readiness-footnote">
+        Figures from the latest pipeline run.
       </div>
     </div>
   </aside>
@@ -4754,6 +4817,49 @@
 
     // Initial wallet UI sync
     updateWalletUI();
+
+  </script>
+
+  <!-- Kept apart from the map script so the layer sheet and figures work even if the map fails to start -->
+  <script>
+    // Phones: the layers panel is a sheet opened from the header
+    const sidebarToggle = document.getElementById("btn-toggle-sidebar");
+    sidebarToggle.addEventListener("click", () => {
+      const open = document.getElementById("sidebar-panel").classList.toggle("open");
+      sidebarToggle.setAttribute("aria-expanded", String(open));
+    });
+
+    // Live figures from the last pipeline run (scripts/run_pilot.py writes scorecard.json beside this page)
+    const SCORECARD_BASE = ["localhost", "127.0.0.1"].includes(location.hostname)
+      ? location.origin : "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev";
+    fetch(`${SCORECARD_BASE}/scorecard.json`, { cache: "no-cache" })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(sc => {
+        const fmt = n => n == null ? "—" : Number(n).toLocaleString();
+        document.querySelectorAll("[data-stat]").forEach(el => {
+          const v = sc[el.dataset.stat];
+          el.textContent = v == null ? "—" : `${fmt(v)}${el.dataset.unit ? " " + el.dataset.unit : ""}`;
+        });
+        const snap = sc.gates.rcl_snapping;
+        const ready = sc.cal_oes_status === "PASSED_CAL_OES_98_PERCENT_READY";
+        const status = document.getElementById("readiness-status");
+        status.textContent = ready ? "READY" : "ACTION REQUIRED";
+        status.className = ready ? "ban-badge-green" : "ban-badge-red";
+        document.getElementById("readiness-bar").style.width = `${Math.min(snap.pct || 0, 100)}%`;
+        const gate = (label, value, passed) =>
+          `<li><span>${label}</span><span class="${passed ? "gate-pass" : "gate-fail"}">${value} ${passed ? "✓" : "✗"}</span></li>`;
+        document.getElementById("readiness-gates").innerHTML =
+          gate("Points matched to a road (≥ 98%)", `${snap.pct}%`, snap.passed) +
+          gate("Dispatch area coverage (≥ 98%)", `${sc.gates.dispatch_coverage.pct}%`, sc.gates.dispatch_coverage.passed) +
+          gate("Inverted address ranges (0)", sc.gates.range_inversions.count, sc.gates.range_inversions.passed);
+        document.getElementById("readiness-footnote").textContent =
+          `${sc.county} · pipeline run ${sc.generated}. ${sc.within_50m_pct}% of matched points are within 50 m of their road; ` +
+          `points farther out are flagged for review.`;
+      })
+      .catch(() => {
+        document.getElementById("readiness-status").textContent = "UNAVAILABLE";
+        document.getElementById("readiness-footnote").textContent = "Pipeline figures (scorecard.json) could not be loaded.";
+      });
   </script>
 </body>
 </html>
