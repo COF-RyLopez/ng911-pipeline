@@ -24,6 +24,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
+          enable-cache: false  # no lockfile to key a cache on; v3 defaulted to off
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
