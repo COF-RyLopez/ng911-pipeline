@@ -10,7 +10,8 @@ FROM (
     FROM {{ ref('oo_address_points') }} a
     JOIN {{ ref('oo_road_centerlines') }} r
       ON length(a.street_name) > 0
-     AND instr(r.road_name, a.street_name) > 0
+     -- whole-word match, so a lettered street ("E") doesn't match every road with an E in it
+     AND instr(' ' || r.road_name || ' ', ' ' || a.street_name || ' ') > 0
      AND ST_DWithin(a.geom, r.geom, 0.0040)
 )
 WHERE rn = 1
