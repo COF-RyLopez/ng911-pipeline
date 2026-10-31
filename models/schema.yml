@@ -450,3 +450,77 @@ models:
           - accepted_values:
               arguments:
                 values: ['INVALID_GEOMETRY', 'DUPLICATE_POLYGON', 'OVERLAP']
+
+  # Esri Address Data Management 2.5 exports: domain values from the ADM Pro project geodatabase
+  - name: mart_esri_adm_siteaddresspoint
+    description: "Esri ADM 2.5 SiteAddressPoint (field-for-field, ADM coded-value domains)."
+    columns:
+      - name: sitenguid
+        tests: [not_null, unique]
+      - name: unittype
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['APT', 'BSMT', 'BLDG', 'DEPT', 'FL', 'FRNT', 'HNGR', 'KEY', 'LBBY', 'LOT', 'LOWR', 'OFC', 'PH', 'PIER', 'REAR', 'RM', 'SEAT', 'SIDE', 'SLIP', 'SPC', 'STOP', 'STE', 'TRLR', 'UNIT', 'UPPR', 'Other']
+      - name: pointtype
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Building', 'Mile Post', 'Parcel', 'Unit, Condo, Office or Suite', 'Utility Asset', 'Other', 'Unknown']
+      - name: capturemeth
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Community Contribution', 'Other', 'Plan or Drawing', 'Site Visit']
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Current', 'Pending', 'Retired', 'Temporary', 'Other']
+
+  - name: mart_esri_adm_roadcenterline
+    description: "Esri ADM 2.5 RoadCenterline (field-for-field, ADM coded-value domains)."
+    columns:
+      - name: rclnguid
+        tests: [not_null, unique]
+      - name: parityleft
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['O', 'E', 'B', 'Z']
+      - name: parityright
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['O', 'E', 'B', 'Z']
+      - name: onewaydir
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['From-To', 'To-From', 'Unknown', 'Both']
+      - name: roadclass
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Freeway', 'Highway', 'Ramp', 'Major Arterial', 'Minor Arterial', 'Collector', 'Local', 'Service', '4WD', 'Recreation', 'Resource', 'Ferry', 'Other', 'Unknown']
+
+  - name: mart_esri_adm_masterroadname
+    description: "Esri ADM 2.5 MasterRoadName: distinct centerline road names."
+    columns:
+      - name: roadpredir
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['N', 'S', 'E', 'W', 'NW', 'NE', 'SE', 'SW', 'NB', 'SB', 'EB', 'WB']
+      - name: roadpostdir
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW']
+      - name: roadtype
+        tests:
+          - accepted_values:
+              config:
+                severity: warn
+              arguments:
+                values: ['Aly', 'Anx', 'Arc', 'Ave', 'Byu', 'Bch', 'Bnd', 'Blf', 'Blfs', 'Btm', 'Blvd', 'Br', 'Brg', 'Brk', 'Brks', 'Bg', 'Bgs', 'Byp', 'Cp', 'Cyn', 'Cpe', 'Cswy', 'Ctr', 'Ctrs', 'Cir', 'Cirs', 'Clf', 'Clfs', 'Clb', 'Cmn', 'Cmns', 'Coll', 'Conn', 'Cor', 'Cors', 'Crse', 'Ct', 'Cts', 'Cv', 'Cvs', 'Crk', 'Cres', 'Crst', 'Xing', 'Xrd', 'Xrds', 'Curv', 'Dl', 'Dm', 'Dv', 'Dr', 'Drs', 'Est', 'Ests', 'Expy', 'Ext', 'Exts', 'Fall', 'Fls', 'Fry', 'Fld', 'Flds', 'Flt', 'Flts', 'Frd', 'Frds', 'Frst', 'Frg', 'Frgs', 'Frk', 'Frks', 'Ft', 'Fwy', 'Gdn', 'Gdns', 'Gtwy', 'Gln', 'Glns', 'Grn', 'Grns', 'Grv', 'Grvs', 'Hbr', 'Hbrs', 'Hvn', 'Hts', 'Hwy', 'Hl', 'Hls', 'Holw', 'Inlt', 'Is', 'Iss', 'Isle', 'Jct', 'Jcts', 'Ky', 'Kys', 'Knl', 'Knls', 'Lk', 'Lks', 'Land', 'Lndg', 'Ln', 'Lgt', 'Lgts', 'Lf', 'Lck', 'Lcks', 'Ldg', 'Loop', 'Mall', 'Mnr', 'Mnrs', 'Mdw', 'Mdws', 'Mews', 'Ml', 'Mls', 'Msn', 'Mtwy', 'Mt', 'Mtn', 'Mtns', 'Nck', 'Ofrp', 'Onrp', 'Orch', 'Oval', 'Opas', 'Park', 'Parks', 'Pkwy', 'Pkwys', 'Pass', 'Psge', 'Path', 'Pike', 'Pne', 'Pnes', 'Pl', 'Pln', 'Plns', 'Plz', 'Pt', 'Pts', 'Prt', 'Prts', 'Pr', 'Radl', 'Ramp', 'Rnch', 'Rpd', 'Rpds', 'Rst', 'Rdg', 'Rdgs', 'Riv', 'Rd', 'Rds', 'Rte', 'Row', 'Rue', 'Run', 'Shl', 'Shls', 'Shr', 'Shrs', 'Skwy', 'Spg', 'Spgs', 'Spur', 'Spurs', 'Sq', 'Sqs', 'Sta', 'Stra', 'Strm', 'St', 'Sts', 'Smt', 'Ter', 'Trwy', 'Trce', 'Trak', 'Trfy', 'Trl', 'Trlr', 'Tunl', 'Tpke', 'Upas', 'Un', 'Uns', 'Vly', 'Vlys', 'Via', 'Vw', 'Vws', 'Vlg', 'Vlgs', 'Vl', 'Vis', 'Walk', 'Walks', 'Wall', 'Way', 'Ways', 'Wl', 'Wls']

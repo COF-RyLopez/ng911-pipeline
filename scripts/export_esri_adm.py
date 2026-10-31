@@ -21,6 +21,7 @@ def main():
     edits_json_path = os.path.join(OUTPUT_DIR, "arcgis_online_apply_edits.json")
     points_parquet_path = os.path.join(OUTPUT_DIR, "SiteAddressPoint.parquet")
     rcl_parquet_path = os.path.join(OUTPUT_DIR, "RoadCenterline.parquet")
+    roadnames_parquet_path = os.path.join(OUTPUT_DIR, "MasterRoadName.parquet")
 
     print(f"Connecting to {DB_PATH}...")
     conn = duckdb.connect(DB_PATH)
@@ -30,6 +31,7 @@ def main():
     print(f"Exporting Esri ADM Parquet layers to {OUTPUT_DIR}...")
     conn.execute(f"COPY mart_esri_adm_siteaddresspoint TO '{points_parquet_path}' (FORMAT PARQUET);")
     conn.execute(f"COPY mart_esri_adm_roadcenterline TO '{rcl_parquet_path}' (FORMAT PARQUET);")
+    conn.execute(f"COPY mart_esri_adm_masterroadname TO '{roadnames_parquet_path}' (FORMAT PARQUET);")
 
     # 2. Export GeoPackage containing both SiteAddressPoint and RoadCenterline
     print(f"Exporting Esri ADM GeoPackage to {gpkg_path}...")
@@ -48,67 +50,51 @@ def main():
             TO '{gpkg_path}' 
             WITH (FORMAT GDAL, DRIVER 'GPKG', LAYER_NAME 'RoadCenterline');
         """)
+        conn.execute(f"""
+            COPY (SELECT * FROM mart_esri_adm_masterroadname)
+            TO '{gpkg_path}'
+            WITH (FORMAT GDAL, DRIVER 'GPKG', LAYER_NAME 'MasterRoadName');
+        """)
         print(f"  -> Successfully generated {gpkg_path}")
     except Exception as e:
         print(f"  Note on GPKG export: {e}")
 
     # 3. Export ArcGIS Online FeatureService applyEdits JSON payload
+    # Features go in "adds": an update must carry the target layer's OBJECTID or GlobalID, which this
+    # pipeline does not know. Attributes are ADM SiteAddressPoint fields only.
     print(f"Generating ArcGIS Online FeatureService applyEdits payload for high-priority remediations...")
-    remediation_query = """
-        SELECT 
-            ADDRESSPTID,
-            ADDRNUM,
-            FULLNAME,
-            FULLADDR,
-            MUNI,
-            ZIP,
-            STRUCTUREID,
-            SpatialOffsetMeters,
-            RecommendedRemediationAction,
-            ST_X(geom) AS lon,
-            ST_Y(geom) AS lat
-        FROM mart_esri_adm_siteaddresspoint
-        WHERE IsExcessiveOffset = TRUE
+    adm_fields = ["siteaddid", "sitenguid", "discrpagid", "addrnum", "addrnumsuf", "unittype", "unitid",
+                  "fullname", "fulladdr", "country", "stateabbreviation", "county", "municipality",
+                  "pointtype", "capturemeth", "status"]
+    remediation_query = f"""
+        SELECT {", ".join("p." + f for f in adm_fields)}, ST_X(p.geom) AS lon, ST_Y(p.geom) AS lat
+        FROM mart_esri_adm_siteaddresspoint p
+        JOIN mart_ng911_county_remediation_export r ON r.SSAP_NGUID = p.sitenguid
+        WHERE r.IsExcessiveOffset = TRUE
+        ORDER BY r.SpatialOffsetMeters DESC
         LIMIT 500;
     """
     recs = conn.execute(remediation_query).fetchall()
-    
-    adds = []
-    updates = []
-    for r in recs:
-        # Format as Esri JSON feature
-        feature = {
-            "attributes": {
-                "ADDRESSPTID": r[0],
-                "ADDRNUM": r[1],
-                "FULLNAME": r[2],
-                "FULLADDR": r[3],
-                "MUNI": r[4],
-                "ZIP": r[5],
-                "STRUCTUREID": r[6],
-                "OFFSET_M": r[7],
-                "ACTION": r[8],
-                "STATUS": "Requires Verification"
-            },
-            "geometry": {
-                "x": r[9],
-                "y": r[10],
-                "spatialReference": {"wkid": 4326}
-            }
+
+    adds = [
+        {
+            "attributes": dict(zip(adm_fields, r[:-2])),
+            "geometry": {"x": r[-2], "y": r[-1], "spatialReference": {"wkid": 4326}},
         }
-        updates.append(feature)
+        for r in recs
+    ]
 
     apply_edits_payload = {
         "id": 0, # Feature layer ID 0 (SiteAddressPoint)
-        "adds": [],
-        "updates": updates,
+        "adds": adds,
+        "updates": [],
         "deletes": []
     }
 
     with open(edits_json_path, "w") as f:
         json.dump([apply_edits_payload], f, indent=2)
 
-    print(f"  -> Generated {edits_json_path} ({len(updates)} update features)")
+    print(f"  -> Generated {edits_json_path} ({len(adds)} add features)")
     print("\nEsri Address Data Management exports completed successfully!")
 
 if __name__ == "__main__":
