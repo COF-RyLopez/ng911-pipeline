@@ -524,3 +524,25 @@ models:
                 severity: warn
               arguments:
                 values: ['Aly', 'Anx', 'Arc', 'Ave', 'Byu', 'Bch', 'Bnd', 'Blf', 'Blfs', 'Btm', 'Blvd', 'Br', 'Brg', 'Brk', 'Brks', 'Bg', 'Bgs', 'Byp', 'Cp', 'Cyn', 'Cpe', 'Cswy', 'Ctr', 'Ctrs', 'Cir', 'Cirs', 'Clf', 'Clfs', 'Clb', 'Cmn', 'Cmns', 'Coll', 'Conn', 'Cor', 'Cors', 'Crse', 'Ct', 'Cts', 'Cv', 'Cvs', 'Crk', 'Cres', 'Crst', 'Xing', 'Xrd', 'Xrds', 'Curv', 'Dl', 'Dm', 'Dv', 'Dr', 'Drs', 'Est', 'Ests', 'Expy', 'Ext', 'Exts', 'Fall', 'Fls', 'Fry', 'Fld', 'Flds', 'Flt', 'Flts', 'Frd', 'Frds', 'Frst', 'Frg', 'Frgs', 'Frk', 'Frks', 'Ft', 'Fwy', 'Gdn', 'Gdns', 'Gtwy', 'Gln', 'Glns', 'Grn', 'Grns', 'Grv', 'Grvs', 'Hbr', 'Hbrs', 'Hvn', 'Hts', 'Hwy', 'Hl', 'Hls', 'Holw', 'Inlt', 'Is', 'Iss', 'Isle', 'Jct', 'Jcts', 'Ky', 'Kys', 'Knl', 'Knls', 'Lk', 'Lks', 'Land', 'Lndg', 'Ln', 'Lgt', 'Lgts', 'Lf', 'Lck', 'Lcks', 'Ldg', 'Loop', 'Mall', 'Mnr', 'Mnrs', 'Mdw', 'Mdws', 'Mews', 'Ml', 'Mls', 'Msn', 'Mtwy', 'Mt', 'Mtn', 'Mtns', 'Nck', 'Ofrp', 'Onrp', 'Orch', 'Oval', 'Opas', 'Park', 'Parks', 'Pkwy', 'Pkwys', 'Pass', 'Psge', 'Path', 'Pike', 'Pne', 'Pnes', 'Pl', 'Pln', 'Plns', 'Plz', 'Pt', 'Pts', 'Prt', 'Prts', 'Pr', 'Radl', 'Ramp', 'Rnch', 'Rpd', 'Rpds', 'Rst', 'Rdg', 'Rdgs', 'Riv', 'Rd', 'Rds', 'Rte', 'Row', 'Rue', 'Run', 'Shl', 'Shls', 'Shr', 'Shrs', 'Skwy', 'Spg', 'Spgs', 'Spur', 'Spurs', 'Sq', 'Sqs', 'Sta', 'Stra', 'Strm', 'St', 'Sts', 'Smt', 'Ter', 'Trwy', 'Trce', 'Trak', 'Trfy', 'Trl', 'Trlr', 'Tunl', 'Tpke', 'Upas', 'Un', 'Uns', 'Vly', 'Vlys', 'Via', 'Vw', 'Vws', 'Vlg', 'Vlgs', 'Vl', 'Vis', 'Walk', 'Walks', 'Wall', 'Way', 'Ways', 'Wl', 'Wls']
+
+  # Product 1: Overture-only NG911 build (models/overture_only)
+  - name: oo_address_points
+    description: "Overture address points inside the county's Overture polygon."
+    columns:
+      - name: overture_id
+        tests: [not_null, unique]
+  - name: oo_road_centerlines
+    description: "Named Overture road segments touching the county (OpenStreetMap-derived, ODbL)."
+    columns:
+      - name: overture_segment_id
+        tests: [not_null, unique]
+  - name: oo_fishbones
+    description: "Each Overture address linked to the nearest same-named Overture road within ~400 m."
+    columns:
+      - name: overture_id
+        tests: [not_null, unique]
+  - name: oo_scorecard
+    description: "Product 1 scorecard: how far Overture alone gets toward NG911 for the county."
+    columns:
+      - name: Jurisdiction
+        tests: [not_null]
