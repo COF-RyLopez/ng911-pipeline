@@ -894,23 +894,6 @@
       gap: 4px;
       margin-top: 2px;
     }
-    .ban-fix-parity-btn {
-      background: rgba(239, 68, 68, 0.2);
-      border: 1px solid #ef4444;
-      color: #fca5a5;
-      font-size: 11px;
-      font-weight: 600;
-      border-radius: 6px;
-      padding: 5px 8px;
-      cursor: pointer;
-      margin-top: 6px;
-      width: 100%;
-      transition: all 0.2s;
-    }
-    .ban-fix-parity-btn:hover {
-      background: #ef4444;
-      color: white;
-    }
 
     /* Cadastral Parcel Card (BAN Cadastre Layer) */
     .ban-parcel-card {
@@ -1748,7 +1731,6 @@
         </div>
         <div id="ban-parity-warning-box" style="display: none; font-size: 11px; color: #f87171; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 6px 8px;">
           <span>⚠️ Parity Inversion Detected: Number is on the opposite side of centerline.</span>
-          <button id="ban-flip-parity-btn" class="ban-fix-parity-btn">🔄 Align Parity with Centerline</button>
         </div>
       </div>
 
@@ -4733,25 +4715,6 @@
         if (activeSelectedFeature) {
           map.flyTo({ center: activeSelectedFeature.geometry.coordinates, zoom: 17.5, duration: 900 });
         }
-      });
-    }
-
-    // 4. Road Centerline Parity Alignment Action
-    const btnFlipParity = document.getElementById("ban-flip-parity-btn");
-    if (btnFlipParity) {
-      btnFlipParity.addEventListener("click", () => {
-        if (!activeSelectedFeature) return;
-        userWalletTokens += 20;
-        localStorage.setItem("ng911_wallet_tokens", userWalletTokens.toString());
-        updateWalletUI();
-        const parityBadge = document.getElementById("ban-parity-status-badge");
-        if (parityBadge) {
-          parityBadge.className = "ban-parity-badge-aligned";
-          parityBadge.textContent = "✅ Parity Aligned (Corrected)";
-        }
-        const parityWarning = document.getElementById("ban-parity-warning-box");
-        if (parityWarning) parityWarning.style.display = "none";
-        showToast("Parity Corrected!", "Address point parity aligned with road centerline network (+20 FTs).", 20);
       });
     }
 
