@@ -69,6 +69,18 @@ fishbones AS (
     FROM {{ ref('mart_ng911_qa_fishbones') }}
 ),
 
+-- Street-level imagery within ~50 m (0.0005 deg), so reviewers can start with points they can verify
+street_imagery AS (
+    SELECT
+        a.SSAP_NGUID,
+        max(s.captured_at) AS latest_capture,
+        bool_or(s.is_pano) AS has_pano
+    FROM addresses a
+    JOIN {{ ref('stg_mapillary_sequences') }} s
+      ON ST_DWithin(a.enhanced_geom, s.geom, 0.0005)
+    GROUP BY a.SSAP_NGUID
+),
+
 discrepancies AS (
     SELECT
         CountyFeatureID,
@@ -160,6 +172,10 @@ SELECT
     a.ESB_Fire,
     a.LandmarkName,
 
+    si.SSAP_NGUID IS NOT NULL AS HasStreetImagery,
+    cast(si.latest_capture AS DATE) AS StreetImageryDate,
+    coalesce(si.has_pano, FALSE) AS StreetImageryPano,
+
     -- Mapillary Street-Level View direct URL at address location for ground-truth verification
     'https://www.mapillary.com/app/?lat=' || cast(a.enhanced_lat as varchar) || '&lng=' || cast(a.enhanced_lon as varchar) || '&z=18' AS MapillaryGroundTruthURL,
 
@@ -180,5 +196,6 @@ SELECT
 FROM addresses a
 INNER JOIN raw_inputs r ON a.CountyLocalID = r.county_id
 LEFT JOIN building_intersection bi ON a.SSAP_NGUID = bi.SSAP_NGUID
+LEFT JOIN street_imagery si ON a.SSAP_NGUID = si.SSAP_NGUID
 LEFT JOIN fishbones f ON a.SSAP_NGUID = f.SSAP_NGUID AND f.rn = 1
 LEFT JOIN discrepancies d ON (a.CountyLocalID = d.CountyFeatureID OR a.SSAP_NGUID = d.CountyFeatureID) AND d.rn = 1

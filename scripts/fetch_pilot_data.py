@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 import duckdb
 import pandas as pd
 from fetch_county_parcels import fetch_parcels
+import fetch_mapillary_coverage
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -456,6 +457,12 @@ if __name__ == "__main__":
     places_cnt = fetch_overture_places()
     bldg_cnt = fetch_overture_buildings()
     parcel_cnt = fetch_parcels()
+    try:
+        mly_cnt = fetch_mapillary_coverage.fetch_mapillary_coverage()
+    except Exception as e:  # advisory layer: don't fail the whole build when Mapillary is down
+        print(f"  [WARNING] Mapillary coverage unavailable: {e}. Using empty stub.")
+        fetch_mapillary_coverage.write_empty_stub()
+        mly_cnt = 0
     print("\n" + "=" * 70)
     print("All Central Valley Region datasets cached successfully:")
     print(f"  - Fresno County Addresses:      {county_addr_cnt:,}")
@@ -470,6 +477,7 @@ if __name__ == "__main__":
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
     print(f"  - Overture Building Footprints: {bldg_cnt:,}")
     print(f"  - County Parcels:               {parcel_cnt:,}")
+    print(f"  - Mapillary Imagery Segments:   {mly_cnt:,}")
     print("=" * 70)
 
 

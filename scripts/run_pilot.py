@@ -99,6 +99,9 @@ def main():
     if not all(os.path.exists(p) for p in required_caches):
         fetch_script = os.path.join(PROJECT_DIR, "scripts", "fetch_pilot_data.py")
         run_cmd([sys.executable, fetch_script], "Ingesting & caching pilot datasets")
+    if not os.path.exists(os.path.join(CACHE_DIR, "mapillary_sequences.parquet")):
+        run_cmd([sys.executable, os.path.join(PROJECT_DIR, "scripts", "fetch_mapillary_coverage.py")],
+                "Caching Mapillary street imagery coverage")
 
     # 2. Run dbt models
     dbt_bin = os.path.join(PROJECT_DIR, ".venv", "bin", "dbt")
@@ -186,6 +189,8 @@ def main():
     conn.sql(f"COPY (SELECT * EXCLUDE (ST_Geometry) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK') TO '{remediation_csv}' (HEADER, DELIMITER ',')")
     conn.sql(f"COPY mart_ng911_county_remediation_export TO '{remediation_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Jurisdiction Remediation Deliverables: {remediation_csv} & {remediation_parquet}")
+    flagged, with_img = conn.sql("SELECT count(*), count(*) FILTER (WHERE HasStreetImagery) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK'").fetchone()
+    print(f"  -> Street imagery within 50 m for {with_img:,} of {flagged:,} flagged points")
 
 
 

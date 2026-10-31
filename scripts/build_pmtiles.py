@@ -76,7 +76,8 @@ LAYERS = {
            BuildingFootprintStatus, SymbologyCategory, DiscrepancyType, Severity,
            OvertureAddressGERS_ID, OvertureBuildingGERS_ID, RoadCenterlineNGUID,
            IsExcessiveOffset, IsRangeViolation, RoadSide, IsWrongSide, PSAP, ESB_Fire,
-           MapillaryGroundTruthURL, RecommendedRemediationAction""",
+           MapillaryGroundTruthURL, RecommendedRemediationAction,
+           HasStreetImagery, cast(StreetImageryDate AS VARCHAR) AS StreetImageryDate, StreetImageryPano""",
         ["-Z9", "-z16", "--no-tile-size-limit"],
         "ST_Geometry"
     ),

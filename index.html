@@ -1592,6 +1592,7 @@
         <button class="pill-btn active" id="filter-all">All</button>
         <button class="pill-btn" id="filter-violations">Rule Violations Only</button>
         <button class="pill-btn" id="filter-valid">Valid (Inside Footprint)</button>
+        <button class="pill-btn" id="filter-imagery" title="Flagged points with Mapillary street imagery within 50 m">Violations with Street View</button>
       </div>
     </div>
 
@@ -3096,6 +3097,10 @@
       if (extBtn) extBtn.href = mapillaryUrl;
       const inAppBtn = document.getElementById("drawer-mapillary-btn");
       if (inAppBtn) {
+        const hasImg = String(p.HasStreetImagery) === "true";
+        inAppBtn.textContent = hasImg
+          ? `📷 Street View (${p.StreetImageryPano === true || p.StreetImageryPano === "true" ? "360°, " : ""}latest ${p.StreetImageryDate || "?"})`
+          : (p.HasStreetImagery === undefined ? "📷 Launch In-App Street View" : "📷 No street imagery within 50 m (search wider)");
         inAppBtn.onclick = () => {
           openMapillaryViewerAtCoords(coords[0], coords[1]);
         };
@@ -3449,9 +3454,10 @@
     const filterAll = document.getElementById("filter-all");
     const filterViolations = document.getElementById("filter-violations");
     const filterValid = document.getElementById("filter-valid");
+    const filterImagery = document.getElementById("filter-imagery");
 
     function setActivePill(btn) {
-      [filterAll, filterViolations, filterValid].forEach(b => b.classList.remove("active"));
+      [filterAll, filterViolations, filterValid, filterImagery].forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
     }
 
@@ -3468,6 +3474,17 @@
         "any",
         ["==", ["get", "BuildingFootprintStatus"], "OUTSIDE_BUILDING_FOOTPRINT"],
         ["!=", ["get", "SymbologyCategory"], "VALIDATED_OK"]
+      ];
+      if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
+      if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
+    });
+
+    filterImagery.addEventListener("click", () => {
+      setActivePill(filterImagery);
+      activeFilter = [
+        "all",
+        ["!=", ["get", "SymbologyCategory"], "VALIDATED_OK"],
+        ["==", ["to-string", ["get", "HasStreetImagery"]], "true"]
       ];
       if (map.getLayer("ssap_points")) map.setFilter("ssap_points", activeFilter);
       if (map.getLayer("ssap_labels")) map.setFilter("ssap_labels", activeFilter);
