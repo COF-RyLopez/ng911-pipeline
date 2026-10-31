@@ -5,7 +5,8 @@ WITH county_stg AS (
 ),
 
 overture_stg AS (
-    SELECT * FROM {{ ref('stg_overture_addresses') }}
+    -- no street = not an SSAP (STN is mandatory); mart_ng911_county_remediation_export lists these
+    SELECT * FROM {{ ref('stg_overture_addresses') }} WHERE street_name IS NOT NULL
 ),
 
 -- 1. Identify candidate spatial & attribute matches
