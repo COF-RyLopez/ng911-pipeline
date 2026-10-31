@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y tippecanoe
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
 
