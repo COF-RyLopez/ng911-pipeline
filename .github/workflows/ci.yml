@@ -42,15 +42,9 @@ jobs:
         run: |
           python scripts/fetch_pilot_data.py
 
-      - name: Execute dbt Transformations
-        run: |
-          dbt run --profiles-dir .
-
-      - name: Execute dbt Data Quality Tests (83/83)
-        run: |
-          dbt test --profiles-dir .
-
-      - name: Run NG911 Pilot & Cal OES 98% Readiness Audit
+      # run_pilot.py writes source_freshness.json, then runs dbt run + dbt test itself
+      # (stg_source_dates reads that file), so dbt must not run as a separate step first.
+      - name: Run NG911 Pilot (dbt run + dbt test) & Cal OES 98% Readiness Audit
         run: |
           python scripts/run_pilot.py
 

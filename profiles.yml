@@ -8,3 +8,7 @@ ng911_pipeline:
         - spatial
         - httpfs
         - parquet
+      settings:
+        # DuckDB 2.0 refuses axis-sensitive functions (ST_Distance_Sphere) until this is set.
+        # Every point is built ST_Point(lon, lat), so x = longitude.
+        geometry_always_xy: true

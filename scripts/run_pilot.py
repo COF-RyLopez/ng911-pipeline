@@ -190,7 +190,7 @@ def main():
     conn.sql(f"COPY (SELECT * EXCLUDE (ST_Geometry) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK') TO '{remediation_csv}' (HEADER, DELIMITER ',')")
     conn.sql(f"COPY mart_ng911_county_remediation_export TO '{remediation_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Jurisdiction Remediation Deliverables: {remediation_csv} & {remediation_parquet}")
-    flagged, with_img = conn.sql("SELECT count(*), count(*) FILTER (WHERE HasStreetImagery) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK'").fetchone()
+    flagged, with_img = conn.sql("SELECT count(*), count(*) FILTER (WHERE HasStreetImagery) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK'").fetchall()[0]
     print(f"  -> Street imagery within 50 m for {with_img:,} of {flagged:,} flagged points")
 
 
@@ -237,14 +237,14 @@ def main():
 
 
 
-    total_addr = conn.sql("SELECT count(*) FROM mart_ng911_addresses").fetchone()[0]
+    total_addr = conn.sql("SELECT count(*) FROM mart_ng911_addresses").fetchall()[0][0]
     addr_metrics = conn.sql("""
         SELECT ConflationStatus, count(*), round(avg(SpatialOffsetMeters), 3) 
         FROM mart_ng911_addresses GROUP BY ConflationStatus
     """).fetchall()
 
-    total_roads = conn.sql("SELECT count(*) FROM mart_ng911_road_centerlines").fetchone()[0]
-    mapped_roads = conn.sql("SELECT count(*) FROM mart_ng911_road_centerlines WHERE FromAddr_L IS NOT NULL OR FromAddr_R IS NOT NULL").fetchone()[0]
+    total_roads = conn.sql("SELECT count(*) FROM mart_ng911_road_centerlines").fetchall()[0][0]
+    mapped_roads = conn.sql("SELECT count(*) FROM mart_ng911_road_centerlines WHERE FromAddr_L IS NOT NULL OR FromAddr_R IS NOT NULL").fetchall()[0][0]
     range_src = dict(conn.sql("SELECT RangeSource, count(*) FROM mart_ng911_road_centerlines WHERE FromAddr_L IS NOT NULL OR FromAddr_R IS NOT NULL GROUP BY 1").fetchall())
     rcl_src = ", ".join(r[0] for r in conn.sql("SELECT DISTINCT County_L FROM mart_ng911_road_centerlines ORDER BY 1").fetchall())
 
@@ -259,7 +259,7 @@ def main():
             count(CASE WHEN IsExcessiveOffset THEN 1 END) as excessive_cnt,
             count(CASE WHEN IsRangeViolation THEN 1 END) as violation_cnt
         FROM mart_ng911_qa_fishbones
-    """).fetchone()
+    """).fetchall()[0]
 
     conflated_cnt = next((m[1] for m in addr_metrics if m[0] == "CONFLATED"), 0)
     county_only_cnt = next((m[1] for m in addr_metrics if m[0] == "COUNTY_ONLY"), 0)
@@ -274,10 +274,10 @@ def main():
 
     # Regional & NENA v3 Metrics
     reg_county_counts = conn.sql("SELECT county, count(*) FROM stg_regional_addresses GROUP BY county ORDER BY count(*) DESC").fetchall()
-    total_reg_addr = conn.sql("SELECT count(*) FROM stg_regional_addresses").fetchone()[0]
-    nena3_adpt_cnt = conn.sql("SELECT count(*) FROM mart_nena3_adpt").fetchone()[0]
-    nena3_stseg_cnt = conn.sql("SELECT count(*) FROM mart_nena3_stseg").fetchone()[0]
-    nena3_stnam_cnt = conn.sql("SELECT count(*) FROM mart_nena3_completestnam").fetchone()[0]
+    total_reg_addr = conn.sql("SELECT count(*) FROM stg_regional_addresses").fetchall()[0][0]
+    nena3_adpt_cnt = conn.sql("SELECT count(*) FROM mart_nena3_adpt").fetchall()[0][0]
+    nena3_stseg_cnt = conn.sql("SELECT count(*) FROM mart_nena3_stseg").fetchall()[0][0]
+    nena3_stnam_cnt = conn.sql("SELECT count(*) FROM mart_nena3_completestnam").fetchall()[0][0]
 
     print("\n" + "=" * 75)
     print("                       PILOT EVALUATION SCORECARD")

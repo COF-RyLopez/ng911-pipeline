@@ -160,7 +160,7 @@ def main():
         for p in (seq, out):
             if os.path.exists(p):
                 os.remove(p)
-        n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE {geom_col} IS NOT NULL").fetchone()[0]
+        n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE {geom_col} IS NOT NULL").fetchall()[0][0]
 
         if engine == "tylertoo":
             build_with_tylertoo(conn, name, src, cols, geom_col, tip_args, out)
