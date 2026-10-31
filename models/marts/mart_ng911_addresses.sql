@@ -143,3 +143,7 @@ LEFT JOIN addr_psap p ON c.addr_uid = p.addr_uid AND p.rn = 1
 LEFT JOIN addr_fire f ON c.addr_uid = f.addr_uid AND f.rn = 1
 LEFT JOIN addr_muni m ON c.addr_uid = m.addr_uid AND m.rn = 1
 LEFT JOIN landmarks l ON c.addr_uid = l.addr_uid
+-- The Overture fetch is a bounding box that spills into Kings and Tulare; keep Overture-only points
+-- only where they fall in a Fresno law dispatch area (+~1 km fallback buffer), i.e. inside the county.
+-- ponytail: law dispatch areas stand in for a county boundary; swap in an authoritative one if added.
+WHERE c.conflation_status != 'OVERTURE_ONLY' OR p.addr_uid IS NOT NULL
