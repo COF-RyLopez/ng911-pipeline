@@ -28,13 +28,13 @@ parsed_overture AS (
         overture_id,
         upper(trim(overture_number)) AS house_number,
         {{ normalize_direction("nullif(regexp_extract(upper(trim(overture_street)), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)\\\\s+', 1), '')") }} AS pre_directional,
-        trim(regexp_replace(
+        nullif(trim(regexp_replace(
             regexp_replace(
                 upper(trim(overture_street)),
                 '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)\\\\s+', ''
             ),
             '\\\\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', ''
-        )) AS street_name,
+        )), '') AS street_name,
         {{ normalize_street_type("nullif(regexp_extract(upper(trim(overture_street)), '\\\\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', 1), '')") }} AS street_type,
         coalesce(upper(trim(overture_city)), '{{ county("name") }}') AS community_name,
         nullif(trim(overture_postcode), '') AS postcode,

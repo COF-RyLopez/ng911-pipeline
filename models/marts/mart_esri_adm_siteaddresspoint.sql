@@ -11,6 +11,7 @@ WITH base AS (
     SELECT r.*, a.County, a.State, a.Country
     FROM {{ ref('mart_ng911_county_remediation_export') }} r
     LEFT JOIN {{ ref('mart_ng911_addresses') }} a USING (SSAP_NGUID)
+    WHERE r.DiscrepancyType <> 'MISSING_STREET_NAME'  -- not an address point yet; nothing to put in fullname
 ),
 
 parts AS (

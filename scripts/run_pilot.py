@@ -335,6 +335,15 @@ def main():
     print(f"  - Inverted Ranges (= 0):   {audit_row['Road_Range_Inversions']} -> {'[PASS]' if audit_row['Zero_Range_Inversions_Passed'] else '[FAIL]'}")
     print(f"  - Cal OES Readiness:       {audit_row['Cal_OES_Readiness_Status']}")
     print("-" * 75)
+    oo = conn.sql("SELECT * FROM oo_scorecard").df().to_dict('records')[0]
+    print(f"  PRODUCT 1: OVERTURE-ONLY NG911 (no county data; roads are OpenStreetMap-derived, ODbL):")
+    print(f"  - Address Points:          {oo['Address_Points']:,} ({oo['Pct_Addresses_In_Building']}% inside an Overture building)")
+    print(f"  - Road Segments:           {oo['Road_Segments']:,} ({oo['Road_Km']:,} km), {oo['Localities']} cities/places")
+    print(f"  - Matched to a Road:       {oo['Addresses_Matched_To_Road']:,} ({oo['Pct_Addresses_Matched_To_Road']}%), {oo['Pct_Matched_Within_50m']}% of those within 50 m")
+    print(f"  - County Centerlines Also in Overture: {oo['Pct_County_Centerline_Length_In_Overture']}% of length "
+          f"({oo['Pct_County_Centerline_Length_Same_Name']}% with the same name)")
+    print(f"  - Missing from Overture:   PSAP/ESB boundaries, published address ranges, MSAG/ESN")
+    print("-" * 75)
     print(f"  MULTI-COUNTY REGIONAL EXPANSION (CENTRAL VALLEY):")
     print(f"  - Total Regional SSAP:    {total_reg_addr:,} addresses across 3 counties")
     for cname, ccnt in reg_county_counts:
