@@ -167,8 +167,8 @@ In GeoLibre, open **Add Vector Layer**, paste any of the public Cloudflare R2 en
    - **NENA v3.0 Relational Data Model (NENA-STA-006.x)**: Fully normalized 3NF enterprise data store for Core NG9-1-1 Location Validation (LVF) and Emergency Call Routing (ECRF).
    - **NENA-STA-010 GIS Exchange Model**: Flat, streaming GeoParquet layers for zero-install analytics and GeoLibre visualization.
 2. **Cal OES 98% Transition Readiness Audit Mart (`mart_ng911_qa_readiness_audit`):**
-   - Automatically checks $\ge 98\%$ RCL snapping compliance within 50m.
-   - Audits $100\%$ PSAP boundary coverage.
+   - Checks that $\ge 98\%$ of authoritative county address points match a same-named road centerline (within ~200 m), and reports the share within 50 m as a review metric.
+   - Checks $\ge 98\%$ dispatch (PSAP stand-in) coverage of authoritative address points.
    - Asserts zero address range inversions across all centerline segments.
 3. **ODbL Licensing Isolation:** 100% of the geometry in the Road Centerlines and Address marts belongs to authoritative County GIS. Overture/OSM geometry is strictly isolated to read-only QA/QC comparison.
 4. **Automated Testing:** 83 automated dbt tests asserting schema constraints, uniqueness, not-null requirements, and foreign key referential integrity.
