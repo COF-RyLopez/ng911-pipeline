@@ -12,6 +12,9 @@ on:
 jobs:
   discover:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write  # post the discovery summary on the PR
     steps:
       - uses: actions/checkout@v7
 
@@ -25,7 +28,18 @@ jobs:
           git -C oa sparse-checkout set sources/us/ca
 
       - name: Discover endpoints
-        run: python scripts/discover_county_endpoints.py oa/sources/us/ca
+        run: |
+          python scripts/discover_county_endpoints.py oa/sources/us/ca | tee discovery.log
+          { echo '### Endpoint discovery'; echo '```'; cat discovery.log; echo '```'
+            echo '<details><summary>Per-jurisdiction summary</summary>'; echo; echo '```'
+            cat data/output/discovery/ca_discovery_summary.csv; echo '```'; echo '</details>'; } > summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post summary on the PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file summary.md --edit-last --create-if-none
 
       - uses: actions/upload-artifact@v5
         with:
