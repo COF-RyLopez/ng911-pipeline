@@ -96,3 +96,19 @@
   > 0 THEN 'L' ELSE 'R' END
 END)
 {%- endmacro %}
+
+{#- Street name padded with spaces and with ordinal words as numbers ("N EIGHTH" -> " N 8TH "), for
+    whole-word name matching where one source spells numbered streets out and the other doesn't.
+    ponytail: covers FIRST..TWENTIETH; add words if higher spelled-out ordinals show up as misses. -#}
+{% macro street_match_key(expr) -%}
+{%- set ordinals = ['FIRST','SECOND','THIRD','FOURTH','FIFTH','SIXTH','SEVENTH','EIGHTH','NINTH','TENTH',
+                    'ELEVENTH','TWELFTH','THIRTEENTH','FOURTEENTH','FIFTEENTH','SIXTEENTH','SEVENTEENTH',
+                    'EIGHTEENTH','NINETEENTH','TWENTIETH'] -%}
+{%- set suffix = {1: 'ST', 2: 'ND', 3: 'RD'} -%}
+{%- set ns = namespace(sql="' ' || " ~ expr ~ " || ' '") -%}
+{%- for w in ordinals -%}
+{%- set n = loop.index -%}
+{%- set ns.sql = "replace(" ~ ns.sql ~ ", ' " ~ w ~ " ', ' " ~ n ~ (suffix.get(n, 'TH') if n not in (11, 12, 13) else 'TH') ~ " ')" -%}
+{%- endfor -%}
+{{ ns.sql }}
+{%- endmacro %}
