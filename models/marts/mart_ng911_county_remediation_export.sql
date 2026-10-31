@@ -199,3 +199,32 @@ LEFT JOIN building_intersection bi ON a.SSAP_NGUID = bi.SSAP_NGUID
 LEFT JOIN street_imagery si ON a.SSAP_NGUID = si.SSAP_NGUID
 LEFT JOIN fishbones f ON a.SSAP_NGUID = f.SSAP_NGUID AND f.rn = 1
 LEFT JOIN discrepancies d ON (a.CountyLocalID = d.CountyFeatureID OR a.SSAP_NGUID = d.CountyFeatureID) AND d.rn = 1
+
+-- Source address points (county data republished via OpenAddresses/Overture) that have a house number
+-- but no street. They cannot be SSAPs, so the pipeline drops them; list them here for the county to complete.
+UNION ALL BY NAME
+SELECT
+    'urn:emergency:uid:gis:SSAP:' || o.overture_id || ':{{ county("agency_domain") }}' AS SSAP_NGUID,
+    o.house_number AS OriginalHouseNumber,
+    o.house_number AS HNO,
+    o.community_name AS CommunityName,
+    o.postcode AS PostCode,
+    o.longitude AS CurrentLongitude,
+    o.latitude AS CurrentLatitude,
+    'NOT_CHECKED' AS BuildingFootprintStatus,
+    o.overture_id AS OvertureAddressGERS_ID,
+    FALSE AS IsExcessiveOffset,
+    FALSE AS IsRangeViolation,
+    FALSE AS IsWrongSide,
+    'MISSING_STREET_NAME' AS DiscrepancyType,
+    'CRITICAL' AS Severity,
+    'CRITICAL_ATTENTION' AS SymbologyCategory,
+    FALSE AS HasStreetImagery,
+    FALSE AS StreetImageryPano,
+    'https://www.mapillary.com/app/?lat=' || cast(o.latitude AS VARCHAR) || '&lng=' || cast(o.longitude AS VARCHAR) || '&z=18' AS MapillaryGroundTruthURL,
+    'Address point has a house number but no street name; add the street so it can be dispatched' AS RecommendedRemediationAction,
+    ST_GeomFromWKB(ST_AsWKB(o.geom)) AS ST_Geometry
+FROM {{ ref('stg_overture_addresses') }} o
+CROSS JOIN {{ ref('oo_county_boundary') }} c
+WHERE o.street_name IS NULL
+  AND ST_Within(ST_GeomFromWKB(ST_AsWKB(o.geom)), c.geom)

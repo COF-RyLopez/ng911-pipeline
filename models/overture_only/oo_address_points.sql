@@ -5,4 +5,5 @@ SELECT a.overture_id, a.house_number, a.pre_directional, a.street_name, a.street
        a.community_name, a.postcode, ST_GeomFromWKB(ST_AsWKB(a.geom)) AS geom
 FROM {{ ref('stg_overture_addresses') }} a
 CROSS JOIN {{ ref('oo_county_boundary') }} c
-WHERE ST_Within(ST_GeomFromWKB(ST_AsWKB(a.geom)), c.geom)
+WHERE a.street_name IS NOT NULL  -- STN is mandatory; see the remediation export
+  AND ST_Within(ST_GeomFromWKB(ST_AsWKB(a.geom)), c.geom)
