@@ -31,7 +31,7 @@ addr_street_matches AS (
     FROM county_streets s
     INNER JOIN county_addresses a
         ON s.street_name = a.street_name
-       AND ST_DWithin(a.geom, s.geom, 0.0020) -- ~200m, same corridor the fishbone range check uses
+       AND ST_DWithin(a.geom, s.geom, 0.0040) -- ~400m, same corridor the fishbone range check uses
 ),
 
 -- Which side of the segment (along its digitized direction) each matched address sits on.

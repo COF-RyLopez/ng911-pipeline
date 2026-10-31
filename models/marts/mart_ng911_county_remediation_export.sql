@@ -181,7 +181,7 @@ SELECT
 
     -- Actionable Fix Guidance for Jurisdiction GIS Analysts
     CASE
-        WHEN f.DistanceMeters IS NULL THEN 'Address point failed to resolve to named road centerline within 200m; verify street name and spatial alignment'
+        WHEN f.DistanceMeters IS NULL THEN 'Address point failed to resolve to named road centerline within 400m; verify street name and spatial alignment'
         WHEN f.IsWrongSide THEN 'House number is odd/even opposite to the side of the road it sits on; check the number or move the point to the correct side'
         WHEN f.IsRangeViolation = TRUE THEN 'House number is outside the address range of its side of the road segment'
         WHEN d.DiscrepancyType = 'CIVIC_ADDRESS_AMBIGUITY' THEN 'Another point has this same complete address (including unit); remove the duplicate or assign distinct unit numbers'

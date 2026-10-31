@@ -29,7 +29,7 @@ roads AS (
     FROM {{ ref('mart_ng911_road_centerlines') }}
 ),
 
--- Spatial join matching address points to road centerlines sharing the same street name within ~200m
+-- Spatial join matching address points to road centerlines sharing the same street name within ~400m
 candidate_connections AS (
     SELECT 
         a.SSAP_NGUID,
@@ -60,7 +60,9 @@ candidate_connections AS (
             OR instr(r.FullStreetName, a.STN) > 0 
             OR (length(r.St_Name) > 3 AND instr(a.STN, r.St_Name) > 0)
         )
-       AND ST_DWithin(a.addr_geom, r.road_geom, 0.0020) -- ~200m corridor
+       -- ~400 m corridor: rural structure points on long driveways sit 200-400 m off the road.
+       -- NENA sets no distance limit; points past 50 m are still flagged IsExcessiveOffset for review.
+       AND ST_DWithin(a.addr_geom, r.road_geom, 0.0040)
 ),
 
 best_connections AS (
