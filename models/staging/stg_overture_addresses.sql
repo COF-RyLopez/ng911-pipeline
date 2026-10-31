@@ -46,7 +46,9 @@ parsed_overture AS (
         overture_geom AS geom,
         'OVERTURE' AS source_agency
     FROM raw_overture
+    -- an address with no street cannot be an SSAP (NENA STN is mandatory)
     WHERE overture_number IS NOT NULL
+      AND nullif(trim(overture_street), '') IS NOT NULL
 )
 
 SELECT * FROM parsed_overture

@@ -78,6 +78,9 @@ models:
       - name: house_number
         tests:
           - not_null
+      - name: street_name
+        tests:
+          - not_null
 
   - name: stg_overture_transportation
     description: "Global open road segments from Overture Maps scoped to the pilot extent (read-only QA/QC reference)."
