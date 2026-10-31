@@ -37,8 +37,9 @@
 {% endmacro %}
 
 {% macro normalize_street_type(type_col) %}
-    CASE upper(trim({{ type_col }}))
+    CASE rtrim(upper(trim({{ type_col }})), '.')
         WHEN 'STREET' THEN 'ST'
+        WHEN 'STR' THEN 'ST'
         WHEN 'AVENUE' THEN 'AVE'
         WHEN 'BOULEVARD' THEN 'BLVD'
         WHEN 'ROAD' THEN 'RD'
@@ -46,13 +47,16 @@
         WHEN 'LANE' THEN 'LN'
         WHEN 'WAY' THEN 'WAY'
         WHEN 'COURT' THEN 'CT'
+        WHEN 'CRT' THEN 'CT'
         WHEN 'PLACE' THEN 'PL'
         WHEN 'CIRCLE' THEN 'CIR'
+        WHEN 'CIRC' THEN 'CIR'
+        WHEN 'COVE' THEN 'CV'
         WHEN 'HIGHWAY' THEN 'HWY'
         WHEN 'PARKWAY' THEN 'PKWY'
         WHEN 'TRAIL' THEN 'TRL'
         WHEN 'LOOP' THEN 'LOOP'
-        ELSE upper(trim({{ type_col }}))
+        ELSE rtrim(upper(trim({{ type_col }})), '.')
     END
 {% endmacro %}
 
