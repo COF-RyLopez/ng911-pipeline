@@ -50,7 +50,7 @@ LEFT JOIN (SELECT DISTINCT street_segment_id, AliasSet_ID FROM {{ ref('int_alias
 LEFT JOIN agencies ag
   ON r.DisclID = ag.DiscrpAgID
 LEFT JOIN {{ ref('stg_source_dates') }} d
-  ON d.source = initcap(r.County_L) || ' centerlines'
+  ON lower(d.source) = lower(r.County_L) || ' centerlines'
 LEFT JOIN {{ ref('int_nena3_admin_areas') }} al ON al.feature = 'STSEG_L' AND al.key = r.RCL_NGUID
 LEFT JOIN {{ ref('int_nena3_admin_areas') }} ar ON ar.feature = 'STSEG_R' AND ar.key = r.RCL_NGUID
 LEFT JOIN {{ ref('mart_nena3_a1toa5code') }} acl
