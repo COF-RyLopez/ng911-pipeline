@@ -5,7 +5,7 @@
 WITH cad_law AS (
     SELECT 
         'LAW' AS agency_type,
-        coalesce(LE_NGUID, 'urn:emergency:uid:gis:LAW:' || OBJECTID || ':{{ var("agency_domain", "fresnocountyca.gov") }}') AS esb_nguid,
+        coalesce(LE_NGUID, 'urn:emergency:uid:gis:LAW:' || OBJECTID || ':{{ county("agency_domain") }}') AS esb_nguid,
         upper(trim(NAME)) AS agency_name,
         coalesce(trim(AGENCY), 'SO') AS agency_code,
         trim(ServiceNum) AS service_number,
@@ -18,7 +18,7 @@ WITH cad_law AS (
 fire_districts AS (
     SELECT
         'FIRE' AS agency_type,
-        'urn:emergency:uid:gis:ESB:FIRE:' || CD_FIREDIST || ':' || OBJECTID || ':{{ var("agency_domain", "fresnocountyca.gov") }}' AS esb_nguid,
+        'urn:emergency:uid:gis:ESB:FIRE:' || CD_FIREDIST || ':' || OBJECTID || ':{{ county("agency_domain") }}' AS esb_nguid,
         upper(trim(NM_FIREDIST)) AS agency_name,
         trim(CD_FIREDIST) AS agency_code,
         NULL::VARCHAR AS service_number,
@@ -31,7 +31,7 @@ fire_districts AS (
 city_limits AS (
     SELECT
         'MUNICIPAL' AS agency_type,
-        'urn:emergency:uid:gis:BOUNDARY:MUNI:' || AGENCY_CODE || ':' || OBJECTID || ':{{ var("agency_domain", "fresnocountyca.gov") }}' AS esb_nguid,
+        'urn:emergency:uid:gis:BOUNDARY:MUNI:' || AGENCY_CODE || ':' || OBJECTID || ':{{ county("agency_domain") }}' AS esb_nguid,
         upper(trim(AGENCY_NAME)) AS agency_name,
         trim(AGENCY_CODE) AS agency_code,
         NULL::VARCHAR AS service_number,
@@ -41,8 +41,12 @@ city_limits AS (
     WHERE geom IS NOT NULL
 )
 
-SELECT * FROM cad_law
-UNION ALL
-SELECT * FROM fire_districts
-UNION ALL
-SELECT * FROM city_limits
+-- These are Fresno's layers; a county without boundary_layers gets no rows rather than Fresno's polygons.
+SELECT * FROM (
+    SELECT * FROM cad_law
+    UNION ALL
+    SELECT * FROM fire_districts
+    UNION ALL
+    SELECT * FROM city_limits
+)
+WHERE {{ 'TRUE' if county('boundary_layers') else 'FALSE' }}

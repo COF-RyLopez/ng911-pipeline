@@ -2,7 +2,8 @@
 """
 scripts/run_pilot.py
 
-End-to-end execution, testing, and GIS export script for the Fresno County NG911 Pilot:
+End-to-end execution, testing, and GIS export script for one county's NG911 build
+(--county FIPS from the dbt_project.yml registry; default Fresno, 06019):
 1. Verifies cached source data exists (runs fetch_pilot_data.py if missing).
 2. Executes dbt pipeline models (SSAP addresses, RCL centerlines, QA discrepancies, and Fishbones).
 3. Runs automated dbt data quality and NENA integrity tests (37 tests).
@@ -16,7 +17,9 @@ import subprocess
 import time
 import duckdb
 import json
+import argparse
 import urllib.request
+import county_config
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -83,8 +86,13 @@ def run_cmd(cmd_list, desc):
     return result.stdout
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--county", help="5-digit FIPS from the dbt_project.yml counties registry")
+    county = county_config.get(parser.parse_args().county)
+    dbt_vars = ["--vars", json.dumps({"county": county["fips"]})]
+
     print("=" * 75)
-    print("      FRESNO COUNTY NG911 CLOUD-NATIVE GEOSPATIAL PIPELINE PILOT")
+    print(f"      {county['name']} COUNTY NG911 CLOUD-NATIVE GEOSPATIAL PIPELINE PILOT")
     print("   Layers: NENA-STA-010 SSAP, RCL, QA Discrepancies & Fishbones")
     print("=" * 75)
 
@@ -108,10 +116,10 @@ def main():
     if not os.path.exists(dbt_bin):
         dbt_bin = "dbt"
     freshness = source_freshness()  # written before dbt: NENA DateUpdate reads it (stg_source_dates)
-    run_cmd([dbt_bin, "run", "--profiles-dir", "."], "dbt Transformations (SSAP, RCL, QA, Fishbones)")
+    run_cmd([dbt_bin, "run", "--profiles-dir", ".", *dbt_vars], "dbt Transformations (SSAP, RCL, QA, Fishbones)")
 
     # 3. Run dbt tests
-    run_cmd([dbt_bin, "test", "--profiles-dir", "."], "dbt Data Quality & NENA Integrity Tests")
+    run_cmd([dbt_bin, "test", "--profiles-dir", ".", *dbt_vars], "dbt Data Quality & NENA Integrity Tests")
 
     # 4. Export to GIS formats
     print("\n[EXPORTING] Generating GIS deliverables in data/output/...")
@@ -287,7 +295,9 @@ def main():
     print(f"  Reference Source:         Overture Maps Foundation (S3 GeoParquet)")
     print(f"  Licensing Integrity:      100% County Geometry Preserved (Zero ODbL)")
     print("-" * 75)
-    print(f"  LAYER 1: SITE/STRUCTURE ADDRESS POINTS (SSAP - FRESNO PILOT):")
+    print(f"  County Build:             {county['label']} (FIPS {county['fips']})")
+    print("-" * 75)
+    print(f"  LAYER 1: SITE/STRUCTURE ADDRESS POINTS (SSAP - {county['name']}):")
     print(f"  - Total Points:           {total_addr:,}")
     print(f"  - Conflated (Both):       {conflated_cnt:,} ({conflated_cnt/total_addr*100:.1f}%)")
     print(f"  - Authoritative County:   {county_only_cnt:,} ({county_only_cnt/total_addr*100:.1f}%)")

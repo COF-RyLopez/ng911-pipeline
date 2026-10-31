@@ -5,6 +5,7 @@ WITH raw AS (
     SELECT OBJECTID, upper(trim(NAME)) AS name, ST_GeomFromWKB(ST_AsWKB(geom)) AS geom
     FROM read_parquet('data/cache/county_cad_psap.parquet')
     WHERE geom IS NOT NULL
+      AND {{ 'TRUE' if county('boundary_layers') else 'FALSE' }}  -- Fresno's CAD layer
 ),
 p AS (SELECT *, ST_MakeValid(geom) AS g FROM raw),
 pairs AS (

@@ -73,7 +73,7 @@ best_connections AS (
 )
 
 SELECT
-    'urn:emergency:uid:gis:FISHBONE:' || row_number() OVER () || ':{{ var("agency_domain", "fresnocountyca.gov") }}' AS FishboneID,
+    'urn:emergency:uid:gis:FISHBONE:' || row_number() OVER () || ':{{ county("agency_domain") }}' AS FishboneID,
     DisclID,
     SSAP_NGUID,
     RCL_NGUID,

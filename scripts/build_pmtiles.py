@@ -161,6 +161,11 @@ def main():
             if os.path.exists(p):
                 os.remove(p)
         n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE {geom_col} IS NOT NULL").fetchall()[0][0]
+        if n == 0:
+            # e.g. ESB for a county without boundary layers. An empty Parquet carries no GeoParquet
+            # metadata, so its geometry reads back as BLOB and cannot be tiled anyway.
+            print(f"Skipping tile build for {name}: no features.")
+            continue
 
         if engine == "tylertoo":
             build_with_tylertoo(conn, name, src, cols, geom_col, tip_args, out)

@@ -1,31 +1,36 @@
 {{ config(materialized='view') }}
 
+-- One CTE per county: that county's address source mapped to the shared columns (the county adapter).
+-- stg_county_addresses picks the county this run builds; this model keeps every county for the
+-- regional NENA AdPt table.
 WITH fresno AS (
-    SELECT 
+    SELECT
         county_id,
-        house_number,
-        house_number_suffix,
-        pre_directional,
-        street_name,
-        street_type,
-        post_directional,
-        unit,
-        community_name,
-        postcode,
+        upper(trim(house_number)) AS house_number,
+        nullif(upper(trim(house_number_suffix)), '') AS house_number_suffix,
+        {{ normalize_direction('pre_directional') }} AS pre_directional,
+        upper(trim(street_name)) AS street_name,
+        {{ normalize_street_type('street_type') }} AS street_type,
+        {{ normalize_direction('post_directional') }} AS post_directional,
+        nullif(upper(trim(unit)), '') AS unit,
+        coalesce(upper(trim(community_name)), 'FRESNO') AS community_name,
+        nullif(trim(postcode), '') AS postcode,
         'FRESNO' AS county,
         'CA' AS state,
         'US' AS country,
         longitude,
         latitude,
-        geom,
-        CASE 
+        ST_Point(longitude, latitude) AS geom,
+        CASE
             WHEN source_agency = 'City of Fresno' THEN 'fresno.gov'
             WHEN source_agency = 'City of Clovis' THEN 'cityofclovis.com'
             ELSE 'fresnocountyca.gov'
         END AS agency_domain,
-        source_agency,
-        address_status
-    FROM {{ ref('stg_county_addresses') }}
+        coalesce(source_agency, 'County of Fresno') AS source_agency,
+        coalesce(nullif(upper(trim(address_status)), ''), 'ACTIVE') AS address_status
+    FROM read_parquet('data/cache/county_addresses.parquet')
+    WHERE house_number IS NOT NULL AND street_name IS NOT NULL
+      AND longitude IS NOT NULL AND latitude IS NOT NULL
 ),
 
 kings AS (

@@ -17,8 +17,9 @@ WITH raw_overture AS (
         bbox.ymin AS miny,
         bbox.ymax AS maxy
     FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=addresses/type=address/*.parquet')
-    WHERE bbox.xmin >= {{ var('bbox_minx', -119.95) }} AND bbox.xmax <= {{ var('bbox_maxx', -119.65) }}
-      AND bbox.ymin >= {{ var('bbox_miny', 36.65) }}   AND bbox.ymax <= {{ var('bbox_maxy', 36.90) }}
+    {%- set b = county('bbox') %}
+    WHERE bbox.xmin >= {{ b[0] }} AND bbox.xmax <= {{ b[2] }}
+      AND bbox.ymin >= {{ b[1] }} AND bbox.ymax <= {{ b[3] }}
     {% endif %}
 ),
 
@@ -35,9 +36,9 @@ parsed_overture AS (
             '\\\\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', ''
         )) AS street_name,
         {{ normalize_street_type("nullif(regexp_extract(upper(trim(overture_street)), '\\\\s+(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', 1), '')") }} AS street_type,
-        coalesce(upper(trim(overture_city)), 'FRESNO') AS community_name,
+        coalesce(upper(trim(overture_city)), '{{ county("name") }}') AS community_name,
         nullif(trim(overture_postcode), '') AS postcode,
-        'FRESNO' AS county,
+        '{{ county("name") }}' AS county,
         'CA' AS state,
         'US' AS country,
         ST_X(overture_geom) AS longitude,

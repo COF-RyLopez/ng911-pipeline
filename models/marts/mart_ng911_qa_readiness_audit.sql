@@ -41,8 +41,8 @@ roads AS (
 )
 
 SELECT
-    'Fresno County, CA' AS Jurisdiction,
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS DisclID,
+    '{{ county("label") }}' AS Jurisdiction,
+    '{{ county("agency_domain") }}' AS DisclID,
     
     -- Authoritative County SSAP Metrics
     a_co.total_addresses AS Authoritative_SSAP_Addresses,

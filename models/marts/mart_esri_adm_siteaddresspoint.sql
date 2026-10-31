@@ -25,7 +25,7 @@ SELECT
     CountyLocalID AS siteaddid,
     NULL::VARCHAR AS addressptid,
     SSAP_NGUID AS sitenguid,
-    '{{ var("agency_domain", "fresnocountyca.gov") }}' AS discrpagid,
+    '{{ county("agency_domain") }}' AS discrpagid,
     NULL::VARCHAR AS preaddrnum,
     nullif(trim(HNS), '') AS addrnumsuf,
     trim(HNO::VARCHAR) AS addrnum,
