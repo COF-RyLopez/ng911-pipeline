@@ -127,7 +127,7 @@ def health_check():
     db = get_db_connection()
     ssap_count = 0
     if os.path.exists(SSAP_PARQUET):
-        ssap_count = db.execute(f"SELECT count(*) FROM '{SSAP_PARQUET}'").fetchone()[0]
+        ssap_count = db.sql(f"SELECT count(*) FROM '{SSAP_PARQUET}'").fetchall()[0][0]
     return {
         "status": "HEALTHY",
         "nena_standard": "NENA STA-005.1.2 (ECRF/LVF)",
