@@ -124,7 +124,7 @@ def services_from_known(root, known_urls):
 
 
 def crawl_root(root, known_urls=()):
-    """List a server's services and their layers; return (candidate rows, error, services scanned)."""
+    """List a server's services and their layers; return (candidate rows, error, services that answered)."""
     err = ""
     try:
         services, folders = [], [""]
@@ -141,19 +141,20 @@ def crawl_root(root, known_urls=()):
     except Exception as e:
         err = f"{type(e).__name__}: {e}"
         services = services_from_known(root, known_urls)
-    rows = []
+    rows, answered = [], 0
     for svc in services[:MAX_SERVICES_PER_ROOT]:
         svc_url = svc.get("url") or f"{root}/{svc['name']}/{svc['type']}"
         try:
             layers = get_json(svc_url).get("layers", [])
         except Exception:
             continue
+        answered += 1
         for lyr in layers:
             kind = classify(f"{svc['name']} {lyr.get('name', '')}", lyr.get("geometryType"))
             if kind:
                 rows.append({"layer_kind": kind, "layer_name": f"{svc['name']} / {lyr.get('name')}",
                              "geometry_type": lyr.get("geometryType"), "url": f"{svc_url}/{lyr['id']}"})
-    return rows, err, len(services)
+    return rows, err, answered
 
 
 def main():
