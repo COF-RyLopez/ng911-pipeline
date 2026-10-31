@@ -127,7 +127,7 @@ Open the pre-styled, self-contained project (amber boundary polygons, green cent
 ```text
 https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/fresno_ng911_pilot.geolibre.json
 ```
-*(Outputs are rebuilt by CI on every push to `main` and published to Cloudflare R2; they are not committed to git. After a local `run_pilot.py`, you can also drag `data/output/fresno_ng911_pilot.geolibre` into [web.geolibre.app](https://web.geolibre.app/).)*
+*(Outputs are rebuilt by CI on every push to `main` and published to Cloudflare R2; they are not committed to git. After a local `run_pilot.py`, you can also drag `data/output/fresno_ng911_pilot.geolibre.json` into [web.geolibre.app](https://web.geolibre.app/).)*
 
 ### Option 2: 1-Click Visual Address QA/QC & BYOD Comparison Hub
 Open the interactive visual comparison project comparing raw municipal addresses vs NG911 enhanced addresses (with displacement vector lines and color-coded enhancement categories):

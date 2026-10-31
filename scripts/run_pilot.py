@@ -229,7 +229,7 @@ def main():
     # Export GeoLibre project files (.geolibre and .geolibre.json)
     gen_proj_script = os.path.join(PROJECT_DIR, "scripts", "generate_geolibre_project.py")
     subprocess.run([sys.executable, gen_proj_script], cwd=PROJECT_DIR, check=True)
-    print(f"  -> Exported GeoLibre Master Project: {os.path.join(OUTPUT_DIR, 'fresno_ng911_pilot.geolibre')}")
+    print(f"  -> Exported GeoLibre Master Project: {os.path.join(OUTPUT_DIR, 'fresno_ng911_pilot.geolibre.json')}")
 
     gen_comp_script = os.path.join(PROJECT_DIR, "scripts", "generate_comparison_geolibre_project.py")
     subprocess.run([sys.executable, gen_comp_script], cwd=PROJECT_DIR, check=True)
@@ -347,7 +347,7 @@ def main():
     print(f"                            ESB (Parquet/GeoJSON), Fishbones (Parquet/GeoJSON),")
     print(f"                            QA (Parquet), Readiness Audit (Parquet),")
     print(f"                            Regional Addresses (Parquet), NENA v3.0 Tables (Parquet)")
-    print(f"  GeoLibre Project:         data/output/fresno_ng911_pilot.geolibre (.json)")
+    print(f"  GeoLibre Project:         data/output/fresno_ng911_pilot.geolibre.json")
     print(f"  GeoLibre 1-Click URL:     https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/fresno_ng911_pilot.geolibre.json")
     print("=" * 75 + "\n")
 

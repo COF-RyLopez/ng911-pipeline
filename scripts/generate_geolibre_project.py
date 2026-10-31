@@ -247,14 +247,11 @@ def main():
         validated_dict = project_data
 
     proj_path_json = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre.json")
-    proj_path_geolibre = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre")
-
-    for path in (proj_path_json, proj_path_geolibre):
-        with open(path, "w") as f:
-            json.dump(validated_dict, f, indent=2)
+    with open(proj_path_json, "w") as f:
+        json.dump(validated_dict, f, indent=2)
 
     size_mb = os.path.getsize(proj_path_json) / 1e6
-    print(f"Generated GeoLibre project ({size_mb:.1f} MB, PMTiles-streamed layers):\n  -> {proj_path_json}\n  -> {proj_path_geolibre}")
+    print(f"Generated GeoLibre project ({size_mb:.1f} MB, PMTiles-streamed layers):\n  -> {proj_path_json}")
 
 
 if __name__ == "__main__":
