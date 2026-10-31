@@ -102,30 +102,58 @@ def index_oa(src_dir):
     return rows
 
 
-def crawl_root(root):
-    """List a server's services and their layers; return (candidate rows, error)."""
+def services_from_known(root, known_urls):
+    """Services to try when a server won't list itself (usually "Token Required" on the root catalog):
+    the folders holding the endpoints OpenAddresses already reads, or failing that the services themselves."""
+    services, folders = {}, set()
+    for u in known_urls:
+        parts = re.split(r"/rest/services/", u, maxsplit=1, flags=re.I)
+        m = re.match(r"(.+?)/(FeatureServer|MapServer)\b", parts[1]) if len(parts) == 2 else None
+        if m:
+            services[m.group(1)] = {"name": m.group(1), "type": m.group(2)}
+            if "/" in m.group(1):
+                folders.add(m.group(1).rsplit("/", 1)[0])
+    for folder in folders:
+        try:
+            for svc in get_json(f"{root}/{folder}").get("services", []):
+                if svc.get("type") in ("FeatureServer", "MapServer"):
+                    services[svc["name"]] = svc
+        except Exception:
+            pass  # folder is locked too: keep just the known services in it
+    return list(services.values())
+
+
+def crawl_root(root, known_urls=()):
+    """List a server's services and their layers; return (candidate rows, error, services scanned)."""
+    err = ""
     try:
         services, folders = [], [""]
         while folders:
             folder = folders.pop()
-            cat = get_json(f"{root}/{folder}".rstrip("/"))
+            try:
+                cat = get_json(f"{root}/{folder}".rstrip("/"))
+            except Exception:
+                if not folder:
+                    raise
+                continue  # one locked folder shouldn't hide the rest of the server
             folders += [f for f in cat.get("folders", []) if not folder]
             services += [s for s in cat.get("services", []) if s.get("type") in ("FeatureServer", "MapServer")]
-        rows = []
-        for svc in services[:MAX_SERVICES_PER_ROOT]:
-            svc_url = svc.get("url") or f"{root}/{svc['name']}/{svc['type']}"
-            try:
-                layers = get_json(svc_url).get("layers", [])
-            except Exception:
-                continue
-            for lyr in layers:
-                kind = classify(f"{svc['name']} {lyr.get('name', '')}", lyr.get("geometryType"))
-                if kind:
-                    rows.append({"layer_kind": kind, "layer_name": f"{svc['name']} / {lyr.get('name')}",
-                                 "geometry_type": lyr.get("geometryType"), "url": f"{svc_url}/{lyr['id']}"})
-        return rows, ""
     except Exception as e:
-        return [], f"{type(e).__name__}: {e}"
+        err = f"{type(e).__name__}: {e}"
+        services = services_from_known(root, known_urls)
+    rows = []
+    for svc in services[:MAX_SERVICES_PER_ROOT]:
+        svc_url = svc.get("url") or f"{root}/{svc['name']}/{svc['type']}"
+        try:
+            layers = get_json(svc_url).get("layers", [])
+        except Exception:
+            continue
+        for lyr in layers:
+            kind = classify(f"{svc['name']} {lyr.get('name', '')}", lyr.get("geometryType"))
+            if kind:
+                rows.append({"layer_kind": kind, "layer_name": f"{svc['name']} / {lyr.get('name')}",
+                             "geometry_type": lyr.get("geometryType"), "url": f"{svc_url}/{lyr['id']}"})
+    return rows, err, len(services)
 
 
 def main():
@@ -144,11 +172,15 @@ def main():
             by_root.setdefault(root, {})[r["source_file"]] = r
     print(f"Crawling {len(by_root)} ArcGIS servers...")
     with ThreadPoolExecutor(8) as pool:
-        results = dict(zip(by_root, pool.map(crawl_root, by_root)))
+        known = {root: [r["url"] for r in rows if r["protocol"] == "ESRI" and server_root(r["url"]) == root] for root in by_root}
+        results = dict(zip(by_root, pool.map(lambda root: crawl_root(root, known[root]), by_root)))
 
     errors = {}
-    for root, (cands, err) in results.items():
-        if err:
+    partial = {}  # root catalog refused, but folders/services OA points at were scanned
+    for root, (cands, err, n_svc) in results.items():
+        if err and n_svc:
+            partial[root] = (err, n_svc)
+        elif err:
             errors[root] = err
         seen = {r["url"] for r in rows}
         for src in by_root[root].values():
@@ -157,8 +189,10 @@ def main():
                     continue  # already an OA layer for this jurisdiction
                 rows.append({**{k: src[k] for k in ("source_file", "jurisdiction", "jurisdiction_type", "county_fips")},
                              **c, "origin": "arcgis_catalog", "protocol": "ESRI", "license": ""})
-    ok = len(by_root) - len(errors)
-    print(f"  {ok} servers listed, {len(errors)} unreachable")
+    ok = len(by_root) - len(errors) - len(partial)
+    print(f"  {ok} servers listed, {len(partial)} only via OpenAddresses' folders, {len(errors)} unreachable")
+    for root, (err, n_svc) in sorted(partial.items()):
+        print(f"    folders only: {root}  ({n_svc} services; root said {err[:60]})")
     for root, err in sorted(errors.items()):
         names = ", ".join(sorted({s["jurisdiction"] for s in by_root[root].values()}))
         print(f"    unreachable: {root}  [{names}]  {err[:120]}")
@@ -166,7 +200,7 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     fields = list(rows[0].keys())
     with open(os.path.join(OUT_DIR, f"{state}_endpoints.json"), "w") as f:
-        json.dump({"servers_unreachable": errors, "endpoints": rows}, f, indent=1)
+        json.dump({"servers_unreachable": errors, "servers_folders_only": {k: v[0] for k, v in partial.items()}, "endpoints": rows}, f, indent=1)
     with open(os.path.join(OUT_DIR, f"{state}_endpoints.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fields)
         w.writeheader()
