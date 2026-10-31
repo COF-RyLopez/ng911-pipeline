@@ -1,0 +1,33 @@
+name: Product 2 - County Endpoint Discovery (OpenAddresses + ArcGIS catalogs)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * 1"  # weekly: OA sources and county servers change slowly
+  pull_request:
+    paths:
+      - scripts/discover_county_endpoints.py
+      - .github/workflows/discover_endpoints.yml
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Fetch OpenAddresses California sources
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/openaddresses/openaddresses oa
+          git -C oa sparse-checkout set sources/us/ca
+
+      - name: Discover endpoints
+        run: python scripts/discover_county_endpoints.py oa/sources/us/ca
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ca-endpoint-discovery
+          path: data/output/discovery/
