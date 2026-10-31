@@ -289,7 +289,8 @@ def main():
 
     # Live numbers for the web app (index.html reads scorecard.json beside it instead of hardcoding them)
     parcels_cache = os.path.join(CACHE_DIR, "county_parcels.parquet")
-    pct = lambda v: None if v is None else float(v)
+    pct = lambda v: None if v is None or v != v else float(v)  # v != v: NaN from pandas, which JSON can't carry
+    oo = conn.sql("SELECT * FROM oo_scorecard").df().to_dict('records')[0]  # Product 1 (Overture-only)
     scorecard = {
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "county": county["label"],
@@ -308,6 +309,17 @@ def main():
         },
         "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
         "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+        "overture_only": {
+            "address_points": int(oo["Address_Points"]),
+            "pct_addresses_in_building": pct(oo["Pct_Addresses_In_Building"]),
+            "road_segments": int(oo["Road_Segments"]),
+            "road_km": pct(oo["Road_Km"]),
+            "localities": int(oo["Localities"]),
+            "pct_matched_to_road": pct(oo["Pct_Addresses_Matched_To_Road"]),
+            "pct_matched_within_50m": pct(oo["Pct_Matched_Within_50m"]),
+            "pct_county_centerline_in_overture": pct(oo["Pct_County_Centerline_Length_In_Overture"]),
+            "pct_county_centerline_same_name": pct(oo["Pct_County_Centerline_Length_Same_Name"]),
+        },
     }
     with open(os.path.join(OUTPUT_DIR, "scorecard.json"), "w") as f:
         json.dump(scorecard, f, indent=2)
@@ -360,7 +372,6 @@ def main():
     print(f"  - Inverted Ranges (= 0):   {audit_row['Road_Range_Inversions']} -> {'[PASS]' if audit_row['Zero_Range_Inversions_Passed'] else '[FAIL]'}")
     print(f"  - Cal OES Readiness:       {audit_row['Cal_OES_Readiness_Status']}")
     print("-" * 75)
-    oo = conn.sql("SELECT * FROM oo_scorecard").df().to_dict('records')[0]
     print(f"  PRODUCT 1: OVERTURE-ONLY NG911 (no county data; roads are OpenStreetMap-derived, ODbL):")
     print(f"  - Address Points:          {oo['Address_Points']:,} ({oo['Pct_Addresses_In_Building']}% inside an Overture building)")
     print(f"  - Road Segments:           {oo['Road_Segments']:,} ({oo['Road_Km']:,} km), {oo['Localities']} cities/places")

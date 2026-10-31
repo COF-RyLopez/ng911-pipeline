@@ -1380,6 +1380,15 @@
     .readiness-gates .gate-pass { color: #34d399; font-weight: 600; }
     .readiness-gates .gate-fail { color: #f87171; font-weight: 600; }
 
+    .badge-odbl { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; color: #c4b5fd; background: rgba(139, 92, 246, 0.18); border: 1px solid rgba(139, 92, 246, 0.4); }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+    .compare-table th { text-align: right; color: var(--text-muted); font-weight: 600; padding: 2px 0 4px 10px; white-space: nowrap; }
+    .compare-table td { text-align: right; padding: 3px 0 3px 10px; color: #ffffff; font-weight: 600; border-top: 1px solid var(--border-subtle); white-space: nowrap; }
+    .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--text-muted); font-weight: 400; white-space: normal; padding-left: 0; }
+    .overlap-stat { display: flex; align-items: baseline; gap: 8px; margin: 6px 0; }
+    .overlap-value { font-size: 22px; font-weight: 700; color: #c4b5fd; white-space: nowrap; }
+    .overlap-label { font-size: 11px; color: var(--text-muted); }
+
     @media (max-width: 1280px) {
       .brand-subtitle { display: none; }
     }
@@ -1663,6 +1672,25 @@
       <ul class="readiness-gates" id="readiness-gates"></ul>
       <div class="ban-card-footnote" id="readiness-footnote">
         Figures from the latest pipeline run.
+      </div>
+    </div>
+
+    <!-- Product 1: what open data alone gets you, next to the county build -->
+    <div class="ban-certification-card" id="product1-card">
+      <div class="ban-card-title">
+        <span>🌐 Open data only (Overture)</span>
+        <span class="badge-odbl" title="Overture roads are derived from OpenStreetMap and licensed ODbL">ODbL roads</span>
+      </div>
+      <table class="compare-table">
+        <thead><tr><th></th><th>Overture</th><th>County</th></tr></thead>
+        <tbody id="product1-rows"><tr><td colspan="3">Loading…</td></tr></tbody>
+      </table>
+      <div class="overlap-stat">
+        <div class="overlap-value" id="product1-overlap">—</div>
+        <div class="overlap-label" id="product1-overlap-label">of the county's own centerline length is also in Overture's open road map</div>
+      </div>
+      <div class="ban-card-footnote">
+        Not in open data: PSAP / emergency service boundaries, published address ranges, MSAG / ESN.
       </div>
     </div>
   </aside>
@@ -4853,6 +4881,22 @@
           gate("Points matched to a road (≥ 98%)", `${snap.pct}%`, snap.passed) +
           gate("Dispatch area coverage (≥ 98%)", `${sc.gates.dispatch_coverage.pct}%`, sc.gates.dispatch_coverage.passed) +
           gate("Inverted address ranges (0)", sc.gates.range_inversions.count, sc.gates.range_inversions.passed);
+        const oo = sc.overture_only;
+        if (oo) {
+          const pctTxt = v => v == null ? "—" : `${v}%`;
+          const row = (label, a, b) => `<tr><td>${label}</td><td>${a}</td><td>${b}</td></tr>`;
+          document.getElementById("product1-rows").innerHTML =
+            row("Address points", fmt(oo.address_points), fmt(sc.address_points)) +
+            row("Matched to a road", pctTxt(oo.pct_matched_to_road), pctTxt(snap.pct)) +
+            row("Road segments", fmt(oo.road_segments), fmt(sc.road_segments)) +
+            row("Points inside a building", pctTxt(oo.pct_addresses_in_building), "—");
+          document.getElementById("product1-overlap").textContent = pctTxt(oo.pct_county_centerline_in_overture);
+          document.getElementById("product1-overlap-label").textContent =
+            `of ${sc.county}'s own centerline length is also in Overture's open road map ` +
+            `(${pctTxt(oo.pct_county_centerline_same_name)} with the same street name).`;
+        } else {
+          document.getElementById("product1-rows").innerHTML = '<tr><td colspan="3">Not in this pipeline run yet.</td></tr>';
+        }
         document.getElementById("readiness-footnote").textContent =
           `${sc.county} · pipeline run ${sc.generated}. ${sc.within_50m_pct}% of matched points are within 50 m of their road; ` +
           `points farther out are flagged for review.`;
@@ -4860,6 +4904,7 @@
       .catch(() => {
         document.getElementById("readiness-status").textContent = "UNAVAILABLE";
         document.getElementById("readiness-footnote").textContent = "Pipeline figures (scorecard.json) could not be loaded.";
+        document.getElementById("product1-rows").innerHTML = '<tr><td colspan="3">Unavailable.</td></tr>';
       });
   </script>
 </body>
