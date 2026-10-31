@@ -340,7 +340,6 @@ def fetch_overture_addresses():
         FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=addresses/type=address/*.parquet')
         WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
           AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
-        LIMIT 100000
     ) TO '{output_parquet}' (FORMAT PARQUET);
     """
     conn.execute(query)
@@ -369,12 +368,37 @@ def fetch_overture_transportation():
         FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=transportation/type=segment/*.parquet')
         WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
           AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
-        LIMIT 50000
     ) TO '{output_parquet}' (FORMAT PARQUET);
     """
     conn.execute(query)
     count = conn.execute(f"SELECT count(*) FROM read_parquet('{output_parquet}')").fetchone()[0]
     print(f"  -> Saved {count:,} Overture transportation segments to {output_parquet}")
+    return count
+
+def fetch_overture_divisions():
+    """County and city (locality) polygons from Overture's divisions theme, for the Overture-only build."""
+    output_parquet = os.path.join(CACHE_DIR, "overture_divisions.parquet")
+    print(f"\n[Divisions] Fetching Overture county and city boundaries for the registered counties' extent...")
+    conn = duckdb.connect()
+    conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
+    conn.execute(f"""
+    COPY (
+        SELECT
+            id AS division_area_id,
+            division_id,
+            names.primary AS name,
+            subtype,
+            class,
+            geometry AS geom
+        FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=divisions/type=division_area/*.parquet')
+        WHERE country = 'US' AND region = 'US-CA' AND subtype IN ('county', 'locality')
+          -- overlap, not containment: counties extend past each other's boxes
+          AND bbox.xmax >= {OVERTURE_BBOX['minx']} AND bbox.xmin <= {OVERTURE_BBOX['maxx']}
+          AND bbox.ymax >= {OVERTURE_BBOX['miny']} AND bbox.ymin <= {OVERTURE_BBOX['maxy']}
+    ) TO '{output_parquet}' (FORMAT PARQUET);
+    """)
+    count = conn.sql(f"SELECT count(*) FROM read_parquet('{output_parquet}')").fetchall()[0][0]
+    print(f"  -> Saved {count:,} Overture division areas to {output_parquet}")
     return count
 
 def fetch_overture_places():
@@ -453,6 +477,7 @@ if __name__ == "__main__":
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
+    divisions_cnt = fetch_overture_divisions()
     bldg_cnt = fetch_overture_buildings()
     parcel_cnt = fetch_parcels()
     try:
@@ -473,6 +498,7 @@ if __name__ == "__main__":
     print(f"  - Overture Addresses:          {overture_addr_cnt:,}")
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
+    print(f"  - Overture Division Areas:      {divisions_cnt:,}")
     print(f"  - Overture Building Footprints: {bldg_cnt:,}")
     print(f"  - County Parcels:               {parcel_cnt:,}")
     print(f"  - Mapillary Imagery Segments:   {mly_cnt:,}")
