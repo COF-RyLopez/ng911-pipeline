@@ -76,8 +76,13 @@ def index_oa(src_dir):
     for path in sorted(glob.glob(os.path.join(src_dir, "*.json"))):
         d = json.load(open(path))
         cov = d.get("coverage", {})
-        geoid = str(cov.get("US Census", {}).get("geoid", ""))
-        jurisdiction = cov.get("city") or cov.get("county") or os.path.basename(path)[:-5]
+        census = cov.get("US Census", {})
+        geoid = str(census.get("geoid", ""))
+        # Census name when present ("Fresno County" -> "Fresno"); OA's county/city keys can be lowercase slugs
+        jurisdiction = (cov.get("city") or census.get("name", "").removesuffix(" County") or cov.get("county")
+                        or os.path.basename(path)[:-5]).replace("_", " ")
+        if jurisdiction == jurisdiction.lower():
+            jurisdiction = jurisdiction.title()  # only fix slugs: .title() would turn McFarland into Mcfarland
         for layer_type, layers in d.get("layers", {}).items():
             for layer in layers:
                 lic = layer.get("license")
@@ -154,6 +159,9 @@ def main():
                              **c, "origin": "arcgis_catalog", "protocol": "ESRI", "license": ""})
     ok = len(by_root) - len(errors)
     print(f"  {ok} servers listed, {len(errors)} unreachable")
+    for root, err in sorted(errors.items()):
+        names = ", ".join(sorted({s["jurisdiction"] for s in by_root[root].values()}))
+        print(f"    unreachable: {root}  [{names}]  {err[:120]}")
 
     os.makedirs(OUT_DIR, exist_ok=True)
     fields = list(rows[0].keys())
