@@ -22,18 +22,22 @@ SELECT
     row_number() OVER () AS ID,
     b.ST_Geometry AS GEOMETRY,
     coalesce(ag.DiscrpAg_ID, 1) AS DiscrpAg_ID,
-    current_timestamp AS DateUpdate,
+    coalesce(d.last_published, current_date) AS DateUpdate,
     b.ESB_NGUID AS NGUID,
     b.Agency_Code AS Agency_ID,
-    'sip:' || lower(coalesce(b.Agency_Code, 'dispatch')) || '@' || b.DisclID AS ServiceURI,
+    NULL::VARCHAR AS ServiceURI,   -- real SIP/HTTP URI comes from the PSAP or state; never invent one
     CASE b.Agency_Type
         WHEN 'FIRE' THEN 2
         WHEN 'LAW' THEN 3
-        ELSE 1
     END AS ServiceURN_ID,
     b.ServiceNum,
-    'https://' || b.DisclID || '/vcard' AS AVcard_URI,
+    NULL::VARCHAR AS AVcard_URI,   -- same: provided by the agency
     b.Agency_Name AS DsplayNam
 FROM boundaries b
 LEFT JOIN agencies ag
   ON b.DisclID = ag.DiscrpAgID
+LEFT JOIN {{ ref('stg_source_dates') }} d
+  ON d.source = CASE b.Agency_Type WHEN 'LAW' THEN 'Fresno CAD law dispatch' WHEN 'FIRE' THEN 'Fresno fire districts' END
+-- City limits are an A3 admin boundary (mart_nena3_a3boundary), not a service area.
+-- urn:service:sos is reserved for the PSAP boundary, which needs an authoritative PSAP layer.
+WHERE b.Agency_Type IN ('LAW', 'FIRE')

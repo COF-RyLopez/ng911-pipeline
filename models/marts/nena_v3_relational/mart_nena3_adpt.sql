@@ -37,10 +37,12 @@ SELECT
     row_number() OVER () AS ID,
     a.geom AS GEOMETRY,
     coalesce(ag.DiscrpAg_ID, 1) AS DiscrpAg_ID,
-    current_timestamp AS DateUpdate,
+    -- ponytail: layer-level last edit; Fresno publishes DATE_MAINTAINED per record if finer dates are needed
+    coalesce(d.last_published, current_date) AS DateUpdate,
     'urn:emergency:uid:gis:SSAP:' || a.county_id || ':' || a.agency_domain AS NGUID,
     sn.CompleteStNam_ID,
     an.CompleteAdNum_ID,
+    ac.ID AS A1toA5Code_ID,
     a.community_name AS Post_Comm,
     a.postcode AS Post_Code,
     a.county AS County,
@@ -59,3 +61,9 @@ LEFT JOIN st_names sn
 LEFT JOIN ad_numbers an
   ON a.num_int = an.Add_Number
  AND coalesce(a.house_number_suffix, '') = coalesce(an.AddNum_Suf, '')
+LEFT JOIN {{ ref('stg_source_dates') }} d
+  ON d.source = initcap(a.county) || ' addresses'
+LEFT JOIN {{ ref('int_nena3_admin_areas') }} aa
+  ON aa.feature = 'ADPT' AND aa.key = a.county_id || ':' || a.agency_domain
+LEFT JOIN {{ ref('mart_nena3_a1toa5code') }} ac
+  ON ac.A1 IS NOT DISTINCT FROM aa.A1 AND ac.A2 IS NOT DISTINCT FROM aa.A2 AND ac.A3 IS NOT DISTINCT FROM aa.A3

@@ -109,6 +109,7 @@ SELECT
     END) AS SpeedLimit,
     coalesce(s.one_way, 'B') AS OneWay, -- published one-way where available, else both directions
     s.road_class AS RoadClass,
+    s.source_classification AS SourceClassification,
 
     -- 6. 100% Authoritative County Geometry (Zero ODbL / OSM Licensing Contamination)
     s.geom AS ST_Geometry,

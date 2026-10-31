@@ -3,7 +3,7 @@
 -- One row per road geometry with its primary (addressing-authority) street name.
 -- County sources repeat some geometries: exact duplicates (37 in Fresno) and alias names
 -- (e.g. HIGHWAY 43 / 8TH AVE in Kings, AVENUE 200 / EAST RANKIN AVENUE in Tulare).
--- NENA-STA-006.3 4.1.2: the RCL carries the locally assigned name; other names are aliases.
+-- NENA-STA-006: the RCL carries the locally assigned name; other names are aliases.
 -- Primary = the name the nearby address points use; tie -> the copy with published ranges;
 -- still tied -> alphabetical, flagged UNRESOLVED for county review.
 

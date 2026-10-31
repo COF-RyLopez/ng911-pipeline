@@ -293,6 +293,12 @@ models:
   - name: mart_nena3_adpt
     description: "NENA v3.0 Relational Site/Structure Address Point (ng911.AdPt) table."
     columns:
+      - name: A1toA5Code_ID
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('mart_nena3_a1toa5code'), field: ID}}
+      - name: DateUpdate
+        tests: [not_null]
       - name: ID
         tests:
           - not_null
@@ -308,6 +314,12 @@ models:
   - name: mart_nena3_stseg
     description: "NENA v3.0 Relational Street Segment (ng911.StSeg) table."
     columns:
+      - name: RdClass_ID
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('mart_nena3_rdclass'), field: ID}}
+      - name: DateUpdate
+        tests: [not_null]
       - name: AliasSet_ID
         tests:
           - not_null
@@ -356,6 +368,12 @@ models:
   - name: mart_nena3_serviceboundary
     description: "NENA v3.0 Relational Service Boundary (ng911.ServiceBoundary) table."
     columns:
+      - name: ServiceURN_ID
+        tests:
+          - not_null
+          - accepted_values: {arguments: {values: [2, 3], quote: false}}
+      - name: DateUpdate
+        tests: [not_null]
       - name: ID
         tests:
           - not_null
@@ -366,6 +384,26 @@ models:
       - name: GEOMETRY
         tests:
           - not_null
+
+  - name: mart_nena3_a1toa5code
+    description: "NENA v3.0 ng911.A1toA5Code: state / county / incorporated municipality combinations."
+    columns:
+      - name: ID
+        tests: [not_null, unique]
+      - name: A1
+        tests: [not_null]
+
+  - name: mart_nena3_a3boundary
+    description: "NENA v3.0 ng911.A3Boundary: incorporated municipalities (Fresno city limits)."
+    columns:
+      - name: NGUID
+        tests: [not_null, unique]
+
+  - name: mart_nena3_rdclass
+    description: "NENA road class registry values."
+    columns:
+      - name: ID
+        tests: [not_null, unique]
 
   - name: mart_ng911_address_enhancements
     description: "NG911 Address Enhancements model categorizing spatial displacement, PSAP enrichment, and street normalization."

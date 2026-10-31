@@ -75,7 +75,7 @@ def calculate_fix_tokens(
 
 def validate_cldxf_schema(record: Dict[str, Any]) -> Tuple[bool, list]:
     """
-    Validates civic address attributes against NENA-STA-006.3 / CLDXF.
+    Validates civic address attributes against NENA-STA-006 / CLDXF.
     """
     errors = []
     

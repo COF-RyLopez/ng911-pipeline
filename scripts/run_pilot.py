@@ -107,6 +107,7 @@ def main():
     dbt_bin = os.path.join(PROJECT_DIR, ".venv", "bin", "dbt")
     if not os.path.exists(dbt_bin):
         dbt_bin = "dbt"
+    freshness = source_freshness()  # written before dbt: NENA DateUpdate reads it (stg_source_dates)
     run_cmd([dbt_bin, "run", "--profiles-dir", "."], "dbt Transformations (SSAP, RCL, QA, Fishbones)")
 
     # 3. Run dbt tests
@@ -206,7 +207,10 @@ def main():
         "mart_nena3_discrpag",
         "mart_nena3_serviceurn",
         "mart_nena3_alias",
-        "mart_nena3_aliasset"
+        "mart_nena3_aliasset",
+        "mart_nena3_a1toa5code",
+        "mart_nena3_a3boundary",
+        "mart_nena3_rdclass"
     ]
     for tbl in nena3_tables:
         nena_out = os.path.join(nena_v3_dir, f"{tbl}.parquet")
@@ -326,7 +330,7 @@ def main():
     for cname, ccnt in reg_county_counts:
         print(f"    * {cname.title()} County:     {ccnt:,} authoritative points")
     print("-" * 75)
-    print(f"  OFFICIAL NENA v3.0 RELATIONAL MODEL (NENA-STA-006.3-2026):")
+    print(f"  NENA GIS DATA MODEL v3.0 RELATIONAL TEMPLATES (NENA-STA-006.x):")
     print(f"  - ng911.AdPt:             {nena3_adpt_cnt:,} normalized address point records")
     print(f"  - ng911.StSeg:            {nena3_stseg_cnt:,} road centerlines with 3NF foreign keys")
     print(f"  - ng911.CompleteStNam:    {nena3_stnam_cnt:,} unique parsed street names")
@@ -335,7 +339,7 @@ def main():
     print(f"  - Deliverables:           data/output/nena_v3/*.parquet (3NF Relational Data Model)")
     print("-" * 75)
     print(f"  SOURCE FRESHNESS (last published; STALE > {STALE_DAYS} days):")
-    for r in source_freshness():
+    for r in freshness:
         age = f"{r['age_days']:>4}d" if r["age_days"] is not None else "    -"
         print(f"  - {r['source']:<22} {r['last_published'] or '?':<11} {age}  {r['status']}")
     print("-" * 75)

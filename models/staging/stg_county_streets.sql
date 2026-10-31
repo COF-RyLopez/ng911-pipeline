@@ -61,6 +61,7 @@ SELECT
         WHEN 'service' THEN 'Private'
         ELSE 'Local'
     END AS road_class,
+    lower(classification) AS source_classification,
     trim(concat_ws(' ',
         {{ normalize_direction('pre_dir_raw') }},
         array_to_string(t3, ' '),

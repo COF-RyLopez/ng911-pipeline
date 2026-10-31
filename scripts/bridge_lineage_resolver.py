@@ -59,7 +59,7 @@ def build_lineage_record(
             "ssap_nguid": nena_ssap_nguid,
             "discrepancy_agency_id": "fresnocountyca.gov",
             "cldxf_address": address_text,
-            "standard_version": "NENA-STA-006.3-2026"
+            "standard_version": "NENA-STA-006.x (GIS Data Model v3.0 templates)"
         },
         "geometry": {
             "type": "Point",

@@ -1,7 +1,7 @@
 # NG911 Cloud-Native Geospatial Pipeline (Central Valley Regional Pilot)
 
 An end-to-end Python, DuckDB, and dbt pipeline designed to ingest municipal and county GIS endpoints across California's Central Valley (**Fresno**, **Kings**, and **Tulare** Counties), conflate them with Overture Maps global GeoParquet data, and structure them natively into a **Dual-Model NG9-1-1 Architecture**:
-1. **Model A — NENA v3.0 Relational Data Model (`NENA-STA-006.3-2026`)**: Fully normalized 3NF relational schema matching the official [NENA GIS Data Model v3.0](https://github.com/NENA911/NG911GISDataModel/blob/main/relational_templates/schema/v3.0/README.md).
+1. **Model A — NENA v3.0 Relational Data Model (NENA-STA-006.x)**: Fully normalized 3NF relational schema matching the official [NENA GIS Data Model v3.0](https://github.com/NENA911/NG911GISDataModel/blob/main/relational_templates/schema/v3.0/README.md).
 2. **Model B — NENA-STA-010 GIS Exchange Model**: Optimized flat GeoParquet layers for zero-install streaming in [GeoLibre](https://web.geolibre.app/), QGIS, CAD/PSAP integration, and automated **Cal OES 98% Transition Readiness Auditing**.
 
 ---
@@ -105,7 +105,7 @@ To execute the entire pilot end-to-end (ingest, dbt transformation, 83 data qual
 
 ---
 
-## Official NENA v3.0 Relational Model (`NENA-STA-006.3-2026`)
+## Official NENA v3.0 Relational Model (NENA-STA-006.x)
 
 Deliverables exported to `data/output/nena_v3/`:
 - **`mart_nena3_adpt.parquet` (618,633 rows, 26.0 MB)**: Normalized 3NF address points linking foreign keys to `DiscrpAg_ID`, `CompleteStNam_ID`, and `CompleteAdNum_ID`.
@@ -164,7 +164,7 @@ In GeoLibre, open **Add Vector Layer**, paste any of the public Cloudflare R2 en
 ## Key Compliance & Architectural Highlights
 
 1. **Dual-Model Support:**
-   - **NENA v3.0 Relational Data Model (`NENA-STA-006.3-2026`)**: Fully normalized 3NF enterprise data store for Core NG9-1-1 Location Validation (LVF) and Emergency Call Routing (ECRF).
+   - **NENA v3.0 Relational Data Model (NENA-STA-006.x)**: Fully normalized 3NF enterprise data store for Core NG9-1-1 Location Validation (LVF) and Emergency Call Routing (ECRF).
    - **NENA-STA-010 GIS Exchange Model**: Flat, streaming GeoParquet layers for zero-install analytics and GeoLibre visualization.
 2. **Cal OES 98% Transition Readiness Audit Mart (`mart_ng911_qa_readiness_audit`):**
    - Automatically checks $\ge 98\%$ RCL snapping compliance within 50m.

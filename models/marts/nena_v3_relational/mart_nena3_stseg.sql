@@ -27,7 +27,7 @@ SELECT
     row_number() OVER () AS ID,
     r.ST_Geometry AS GEOMETRY,
     coalesce(ag.DiscrpAg_ID, 1) AS DiscrpAg_ID,
-    current_timestamp AS DateUpdate,
+    coalesce(d.last_published, current_date) AS DateUpdate,
     r.RCL_NGUID AS NGUID,
     sn.CompleteStNam_ID,
     coalesce(als.AliasSet_ID, 0)::BIGINT AS AliasSet_ID,
@@ -39,6 +39,9 @@ SELECT
     r.Parity_R,
     r.Country_L,
     r.Country_R,
+    acl.ID AS A1toA5CodeL_ID,
+    acr.ID AS A1toA5CodeR_ID,
+    rc.ID AS RdClass_ID,
     r.OneWay,
     r.SpeedLimit
 FROM rcl r
@@ -46,6 +49,23 @@ LEFT JOIN (SELECT DISTINCT street_segment_id, AliasSet_ID FROM {{ ref('int_alias
   ON r.CountyLocalID = als.street_segment_id
 LEFT JOIN agencies ag
   ON r.DisclID = ag.DiscrpAgID
+LEFT JOIN {{ ref('stg_source_dates') }} d
+  ON d.source = initcap(r.County_L) || ' centerlines'
+LEFT JOIN {{ ref('int_nena3_admin_areas') }} al ON al.feature = 'STSEG_L' AND al.key = r.RCL_NGUID
+LEFT JOIN {{ ref('int_nena3_admin_areas') }} ar ON ar.feature = 'STSEG_R' AND ar.key = r.RCL_NGUID
+LEFT JOIN {{ ref('mart_nena3_a1toa5code') }} acl
+  ON acl.A1 IS NOT DISTINCT FROM al.A1 AND acl.A2 IS NOT DISTINCT FROM al.A2 AND acl.A3 IS NOT DISTINCT FROM al.A3
+LEFT JOIN {{ ref('mart_nena3_a1toa5code') }} acr
+  ON acr.A1 IS NOT DISTINCT FROM ar.A1 AND acr.A2 IS NOT DISTINCT FROM ar.A2 AND acr.A3 IS NOT DISTINCT FROM ar.A3
+LEFT JOIN {{ ref('mart_nena3_rdclass') }} rc
+  ON rc.RdClass = CASE
+      WHEN r.SourceClassification LIKE '%link' THEN 'Ramp'
+      WHEN r.SourceClassification IN ('motorway', 'trunk') THEN 'Primary'
+      WHEN r.SourceClassification IN ('primary', 'secondary') THEN 'Secondary'
+      WHEN r.SourceClassification = 'service' THEN 'Service Drive'
+      WHEN r.SourceClassification = 'track' THEN 'Vehicular Trail'
+      ELSE 'Local'
+  END
 LEFT JOIN st_names sn
   ON coalesce(r.St_PreDir, '') = coalesce(sn.St_PreDir, '')
  AND r.St_Name = sn.St_Name
