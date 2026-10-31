@@ -41,7 +41,7 @@ def fetch_mapillary_coverage(points_parquet=POINTS_PARQUET):
     token = os.environ.get("MAPILLARY_TOKEN") or DEFAULT_TOKEN
     os.makedirs(TILE_DIR, exist_ok=True)
     con = duckdb.connect()
-    con.execute("LOAD spatial")
+    con.execute("INSTALL spatial; LOAD spatial")
 
     pts = con.execute(f"SELECT DISTINCT longitude, latitude FROM read_parquet('{points_parquet}') "
                       "WHERE longitude IS NOT NULL AND latitude IS NOT NULL").fetchall()
@@ -89,7 +89,7 @@ def fetch_mapillary_coverage(points_parquet=POINTS_PARQUET):
 
 def write_empty_stub():
     con = duckdb.connect()
-    con.execute("LOAD spatial")
+    con.execute("INSTALL spatial; LOAD spatial")
     con.execute(f"COPY (SELECT NULL::TIMESTAMP AS captured_at, NULL::BOOLEAN AS is_pano, "
                 f"NULL::GEOMETRY AS geom WHERE 1=0) TO '{OUTPUT_PARQUET}' (FORMAT PARQUET)")
 
