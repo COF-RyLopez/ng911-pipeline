@@ -50,7 +50,7 @@ def main():
                      ST_SimplifyPreserveTopology(geometry, 0.002) AS g
               FROM read_parquet('{RELEASE}/theme=divisions/type=division_area/*.parquet', hive_partitioning=1)
               WHERE subtype = 'county' AND class = 'land' AND region = 'US-{st}'""")
-    print(f"[{st}] {c.sql('SELECT count(*) FROM cty').fetchone()[0]} counties")
+    print(f"[{st}] {c.execute('SELECT count(*) FROM cty').fetchone()[0]} counties")
 
     c.sql(f"""CREATE TABLE a AS SELECT
                   coalesce(trim(street), '') <> '' AS has_street, coalesce(trim(number), '') <> '' AS has_number,
@@ -61,8 +61,8 @@ def main():
                   ST_Length_Spheroid(ST_FlipCoordinates(geometry)) / 1000 AS km, ST_Centroid(geometry) AS pt
               FROM read_parquet('{RELEASE}/theme=transportation/type=segment/*.parquet', hive_partitioning=1)
               WHERE subtype = 'road' AND class IN {PUBLIC_CLASSES} AND {in_box}""")
-    print(f"[{st}] {c.sql('SELECT count(*) FROM a').fetchone()[0]:,} address points, "
-          f"{c.sql('SELECT count(*) FROM r').fetchone()[0]:,} public road segments")
+    print(f"[{st}] {c.execute('SELECT count(*) FROM a').fetchone()[0]:,} address points, "
+          f"{c.execute('SELECT count(*) FROM r').fetchone()[0]:,} public road segments")
 
     hu = census_housing_units(STATE_FIPS[st])
     c.sql("CREATE TABLE hu (county VARCHAR, housing_units BIGINT)")
@@ -95,7 +95,7 @@ def main():
 
     csv_path = os.path.join(OUT_DIR, f"{st.lower()}_overture_county_scorecard.csv")
     c.sql(f"COPY (SELECT * EXCLUDE (geom) FROM s) TO '{csv_path}' (HEADER)")
-    rows = c.sql("SELECT * EXCLUDE (geom), ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, 0.005)) FROM s")
+    rows = c.execute("SELECT * EXCLUDE (geom), ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, 0.005)) FROM s")
     cols = [d[0] for d in rows.description]
     feats = [{"type": "Feature", "properties": dict(zip(cols[:-1], row[:-1])), "geometry": json.loads(row[-1])}
              for row in rows.fetchall()]
