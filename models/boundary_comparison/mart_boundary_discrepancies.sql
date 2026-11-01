@@ -1,8 +1,13 @@
 {{ config(materialized='table') }}
 
 -- Product 2: the areas where county city limits and CDTFA disagree, one polygon per piece, for the map
--- and for handing back to the county / LAFCo. Pieces under 1 ha are digitizing slivers and are dropped.
--- ponytail: 1 ha cutoff; lower it if annexation-sized parcels go missing from the review list.
+-- and for handing back to the county / LAFCo, each with a likely cause:
+--   FILED_CHANGE  half or more of the piece lies in a boundary change filed with the state (Gov. Code 54900):
+--                 a timing difference between the two sources, not an error in either
+--   SLIVER        under 25 m wide on average: the same line drawn twice, fixable by snapping to parcels
+--   UNEXPLAINED   neither: a real disagreement for the county or LAFCo to resolve
+-- Pieces under 1 ha are digitizing noise and are dropped.
+-- ponytail: 1 ha / 25 m / 50% cutoffs are first guesses; tune them on the Fresno results.
 WITH diffs AS (
     SELECT coalesce(state_city, local_city) AS city, 'ONLY_IN_STATE' AS side,
            ST_Difference(state_geom, coalesce(local_geom, ST_GeomFromText('POLYGON EMPTY'))) AS geom
@@ -15,16 +20,35 @@ WITH diffs AS (
     WHERE local_geom IS NOT NULL
 ),
 pieces AS (
-    SELECT city, side, unnest(ST_Dump(geom), recursive := true)  -- -> geom, path
-    FROM diffs
+    SELECT row_number() OVER () AS piece_id, city, side, geom
+    FROM (SELECT city, side, unnest(ST_Dump(geom), recursive := true) FROM diffs)  -- -> geom, path
+    WHERE ST_Dimension(geom) = 2
+      AND {{ area_km2('geom') }} >= 0.01
+      AND {{ 'TRUE' if county('boundary_layers') else 'FALSE' }}  -- no local layer: nothing to disagree with
+),
+filed AS (
+    SELECT p.piece_id, c.layer_name, c.props_json,
+           ST_Area(ST_Intersection(p.geom, c.geom)) / nullif(ST_Area(p.geom), 0) AS share
+    FROM pieces p
+    JOIN {{ ref('stg_cdtfa_boundary_changes') }} c ON ST_Intersects(p.geom, c.geom)
+    QUALIFY row_number() OVER (PARTITION BY p.piece_id ORDER BY share DESC) = 1
 )
 SELECT
     '{{ county("label") }}' AS Jurisdiction,
-    city AS City,
-    side AS Side,
-    round({{ area_km2('geom') }}, 4) AS AreaKm2,
-    geom AS ST_Geometry
-FROM pieces
-WHERE ST_Dimension(geom) = 2
-  AND {{ area_km2('geom') }} >= 0.01
-  AND {{ 'TRUE' if county('boundary_layers') else 'FALSE' }}  -- no local layer: nothing to disagree with
+    p.city AS City,
+    p.side AS Side,
+    round({{ area_km2('p.geom') }}, 4) AS AreaKm2,
+    -- mean width ~ 2 x area / perimeter; perimeter scaled by sqrt(cos lat) (a mid-orientation estimate)
+    round(2 * {{ area_km2('p.geom') }} * 1e6
+          / nullif(ST_Perimeter(p.geom) * 111320 * sqrt(cos(radians(ST_Y(ST_Centroid(p.geom))))), 0), 1) AS MeanWidthM,
+    CASE
+        WHEN f.share >= 0.5 THEN 'FILED_CHANGE'
+        WHEN MeanWidthM < 25 THEN 'SLIVER'
+        ELSE 'UNEXPLAINED'
+    END AS Cause,
+    round(100 * f.share, 1) AS PctInFiledChange,
+    f.layer_name AS FiledChangeLayer,
+    f.props_json AS FiledChangeRecord,
+    p.geom AS ST_Geometry
+FROM pieces p
+LEFT JOIN filed f USING (piece_id)
