@@ -37,7 +37,7 @@ FROM boundaries b
 LEFT JOIN agencies ag
   ON b.DisclID = ag.DiscrpAgID
 LEFT JOIN {{ ref('stg_source_dates') }} d
-  ON d.source = CASE b.Agency_Type WHEN 'LAW' THEN 'Fresno CAD law dispatch' WHEN 'FIRE' THEN 'Fresno fire districts' END
+  ON d.source = CASE b.Agency_Type WHEN 'LAW' THEN 'Fresno CAD law dispatch' WHEN 'FIRE' THEN 'Fresno fire dispatch' END
 -- City limits are an A3 admin boundary (mart_nena3_a3boundary), not a service area.
 -- urn:service:sos is reserved for the PSAP boundary, which needs an authoritative PSAP layer.
 WHERE b.Agency_Type IN ('LAW', 'FIRE')

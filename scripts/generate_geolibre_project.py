@@ -6,7 +6,7 @@ Generates the GeoLibre Project file (.geolibre and .geolibre.json) for the
 Fresno County NG911 Pilot.
 Includes:
 - Pre-styled layers:
-  1. Emergency Service Boundaries (ESBs: CAD/PSAP, Fire Districts, City Limits)
+  1. Emergency Service Boundaries (ESBs: CAD law, fire dispatch, city limits)
   2. Authoritative Road Centerlines (RCL with synthesized ranges)
   3. Site/Structure Address Points (SSAP with PSAP, Fire, Muni & Landmark attribution)
   4. QA/QC Fishbone Vectors (snapping distances and offset flags)

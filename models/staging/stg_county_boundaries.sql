@@ -15,16 +15,20 @@ WITH cad_law AS (
     WHERE geom IS NOT NULL
 ),
 
-fire_districts AS (
+-- Sheriff's fire / EMS dispatch zones (CAL FIRE, EMS FIRE, Firebaugh Fire zones): NENA's ESB Fire layer.
+fire_dispatch AS (
     SELECT
         'FIRE' AS agency_type,
-        'urn:emergency:uid:gis:ESB:FIRE:' || CD_FIREDIST || ':' || OBJECTID || ':{{ county("agency_domain") }}' AS esb_nguid,
-        upper(trim(NM_FIREDIST)) AS agency_name,
-        trim(CD_FIREDIST) AS agency_code,
+        -- the Sheriff's own IDs; two are reused on two zones each, so those get the OBJECTID appended
+        coalesce(CASE WHEN count(*) OVER (PARTITION BY ES_NGUID) > 1 THEN replace(ES_NGUID, '@', '_' || OBJECTID || '@')
+                      ELSE ES_NGUID END,
+                 'urn:emergency:uid:gis:FIRE:' || OBJECTID || ':{{ county("agency_domain") }}') AS esb_nguid,
+        upper(trim(FULLNAME)) AS agency_name,
+        trim(AGENCY) AS agency_code,
         NULL::VARCHAR AS service_number,
         NULL::VARCHAR AS area_code,
         ST_MakeValid(geom) AS geom
-    FROM read_parquet('data/cache/county_fire_districts.parquet')
+    FROM read_parquet('data/cache/county_fire_dispatch.parquet')
     WHERE geom IS NOT NULL
 ),
 
@@ -47,7 +51,7 @@ city_limits AS (
 SELECT * FROM (
     SELECT * FROM cad_law
     UNION ALL
-    SELECT * FROM fire_districts
+    SELECT * FROM fire_dispatch
     UNION ALL
     SELECT * FROM city_limits
 )
