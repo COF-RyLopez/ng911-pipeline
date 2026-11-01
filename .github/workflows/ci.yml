@@ -61,6 +61,13 @@ jobs:
         run: |
           python scripts/test_nena_service.py
 
+      # Product 1 at state scale: Overture-only address / centerline readiness for all 58 counties.
+      # Runs in the Fresno job so its outputs ride the single R2 publish below.
+      - name: Statewide Overture Scorecard (all California counties)
+        if: matrix.county == '06019'
+        run: |
+          python scripts/statewide_overture_scorecard.py --state CA
+
       - name: Publish GeoParquet & PMTiles to Cloudflare R2
         if: github.ref == 'refs/heads/main' && matrix.county == '06019'
         env:
