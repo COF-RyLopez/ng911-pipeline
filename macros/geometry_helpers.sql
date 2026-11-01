@@ -54,12 +54,15 @@
         WHEN 'PLACE' THEN 'PL'
         WHEN 'CIRCLE' THEN 'CIR'
         WHEN 'CIRC' THEN 'CIR'
+        WHEN 'CI' THEN 'CIR'  -- Placer: 'DANTE CI'
         WHEN 'COVE' THEN 'CV'
         WHEN 'HIGHWAY' THEN 'HWY'
         WHEN 'PARKWAY' THEN 'PKWY'
         WHEN 'PW' THEN 'PKWY'  -- Alameda: 'PASEO PADRE PW'
         WHEN 'TRAIL' THEN 'TRL'
+        WHEN 'TR' THEN 'TRL'  -- Placer: 'MINERAL SPRING TR'
         WHEN 'LOOP' THEN 'LOOP'
+        WHEN 'LP' THEN 'LOOP'  -- Placer: 'IMPRESSIONIST LP'
         ELSE rtrim(upper(trim({{ type_col }})), '.')
     END
 {% endmacro %}
