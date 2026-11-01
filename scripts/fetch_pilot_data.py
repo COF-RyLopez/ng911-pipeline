@@ -5,7 +5,8 @@ scripts/fetch_pilot_data.py
 Ingests and caches authoritative geospatial data for Fresno County NG911:
 1. Ingests Fresno County Site/Structure Address Points (REGIONAL_ADDRESS_VW/FeatureServer/1).
 2. Ingests road centerlines for Fresno, Kings and Tulare from OpenAddresses' processed county sources.
-3. Ingests Fresno County Emergency Service Boundaries (CAD/PSAP, Fire, City Limits).
+3. Ingests Fresno County Emergency Service Boundaries (CAD/PSAP, Fire, City Limits), and CDTFA's
+   state city/county boundaries for the registered counties.
 4. Ingests Overture Maps Address Points (S3 GeoParquet scoped to county extent).
 5. Ingests Overture Maps Transportation Segments (S3 GeoParquet scoped to county extent).
 6. Ingests Overture Maps Landmark Places (S3 GeoParquet scoped to county extent).
@@ -295,27 +296,51 @@ def fetch_fresno_county_boundaries():
     ]
     counts = {}
     for name, url, fname in layers:
-        out_parquet = os.path.join(CACHE_DIR, fname)
-        req = urllib.request.Request(url, headers={"User-Agent": "Fresno-NG911/1.0"})
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            features = data.get("features", [])
-            records = []
-            for f in features:
-                props = f.get("properties", {})
-                geom = f.get("geometry", {})
-                props["geom_geojson"] = json.dumps(geom)
-                records.append(props)
-            df = pd.DataFrame(records)
-            conn.register("df_layer", df)
-            conn.execute(f"""
-                COPY (
-                    SELECT * EXCLUDE (geom_geojson), ST_GeomFromGeoJSON(geom_geojson) AS geom
-                    FROM df_layer
-                ) TO '{out_parquet}' (FORMAT PARQUET)
-            """)
-            print(f"  -> Saved {len(df)} {name} features to {out_parquet}")
-            counts[name] = len(df)
+        counts[name] = geojson_to_parquet(conn, url, os.path.join(CACHE_DIR, fname), name)
+    return counts
+
+
+def geojson_to_parquet(conn, url, out_parquet, name):
+    """One ArcGIS f=geojson query -> GeoParquet (properties as columns, geometry as geom)."""
+    req = urllib.request.Request(url, headers={"User-Agent": "Fresno-NG911/1.0"})
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    records = [{**f.get("properties", {}), "geom_geojson": json.dumps(f.get("geometry", {}))}
+               for f in data.get("features", [])]
+    df = pd.DataFrame(records)
+    conn.register("df_layer", df)
+    conn.execute(f"""
+        COPY (
+            SELECT * EXCLUDE (geom_geojson), ST_GeomFromGeoJSON(geom_geojson) AS geom
+            FROM df_layer
+        ) TO '{out_parquet}' (FORMAT PARQUET)
+    """)
+    print(f"  -> Saved {len(df)} {name} features to {out_parquet}")
+    return len(df)
+
+
+# State geoportal city/county boundaries (CDT_GIS), sourced from CDTFA, public domain. "Blue version" =
+# land only, coastal buffers cut off. Fields: CDTFA_CITY, CDTFA_COUNTY, CENSUS_GEOID, CDT_NAME_SHORT.
+CDTFA_SERVICES = {
+    "cdtfa_cities.parquet": "https://services3.arcgis.com/uknczv4rpevve42E/arcgis/rest/services/California_Cities_and_Identifiers_Blue_Version_view/FeatureServer",
+    "cdtfa_counties.parquet": "https://services3.arcgis.com/uknczv4rpevve42E/arcgis/rest/services/California_County_Boundaries_and_Identifiers_Blue_Version_view/FeatureServer",
+}
+
+
+def fetch_cdtfa_boundaries():
+    """CDTFA city and county polygons for every registered county, for the Product 2 boundary comparison."""
+    print("\n[3b] Fetching CDTFA city and county boundaries (CA state geoportal)...")
+    conn = duckdb.connect()
+    conn.sql("INSTALL spatial; LOAD spatial;")
+    # LIKE 'FRESNO%' so "Fresno" and "Fresno County" both match
+    names = " OR ".join(f"UPPER(CDTFA_COUNTY) LIKE '{c['name'].upper()}%'" for c in county_config.COUNTIES.values())
+    counts = {}
+    for fname, service in CDTFA_SERVICES.items():
+        with urllib.request.urlopen(urllib.request.Request(f"{service}?f=json", headers={"User-Agent": "Fresno-NG911/1.0"})) as resp:
+            layer_id = json.load(resp)["layers"][0]["id"]
+        where = urllib.parse.quote(names)
+        url = f"{service}/{layer_id}/query?where={where}&outFields=*&outSR=4326&f=geojson"
+        counts[fname] = geojson_to_parquet(conn, url, os.path.join(CACHE_DIR, fname), fname)
     return counts
 
 def fetch_overture_addresses():
@@ -474,6 +499,7 @@ if __name__ == "__main__":
     tulare_addr_cnt = fetch_tulare_county_addresses()
     county_street_cnt = fetch_oa_centerlines()
     boundary_counts = fetch_fresno_county_boundaries()
+    cdtfa_counts = fetch_cdtfa_boundaries()
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
@@ -495,6 +521,7 @@ if __name__ == "__main__":
     print(f"  - County CAD / PSAP:           {boundary_counts.get('CAD/PSAP', 0):,}")
     print(f"  - County Fire Districts:       {boundary_counts.get('Fire Districts', 0):,}")
     print(f"  - County City Limits:          {boundary_counts.get('City Limits', 0):,}")
+    print(f"  - CDTFA Cities / Counties:     {cdtfa_counts['cdtfa_cities.parquet']:,} / {cdtfa_counts['cdtfa_counties.parquet']:,}")
     print(f"  - Overture Addresses:          {overture_addr_cnt:,}")
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")

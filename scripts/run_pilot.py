@@ -118,6 +118,13 @@ def main():
     freshness = source_freshness()  # written before dbt: NENA DateUpdate reads it (stg_source_dates)
     run_cmd([dbt_bin, "run", "--profiles-dir", ".", *dbt_vars], "dbt Transformations (SSAP, RCL, QA, Fishbones)")
 
+    # Product 2 pairing, printed before the tests so it's in the log even when a boundary test fails
+    with duckdb.connect(DB_PATH, read_only=True) as c:
+        c.sql("LOAD spatial;")
+        print("\n[PRODUCT 2] CDTFA city vs county city-limits pairing:")
+        c.sql("SELECT City, StateName, LocalName, StateAreaKm2, LocalAreaKm2, OverlapKm2, PctAgreement, Status "
+              "FROM mart_boundary_comparison ORDER BY City, StateName NULLS LAST").show(max_rows=500, max_width=250)
+
     # 3. Run dbt tests
     run_cmd([dbt_bin, "test", "--profiles-dir", ".", *dbt_vars], "dbt Data Quality & NENA Integrity Tests")
 
@@ -200,6 +207,16 @@ def main():
     print(f"  -> Exported Jurisdiction Remediation Deliverables: {remediation_csv} & {remediation_parquet}")
     flagged, with_img = conn.sql("SELECT count(*), count(*) FILTER (WHERE HasStreetImagery) FROM mart_ng911_county_remediation_export WHERE SymbologyCategory != 'VALIDATED_OK'").fetchall()[0]
     print(f"  -> Street imagery within 50 m for {with_img:,} of {flagged:,} flagged points")
+
+    # Product 2: county city limits vs CDTFA (state geoportal) city boundaries
+    boundary_dir = os.path.join(OUTPUT_DIR, "boundary_comparison")
+    os.makedirs(boundary_dir, exist_ok=True)
+    conn.sql(f"COPY (SELECT * FROM mart_boundary_comparison ORDER BY City) TO '{os.path.join(boundary_dir, 'city_boundary_comparison.csv')}' (HEADER)")
+    export_geojson_feature_collection(
+        "SELECT City, Side, AreaKm2, ST_AsGeoJSON(ST_Geometry) AS geometry FROM mart_boundary_discrepancies",
+        os.path.join(boundary_dir, "city_boundary_discrepancies.geojson"))
+    boundary_rows = conn.sql("SELECT City, Status, PctAgreement, OnlyInStateKm2, OnlyInLocalKm2 FROM mart_boundary_comparison ORDER BY PctAgreement NULLS FIRST, City").fetchall()
+    print(f"  -> Exported CDTFA boundary comparison ({len(boundary_rows)} cities): {boundary_dir}")
 
 
 
@@ -309,6 +326,10 @@ def main():
         },
         "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
         "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+        "boundary_comparison": [
+            {"city": c, "status": st, "pct_agreement": pct(a), "only_in_state_km2": pct(s_), "only_in_local_km2": pct(l)}
+            for c, st, a, s_, l in boundary_rows
+        ],
         "overture_only": {
             "address_points": int(oo["Address_Points"]),
             "pct_addresses_in_building": pct(oo["Pct_Addresses_In_Building"]),
@@ -379,6 +400,10 @@ def main():
     print(f"  - County Centerlines Also in Overture: {oo['Pct_County_Centerline_Length_In_Overture']}% of length "
           f"({oo['Pct_County_Centerline_Length_Same_Name']}% with the same name)")
     print(f"  - Missing from Overture:   PSAP/ESB boundaries, published address ranges, MSAG/ESN")
+    print("-" * 75)
+    print(f"  PRODUCT 2: CITY LIMITS VS CDTFA (CA STATE GEOPORTAL):")
+    for c, st, a, s_, l in boundary_rows:
+        print(f"  - {c:<16} {st:<18} {'' if a is None else f'{a}% agree'}  state-only {s_} km2, county-only {l} km2")
     print("-" * 75)
     print(f"  MULTI-COUNTY REGIONAL EXPANSION (CENTRAL VALLEY):")
     print(f"  - Total Regional SSAP:    {total_reg_addr:,} addresses across 3 counties")

@@ -112,3 +112,11 @@ END)
 {%- endfor -%}
 {{ ns.sql }}
 {%- endmacro %}
+
+{#- Area in km² of a lon/lat geometry: degree² scaled by 111.32 km per degree and cos(latitude).
+    No ST_Transform, whose axis-order handling differs between DuckDB versions.
+    ponytail: within ~0.5% of an equal-area projection for city-sized polygons; use ST_Transform
+    to EPSG:3310 if exact areas matter. -#}
+{% macro area_km2(geom) -%}
+(ST_Area({{ geom }}) * 12392.1 * cos(radians(ST_Y(ST_Centroid({{ geom }})))))
+{%- endmacro %}

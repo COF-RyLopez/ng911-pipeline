@@ -546,3 +546,26 @@ models:
     columns:
       - name: Jurisdiction
         tests: [not_null]
+
+  - name: mart_boundary_comparison
+    description: "Product 2: county city limits vs CDTFA (state geoportal) city boundaries, one row per city."
+    columns:
+      - name: City
+        tests:
+          - not_null
+          - unique
+      - name: Status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['MATCH', 'MINOR_DIFFERENCES', 'MAJOR_DIFFERENCES', 'MISSING_LOCALLY', 'MISSING_IN_STATE', 'NO_LOCAL_LAYER']
+
+  - name: mart_boundary_discrepancies
+    description: "Product 2: polygons (1 ha and up) where county city limits and CDTFA disagree."
+    columns:
+      - name: Side
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['ONLY_IN_STATE', 'ONLY_IN_LOCAL']
