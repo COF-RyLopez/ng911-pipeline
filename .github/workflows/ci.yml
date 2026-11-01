@@ -10,7 +10,7 @@ jobs:
   validate-and-test:
     name: Validate Overture Schema, dbt Tests & Cal OES Audit (${{ matrix.county }})
     runs-on: ubuntu-24.04  # pinned: ubuntu-latest moves to 26 and could change the apt tippecanoe build
-    timeout-minutes: 45  # a normal run takes ~15 min; a stuck runner (e.g. hung apt-get) otherwise holds the run for 6 h
+    timeout-minutes: 60  # a normal run takes ~35 min with the 40-county Overture-only build; a stuck runner (e.g. hung apt-get) otherwise holds the run for 6 h
     strategy:
       fail-fast: false  # one county's data problem must not cancel the other counties
       matrix:
@@ -69,11 +69,11 @@ jobs:
           python scripts/statewide_overture_scorecard.py --state CA
 
       # Product 1 for counties without county GIS here: the Overture-only build (oo_* models) for the
-      # thirty counties the statewide scorecard rates weakest. Also in the Fresno job, to ride the R2 publish.
+      # forty counties the statewide scorecard rates weakest. Also in the Fresno job, to ride the R2 publish.
       - name: Overture-only build for the weakest counties
         if: matrix.county == '06019'
         run: |
-          python scripts/overture_only_counties.py --top 30
+          python scripts/overture_only_counties.py --top 40
 
       - name: Publish GeoParquet & PMTiles to Cloudflare R2
         if: github.ref == 'refs/heads/main' && matrix.county == '06019'
