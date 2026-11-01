@@ -1751,6 +1751,30 @@
       </div>
     </div>
 
+    <!-- Product 1 at state scale: Overture-only readiness for every county (statewide_overture_scorecard.py) -->
+    <div class="ban-certification-card" id="statewide-card">
+      <div class="ban-card-title">
+        <span>🌎 Statewide: open data only</span>
+        <label class="layer-switch" title="Show counties on the map">
+          <input type="checkbox" id="toggle-statewide">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="overlap-label" id="statewide-summary">Loading…</div>
+      <table class="compare-table">
+        <thead><tr><th style="text-align:left">Weakest counties</th><th title="Address points with a house number and street">Addr. complete</th><th title="Share of public road length with a name">Roads named</th></tr></thead>
+        <tbody id="statewide-rows"><tr><td colspan="3">Loading…</td></tr></tbody>
+      </table>
+      <div class="ban-card-footnote">
+        Map colour = the lower of the two:
+        <span class="p2-dot" style="background:#22c55e"></span>≥ 90%
+        <span class="p2-dot" style="background:#eab308"></span>80–90%
+        <span class="p2-dot" style="background:#f97316"></span>70–80%
+        <span class="p2-dot" style="background:#ef4444"></span>&lt; 70%.
+        <a id="statewide-csv" style="color:#60a5fa">All counties (CSV)</a>
+      </div>
+    </div>
+
     <!-- Product 2: county city limits vs the state's (CDTFA) city boundaries -->
     <div class="ban-certification-card" id="product2-card">
       <div class="ban-card-title">
@@ -2274,6 +2298,11 @@
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
     // Layers behind the "Boundary Review" toggle
     const BOUNDARY_LAYER_IDS = ["boundary_discrepancies_fill", "reconciled_boundaries_line", "county_boundary_discrepancies_fill"];
+    // Statewide county readiness: colour by the weaker of address completeness and named public roads
+    const STATEWIDE_LAYER_IDS = ["statewide_fill", "statewide_line"];
+    const STATEWIDE_COLOR = ["step",
+      ["min", ["coalesce", ["get", "PctNumberAndStreet"], 0], ["coalesce", ["get", "PctPublicRoadKmNamed"], 0]],
+      "#ef4444", 70, "#f97316", 80, "#eab308", 90, "#22c55e"];
     const R2_BASE = isLocal
       ? window.location.origin
       : "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev";
@@ -2735,6 +2764,20 @@
       if (!map.getLayer("fire_zones_line")) {
         map.addLayer({ id: "fire_zones_line", type: "line", source: "fire_zones_src", layout: { visibility: fireVis },
                        paint: { "line-color": FIRE_ZONE_COLOR, "line-width": 1.5 } });
+      }
+
+      // 3.0f Statewide Overture-only readiness by county
+      if (!map.getSource("statewide_src")) {
+        map.addSource("statewide_src", { type: "geojson", data: `${R2_BASE}/statewide/ca_overture_county_scorecard.geojson` });
+      }
+      const swVis = getToggleState("toggle-statewide", false) ? "visible" : "none";
+      if (!map.getLayer("statewide_fill")) {
+        map.addLayer({ id: "statewide_fill", type: "fill", source: "statewide_src", layout: { visibility: swVis },
+                       paint: { "fill-color": STATEWIDE_COLOR, "fill-opacity": 0.45 } });
+      }
+      if (!map.getLayer("statewide_line")) {
+        map.addLayer({ id: "statewide_line", type: "line", source: "statewide_src", layout: { visibility: swVis },
+                       paint: { "line-color": "#0f172a", "line-width": 0.8 } });
       }
 
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
@@ -3490,6 +3533,26 @@
     });
     map.on("mouseenter", "osm_road_fixes_line", () => { map.getCanvas().style.cursor = "pointer"; });
 
+    document.getElementById("toggle-statewide").addEventListener("change", (e) => {
+      STATEWIDE_LAYER_IDS.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", e.target.checked ? "visible" : "none"); });
+      if (e.target.checked) map.fitBounds([[-124.5, 32.5], [-114.1, 42.1]], { padding: 40, duration: 900 });
+    });
+    map.on("click", "statewide_fill", (e) => {
+      const p = e.features[0].properties;
+      const pct = v => (v == null || v === "null") ? "—" : `${v}%`;
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;max-width:260px;color:#0f172a";
+      [["b", p.County],
+       ["div", `${Number(p.AddressPoints).toLocaleString()} Overture address points` +
+               (p.AddressesPerHousingUnit && p.AddressesPerHousingUnit !== "null" ? ` (${p.AddressesPerHousingUnit} per housing unit)` : "")],
+       ["div", `With number and street: ${pct(p.PctNumberAndStreet)} · missing a number: ${pct(p.PctMissingNumber)}`],
+       ["div", `From NAD (not OpenAddresses): ${pct(p.PctFromNAD)}`],
+       ["div", `Public roads: ${Number(p.PublicRoadKm).toLocaleString()} km, ${pct(p.PctPublicRoadKmNamed)} named`],
+       ["div", "Not in open data: PSAP / ESB boundaries, address ranges, MSAG"]
+      ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+      new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+    });
+
     const FIRE_ZONE_IDS = ["fire_zones_fill", "fire_zones_line"];
     document.getElementById("toggle-fire-zones").addEventListener("change", (e) => {
       FIRE_ZONE_IDS.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", e.target.checked ? "visible" : "none"); });
@@ -3756,6 +3819,9 @@
         if (map.getLayer("osm_road_fixes_line")) map.setLayoutProperty("osm_road_fixes_line", "visibility", getToggleState("toggle-osm-fixes") ? "visible" : "none");
         FIRE_ZONE_IDS.forEach(id => {
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-fire-zones") ? "visible" : "none");
+        });
+        STATEWIDE_LAYER_IDS.forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-statewide", false) ? "visible" : "none");
         });
         updateMapillaryLayerVisibilities();
       };
@@ -5186,6 +5252,31 @@
         document.getElementById("product2-rows").innerHTML = "";
         document.getElementById("county-boundary-rows").innerHTML = '<tr><td colspan="4">Unavailable.</td></tr>';
       });
+
+    // Statewide card: totals and the weakest counties, from the same GeoJSON the map layer draws
+    fetch(`${SCORECARD_BASE}/statewide/ca_overture_county_scorecard.geojson`, { cache: "no-cache" })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(fc => {
+        const rows = fc.features.map(f => f.properties);
+        const sum = k => rows.reduce((n, r) => n + (Number(r[k]) || 0), 0);
+        const wavg = (k, w) => (rows.reduce((n, r) => n + (Number(r[k]) || 0) * (Number(r[w]) || 0), 0) / sum(w)).toFixed(1);
+        document.getElementById("statewide-summary").textContent =
+          `${rows.length} counties · ${sum("AddressPoints").toLocaleString()} address points, ` +
+          `${wavg("PctNumberAndStreet", "AddressPoints")}% with number and street · ` +
+          `${Math.round(sum("PublicRoadKm")).toLocaleString()} km of public road, ${wavg("PctPublicRoadKmNamed", "PublicRoadKm")}% named`;
+        const score = r => Math.min(r.PctNumberAndStreet ?? 0, r.PctPublicRoadKmNamed ?? 0);
+        const tbody = document.getElementById("statewide-rows");
+        tbody.textContent = "";
+        rows.sort((a, b) => score(a) - score(b)).slice(0, 6).forEach(r => {
+          const tr = document.createElement("tr");
+          [r.County.replace(/ County$/, ""), `${r.PctNumberAndStreet ?? "—"}%`, `${r.PctPublicRoadKmNamed ?? "—"}%`].forEach((t, i) => {
+            const td = document.createElement("td"); td.textContent = t; if (i === 0) td.style.textAlign = "left"; tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        document.getElementById("statewide-csv").href = `${SCORECARD_BASE}/statewide/ca_overture_county_scorecard.csv`;
+      })
+      .catch(() => { document.getElementById("statewide-summary").textContent = "Not in this pipeline run yet."; });
 
     function renderOsmFixes(sc) {
       const rows = sc.osm_road_fixes;
