@@ -593,3 +593,23 @@ models:
               arguments:
                 values: ['CDTFA', 'COUNTY', 'RECONCILED']
 
+  - name: mart_county_boundary_comparison
+    description: "Product 2: the county polygon from Overture and TIGER compared with CDTFA's, plus county address points outside CDTFA's county line."
+    columns:
+      - name: ComparedTo
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              arguments:
+                values: ['OVERTURE', 'TIGER']
+
+  - name: mart_county_boundary_discrepancies
+    description: "Product 2: pieces (1 ha and up) where Overture's or TIGER's county polygon disagrees with CDTFA's, with county address points in each."
+    columns:
+      - name: Cause
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['SLIVER', 'UNEXPLAINED']
+

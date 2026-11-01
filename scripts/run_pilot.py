@@ -227,6 +227,14 @@ def main():
                max(PctOnParcelLines) FILTER (WHERE Source = 'COUNTY'),
                max(PctOnParcelLines) FILTER (WHERE Source = 'RECONCILED')
         FROM mart_boundary_parcel_alignment GROUP BY City ORDER BY City""").fetchall()
+    conn.sql(f"COPY (SELECT * FROM mart_county_boundary_comparison ORDER BY ComparedTo) TO '{os.path.join(boundary_dir, 'county_boundary_comparison.csv')}' (HEADER)")
+    export_geojson_feature_collection(
+        "SELECT ComparedTo, Side, AreaKm2, MeanWidthM, Cause, CountyAddressPoints, ST_AsGeoJSON(ST_Geometry) AS geometry "
+        "FROM mart_county_boundary_discrepancies",
+        os.path.join(boundary_dir, "county_boundary_discrepancies.geojson"))
+    county_rows = conn.sql("SELECT ComparedTo, PctAgreement, UnexplainedKm2, AddressPointsInDisagreement, "
+                           "CountyAddressPointsOutsideCdtfa, CountyAddressPoints FROM mart_county_boundary_comparison "
+                           "ORDER BY ComparedTo").fetchall()
     cause_rows = conn.sql("SELECT Cause, Side, count(*), round(sum(AreaKm2), 3) FROM mart_boundary_discrepancies "
                           "GROUP BY ALL ORDER BY Cause, Side").fetchall()
 
@@ -338,6 +346,11 @@ def main():
         },
         "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
         "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+        "county_boundary_comparison": [
+            {"compared_to": src, "pct_agreement": pct(a), "unexplained_km2": pct(u), "address_points_in_disagreement": int(n)}
+            for src, a, u, n, _, _ in county_rows
+        ],
+        "county_address_points_outside_cdtfa": int(county_rows[0][4]) if county_rows else None,
         "parcel_alignment_pct": [
             {"city": c, "cdtfa": pct(a), "county": pct(b), "reconciled": pct(r)} for c, a, b, r in align_rows
         ],
@@ -422,6 +435,11 @@ def main():
     print(f"  PRODUCT 2: CITY LIMITS VS CDTFA (CA STATE GEOPORTAL):")
     for c, st, a, s_, l in boundary_rows:
         print(f"  - {c:<16} {st:<18} {'' if a is None else f'{a}% agree'}  state-only {s_} km2, county-only {l} km2")
+    print(f"  County line vs CDTFA:")
+    for src, a, u, n, out, tot in county_rows:
+        print(f"  - {src:<9} {a}% agree, {u} km2 unexplained, {n:,} county address points in disagreeing areas")
+    if county_rows:
+        print(f"  - County address points outside CDTFA's county line: {county_rows[0][4]:,} of {county_rows[0][5]:,}")
     print(f"  Boundary on parcel lines (within ~3 m):  CDTFA / county / reconciled")
     for c, a, b, r in align_rows:
         print(f"  - {c:<16} {a}% / {b}% / {r}%")

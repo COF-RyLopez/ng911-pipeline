@@ -367,6 +367,24 @@ def fetch_cdtfa_boundary_changes():
     return len(df)
 
 
+# US Census TIGER county polygons (TIGERweb, current vintage), the federal reference county lines.
+TIGERWEB_STATE_COUNTY = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer"
+
+
+def fetch_tiger_counties():
+    """TIGER county polygons for every registered county, for the county boundary comparison."""
+    print("\n[3d] Fetching US Census TIGER county boundaries (TIGERweb)...")
+    conn = duckdb.connect()
+    conn.sql("INSTALL spatial; LOAD spatial;")
+    with urllib.request.urlopen(urllib.request.Request(f"{TIGERWEB_STATE_COUNTY}?f=json", headers={"User-Agent": "Fresno-NG911/1.0"})) as resp:
+        layers = json.load(resp).get("layers", [])
+    layer_id = next(l["id"] for l in layers if l.get("name") == "Counties")
+    geoids = ", ".join(f"'{fips}'" for fips in county_config.COUNTIES)
+    where = urllib.parse.quote(f"GEOID IN ({geoids})")
+    url = f"{TIGERWEB_STATE_COUNTY}/{layer_id}/query?where={where}&outFields=GEOID,NAME&outSR=4326&f=geojson"
+    return geojson_to_parquet(conn, url, os.path.join(CACHE_DIR, "tiger_counties.parquet"), "TIGER counties")
+
+
 def fetch_cdtfa_boundaries():
     """CDTFA city and county polygons for every registered county, for the Product 2 boundary comparison."""
     print("\n[3b] Fetching CDTFA city and county boundaries (CA state geoportal)...")
@@ -541,6 +559,7 @@ if __name__ == "__main__":
     boundary_counts = fetch_fresno_county_boundaries()
     cdtfa_counts = fetch_cdtfa_boundaries()
     cdtfa_change_cnt = fetch_cdtfa_boundary_changes()
+    tiger_county_cnt = fetch_tiger_counties()
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
@@ -564,6 +583,7 @@ if __name__ == "__main__":
     print(f"  - County City Limits:          {boundary_counts.get('City Limits', 0):,}")
     print(f"  - CDTFA Cities / Counties:     {cdtfa_counts['cdtfa_cities.parquet']:,} / {cdtfa_counts['cdtfa_counties.parquet']:,}")
     print(f"  - CDTFA Filed Boundary Changes: {cdtfa_change_cnt:,}")
+    print(f"  - TIGER Counties:              {tiger_county_cnt:,}")
     print(f"  - Overture Addresses:          {overture_addr_cnt:,}")
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
