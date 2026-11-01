@@ -92,6 +92,7 @@ def geojson_layer(layer_id, name, filename, geojson, style, popup, opacity=1.0):
 CAUSES = [
     ("FILED_CHANGE", "Filed annexation / correction (timing)", "#3b82f6"),
     ("SLIVER", "Sliver (same line drawn twice)", "#94a3b8"),
+    ("ROAD_RIGHT_OF_WAY", "Road right-of-way (which city owns the road)", "#eab308"),
     ("UNEXPLAINED", "Unexplained (for county / LAFCo)", "#ef4444"),
 ]
 
@@ -107,6 +108,7 @@ def boundary_layers():
         {"field": "Cause", "label": "Likely cause", "hover": True},
         {"field": "AreaKm2", "label": "Area (km²)"},
         {"field": "MeanWidthM", "label": "Mean width (m)"},
+        {"field": "PctLengthAlongRoad", "label": "% of length along a county road"},
         {"field": "FiledChangeLayer", "label": "Filed change layer"},
     ]}
     for cause, label, color in CAUSES:
