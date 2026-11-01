@@ -1773,6 +1773,15 @@
         <span class="p2-dot" style="background:#ef4444"></span>&lt; 70%.
         <a id="statewide-csv" style="color:#60a5fa">All counties (CSV)</a>
       </div>
+      <div id="oo-builds" style="display:none">
+        <div class="overlap-label" style="margin-top:8px">Overture-only NG911 builds (no county GIS):</div>
+        <table class="compare-table">
+          <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th></th></tr></thead>
+          <tbody id="oo-builds-rows"></tbody>
+        </table>
+        <div class="ban-card-footnote">Points: <span class="p2-dot" style="background:#22c55e"></span>same-named road within 50 m
+          <span class="p2-dot" style="background:#f59e0b"></span>farther <span class="p2-dot" style="background:#ef4444"></span>no road with that name</div>
+      </div>
     </div>
 
     <!-- Product 2: county city limits vs the state's (CDTFA) city boundaries -->
@@ -2300,6 +2309,41 @@
     const BOUNDARY_LAYER_IDS = ["boundary_discrepancies_fill", "reconciled_boundaries_line", "county_boundary_discrepancies_fill"];
     // Statewide county readiness: colour by the weaker of address completeness and named public roads
     const STATEWIDE_LAYER_IDS = ["statewide_fill", "statewide_line"];
+    // Overture-only county builds (overture_only_counties.py): points loaded per county on demand
+    const OO_MATCH_COLOR = ["match", ["get", "RoadMatch"], "OK", "#22c55e", "FAR", "#f59e0b", "#ef4444"];
+    const ooLoaded = {};  // county key -> FeatureCollection, re-added after a basemap switch
+    function addOoCountyLayer(key) {
+      if (!map.getSource(`oo_${key}_src`)) map.addSource(`oo_${key}_src`, { type: "geojson", data: ooLoaded[key] });
+      if (!map.getLayer(`oo_${key}_pts`)) {
+        map.addLayer({ id: `oo_${key}_pts`, type: "circle", source: `oo_${key}_src`,
+                       paint: { "circle-color": OO_MATCH_COLOR, "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1.5, 15, 5],
+                                "circle-stroke-color": "#0f172a", "circle-stroke-width": 0.3 } });
+        map.on("click", `oo_${key}_pts`, (e) => {
+          const p = e.features[0].properties;
+          const div = document.createElement("div");
+          div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
+          [["b", p.Address],
+           ["div", p.RoadMatch === "OK" ? `Same-named road ${p.DistanceM} m away`
+                 : p.RoadMatch === "FAR" ? `Nearest same-named road is ${p.DistanceM} m away (over 50 m)`
+                 : "No road with this name nearby in Overture / OpenStreetMap"],
+           ["div", "Overture address (OpenAddresses), no county GIS"]
+          ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+          new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+        });
+      }
+    }
+    function showOoCounty(key) {
+      const go = () => {
+        addOoCountyLayer(key);
+        const b = [180, 90, -180, -90];  // a loop, not Math.min(...xs): spreading 100k+ points overflows the stack
+        ooLoaded[key].features.forEach(({ geometry: { coordinates: [x, y] } }) => {
+          b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y);
+        });
+        if (b[0] <= b[2]) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 900 });
+      };
+      if (ooLoaded[key]) return go();
+      fetch(`${R2_BASE}/overture_only/${key}/address_points.geojson`).then(r => r.json()).then(fc => { ooLoaded[key] = fc; go(); });
+    }
     const STATEWIDE_COLOR = ["step",
       ["min", ["coalesce", ["get", "PctNumberAndStreet"], 0], ["coalesce", ["get", "PctPublicRoadKmNamed"], 0]],
       "#ef4444", 70, "#f97316", 80, "#eab308", 90, "#22c55e"];
@@ -2779,6 +2823,8 @@
         map.addLayer({ id: "statewide_line", type: "line", source: "statewide_src", layout: { visibility: swVis },
                        paint: { "line-color": "#0f172a", "line-width": 0.8 } });
       }
+
+      Object.keys(ooLoaded).forEach(addOoCountyLayer);  // county points already shown before a basemap switch
 
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
@@ -5277,6 +5323,24 @@
         document.getElementById("statewide-csv").href = `${SCORECARD_BASE}/statewide/ca_overture_county_scorecard.csv`;
       })
       .catch(() => { document.getElementById("statewide-summary").textContent = "Not in this pipeline run yet."; });
+
+    fetch(`${SCORECARD_BASE}/overture_only/counties_summary.json`, { cache: "no-cache" })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(rows => {
+        const tbody = document.getElementById("oo-builds-rows");
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          [r.County.replace(/ County, CA$/, ""), Number(r.AddressPoints).toLocaleString(),
+           r.PctMatchedToNamedRoad == null ? "—" : `${Math.round(r.PctMatchedToNamedRoad * r.PctMatchedWithin50m / 100)}%`
+          ].forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 0) td.style.textAlign = "left"; tr.appendChild(td); });
+          const td = document.createElement("td"), b = document.createElement("button");
+          b.textContent = "Map"; b.style.cssText = "font-size:10px;padding:1px 6px;cursor:pointer";
+          b.addEventListener("click", () => showOoCounty(r.Key));
+          td.appendChild(b); tr.appendChild(td); tbody.appendChild(tr);
+        });
+        document.getElementById("oo-builds").style.display = "";
+      })
+      .catch(() => {});  // not in this pipeline run yet
 
     function renderOsmFixes(sc) {
       const rows = sc.osm_road_fixes;
