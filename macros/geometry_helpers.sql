@@ -41,6 +41,7 @@
         WHEN 'STREET' THEN 'ST'
         WHEN 'STR' THEN 'ST'
         WHEN 'AVENUE' THEN 'AVE'
+        WHEN 'AV' THEN 'AVE'  -- Kern writes 'CHESTER AV'
         WHEN 'BOULEVARD' THEN 'BLVD'
         WHEN 'ROAD' THEN 'RD'
         WHEN 'DRIVE' THEN 'DR'
