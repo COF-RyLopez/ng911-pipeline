@@ -4,6 +4,9 @@
 -- and for handing back to the county / LAFCo, each with a likely cause:
 --   FILED_CHANGE  half or more of the piece lies in a boundary change filed with the state (Gov. Code 54900):
 --                 a timing difference between the two sources, not an error in either
+--   COUNTY_ISLAND only in the county layer and inside a hole in CDTFA's city polygon: an unincorporated
+--                 island (e.g. Fig Garden, Sunnyside in Fresno) that the county's city-limits layer fills in.
+--                 CDTFA is right; for NG911 these are Sheriff / county fire areas, so the county layer needs fixing
 --   ROAD_RIGHT_OF_WAY  10-100 m wide with a county road centerline along half its length or more: the
 --                 sources disagree on whether the city includes the road (e.g. SR-99 at Kingsburg). That is
 --                 a jurisdiction question, not a drawing error, so the reconciled boundary keeps CDTFA's line
@@ -30,6 +33,19 @@ pieces AS MATERIALIZED (  -- computed once: row_number() OVER () must give each 
       AND {{ area_km2('geom') }} >= 0.01
       AND {{ 'TRUE' if county('boundary_layers') else 'FALSE' }}  -- no local layer: nothing to disagree with
 ),
+-- CDTFA city polygons with their holes filled: a county-only piece inside this is an island the state excludes
+state_filled AS (
+    SELECT state_city AS city, ST_Union_Agg(ST_MakePolygon(ST_ExteriorRing(geom))) AS geom
+    FROM (SELECT state_city, unnest(ST_Dump(state_geom), recursive := true) FROM {{ ref('int_boundary_pairs') }}
+          WHERE state_geom IS NOT NULL)
+    WHERE ST_Dimension(geom) = 2
+    GROUP BY state_city
+),
+islands AS (
+    SELECT p.piece_id, ST_Area(ST_Intersection(p.geom, s.geom)) / nullif(ST_Area(p.geom), 0) AS share
+    FROM pieces p JOIN state_filled s USING (city)
+    WHERE p.side = 'ONLY_IN_LOCAL'
+),
 filed AS (
     SELECT p.piece_id, c.layer_name, c.props_json,
            ST_Area(ST_Intersection(p.geom, c.geom)) / nullif(ST_Area(p.geom), 0) AS share
@@ -55,6 +71,7 @@ SELECT
           / nullif(ST_Perimeter(p.geom) * 111320 * sqrt(cos(radians(ST_Y(ST_Centroid(p.geom))))), 0), 1) AS MeanWidthM,
     CASE
         WHEN f.share >= 0.5 THEN 'FILED_CHANGE'
+        WHEN i.share >= 0.9 THEN 'COUNTY_ISLAND'  -- ponytail: 90%, Fresno's islands measure 99-100%
         -- a right-of-way is a strip: under 100 m (wide freeways like SR-99 fit); without the cap, a large area
         -- full of streets (Fresno's ~26 km2 county-only area) passed as one
         WHEN MeanWidthM >= 10 AND MeanWidthM < 100 AND rd.road_share >= 0.5 THEN 'ROAD_RIGHT_OF_WAY'
@@ -63,7 +80,8 @@ SELECT
     END AS Cause,
     -- the state's line is CDTFA's: disagreements go to its boundary-change program (city / county / LAFCo
     -- filings under Gov. Code 54900); this map item lists the filed changes and the contact
-    'https://www.arcgis.com/home/item.html?id=93f73ae0070240fca9a4d3826ddb83cd' AS FixUrl,
+    -- (islands: the county's own layer is wrong, no state program to send them to)
+    CASE WHEN Cause != 'COUNTY_ISLAND' THEN 'https://www.arcgis.com/home/item.html?id=93f73ae0070240fca9a4d3826ddb83cd' END AS FixUrl,
     round(100 * f.share, 1) AS PctInFiledChange,
     round(100 * least(coalesce(rd.road_share, 0), 1), 1) AS PctLengthAlongRoad,  -- least() skips NULLs, so coalesce first
     f.layer_name AS FiledChangeLayer,
@@ -72,3 +90,4 @@ SELECT
 FROM pieces p
 LEFT JOIN filed f USING (piece_id)
 LEFT JOIN roads rd USING (piece_id)
+LEFT JOIN islands i USING (piece_id)
