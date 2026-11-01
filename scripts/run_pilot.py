@@ -118,6 +118,13 @@ def main():
     freshness = source_freshness()  # written before dbt: NENA DateUpdate reads it (stg_source_dates)
     run_cmd([dbt_bin, "run", "--profiles-dir", ".", *dbt_vars], "dbt Transformations (SSAP, RCL, QA, Fishbones)")
 
+    # Product 2 pairing, printed before the tests so it's in the log even when a boundary test fails
+    with duckdb.connect(DB_PATH, read_only=True) as c:
+        c.sql("LOAD spatial;")
+        print("\n[PRODUCT 2] CDTFA city vs county city-limits pairing:")
+        c.sql("SELECT City, StateName, LocalName, StateAreaKm2, LocalAreaKm2, OverlapKm2, PctAgreement, Status "
+              "FROM mart_boundary_comparison ORDER BY City, StateName NULLS LAST").show(max_rows=500, max_width=250)
+
     # 3. Run dbt tests
     run_cmd([dbt_bin, "test", "--profiles-dir", ".", *dbt_vars], "dbt Data Quality & NENA Integrity Tests")
 
