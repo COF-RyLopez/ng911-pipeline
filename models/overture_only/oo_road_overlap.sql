@@ -12,13 +12,18 @@ WITH probe AS (
     FROM {{ ref('mart_ng911_road_centerlines') }}
 ),
 hits AS (
-    SELECT p.RCL_NGUID, bool_or(instr(o.road_name, p.St_Name) > 0) AS name_agrees
+    -- whole-word, ordinal-aware name match (EIGHTH = 8TH), as in oo_fishbones
+    SELECT p.RCL_NGUID, bool_or(instr({{ street_match_key('o.road_name') }}, {{ street_match_key('p.St_Name') }}) > 0) AS name_agrees,
+           arg_min(o.road_name, ST_Distance(p.pt, o.geom)) AS nearest_name,
+           arg_min(o.osm_record_id, ST_Distance(p.pt, o.geom)) AS nearest_osm_record_id
     FROM probe p
     JOIN {{ ref('oo_road_centerlines') }} o ON ST_DWithin(p.pt, o.geom, 0.00015)
     GROUP BY 1
 )
 SELECT p.RCL_NGUID, p.St_Name, p.length_m,
        h.RCL_NGUID IS NOT NULL AS overture_has_road,
-       coalesce(h.name_agrees, FALSE) AS overture_name_agrees
+       coalesce(h.name_agrees, FALSE) AS overture_name_agrees,
+       h.nearest_name, h.nearest_osm_record_id,
+       ST_Y(p.pt) AS probe_lat, ST_X(p.pt) AS probe_lon
 FROM probe p
 LEFT JOIN hits h USING (RCL_NGUID)

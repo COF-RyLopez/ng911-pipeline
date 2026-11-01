@@ -613,3 +613,19 @@ models:
               arguments:
                 values: ['SLIVER', 'UNEXPLAINED']
 
+  - name: mart_osm_road_fixes
+    description: "Open-data lineage: county centerline segments OpenStreetMap (Overture's road source) is missing or names differently, with OSM edit links."
+    columns:
+      - name: RCL_NGUID
+        tests:
+          - not_null
+          - unique
+      - name: Issue
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['MISSING_IN_OSM', 'NAME_DIFFERS']
+      - name: OsmEditUrl
+        tests:
+          - not_null
+

@@ -59,6 +59,9 @@ SELECT
         WHEN MeanWidthM < 50 THEN 'SLIVER'
         ELSE 'UNEXPLAINED'
     END AS Cause,
+    -- the state's line is CDTFA's: disagreements go to its boundary-change program (city / county / LAFCo
+    -- filings under Gov. Code 54900); this map item lists the filed changes and the contact
+    'https://www.arcgis.com/home/item.html?id=93f73ae0070240fca9a4d3826ddb83cd' AS FixUrl,
     round(100 * f.share, 1) AS PctInFiledChange,
     round(100 * least(coalesce(rd.road_share, 0), 1), 1) AS PctLengthAlongRoad,  -- least() skips NULLs, so coalesce first
     f.layer_name AS FiledChangeLayer,

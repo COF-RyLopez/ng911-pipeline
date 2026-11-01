@@ -6,6 +6,7 @@ SELECT
     division_area_id,
     division_id,
     name,
+    osm_record_id,  -- lineage: the OpenStreetMap relation for the county
     ST_GeomFromWKB(ST_AsWKB(geom)) AS geom  -- drop the CRS84 tag so joins with untagged geometries match
 FROM read_parquet('data/cache/overture_divisions.parquet')
 WHERE subtype = 'county'

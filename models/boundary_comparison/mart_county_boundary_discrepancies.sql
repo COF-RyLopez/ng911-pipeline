@@ -33,6 +33,12 @@ SELECT
           / nullif(ST_Perimeter(p.geom) * 111320 * sqrt(cos(radians(ST_Y(ST_Centroid(p.geom))))), 0), 1) AS MeanWidthM,
     CASE WHEN MeanWidthM < 25 THEN 'SLIVER' ELSE 'UNEXPLAINED' END AS Cause,
     coalesce(t.n, 0) AS CountyAddressPoints,
+    -- where to fix the other source's line: Overture's county is an OpenStreetMap relation; TIGER lines are
+    -- corrected through the Census Boundary and Annexation Survey
+    CASE p.source
+        WHEN 'OVERTURE' THEN (SELECT {{ osm_edit_url('osm_record_id') }} FROM {{ ref('oo_county_boundary') }})
+        WHEN 'TIGER' THEN 'https://www.census.gov/programs-surveys/bas.html'
+    END AS FixUrl,
     p.geom AS ST_Geometry
 FROM pieces p
 LEFT JOIN pts t USING (piece_id)
