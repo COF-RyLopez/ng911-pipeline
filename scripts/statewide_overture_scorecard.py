@@ -27,12 +27,14 @@ PUBLIC_CLASSES = ("motorway", "trunk", "primary", "secondary", "tertiary", "resi
 def census_housing_units(fips):
     """2020 Census housing units by county name ('Fresno County'); {} if the API is unreachable."""
     url = f"https://api.census.gov/data/2020/dec/pl?get=NAME,H1_001N&for=county:*&in=state:{fips}"
+    body = b""
     try:
-        with urllib.request.urlopen(url, timeout=60) as resp:
-            rows = json.load(resp)[1:]
-        return {name.split(",")[0]: int(hu) for name, hu, *_ in rows}
-    except Exception as e:
-        print(f"  Census housing units unavailable ({e}); coverage ratio left blank")
+        req = urllib.request.Request(url, headers={"User-Agent": "ng911-pipeline statewide scorecard"})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = resp.read()
+        return {name.split(",")[0]: int(hu) for name, hu, *_ in json.loads(body)[1:]}
+    except Exception as e:  # the API answers errors with an HTML page, so show what came back
+        print(f"  Census housing units unavailable ({e}): {body[:200]!r}; coverage ratio left blank")
         return {}
 
 
