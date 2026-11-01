@@ -172,6 +172,12 @@ def main():
     esb_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb.parquet")
     conn.sql(f"COPY mart_ng911_emergency_boundaries TO '{esb_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Emergency Service Boundaries: {esb_parquet}")
+    # Fire / EMS dispatch zones for the web app map (~10 m simplification keeps the file small)
+    export_geojson_feature_collection(
+        "SELECT ESB_NGUID, Agency_Name, Agency_Code, "
+        "ST_AsGeoJSON(ST_SimplifyPreserveTopology(ST_Geometry, 0.0001)) AS geometry "
+        "FROM mart_ng911_emergency_boundaries WHERE Agency_Type = 'FIRE'",
+        os.path.join(OUTPUT_DIR, "esb_fire_zones.geojson"))
     esb_qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb_qa.parquet")
     conn.sql(f"COPY mart_ng911_esb_qa TO '{esb_qa_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported ESB Topology QA: {esb_qa_parquet}")
