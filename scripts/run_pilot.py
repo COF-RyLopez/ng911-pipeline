@@ -218,6 +218,15 @@ def main():
         os.path.join(boundary_dir, "city_boundary_discrepancies.geojson"))
     boundary_rows = conn.sql("SELECT City, Status, PctAgreement, OnlyInStateKm2, OnlyInLocalKm2 FROM mart_boundary_comparison ORDER BY PctAgreement NULLS FIRST, City").fetchall()
     print(f"  -> Exported CDTFA boundary comparison ({len(boundary_rows)} cities): {boundary_dir}")
+    export_geojson_feature_collection(
+        "SELECT City, AreaKm2, ChangeFromCdtfaKm2, PiecesTakenFromCounty, SliversRemoved, UnexplainedPiecesKept, "
+        "UnexplainedKm2, Status, ST_AsGeoJSON(ST_Geometry) AS geometry FROM mart_reconciled_city_boundaries",
+        os.path.join(boundary_dir, "reconciled_city_boundaries.geojson"))
+    align_rows = conn.sql("""
+        SELECT City, max(PctOnParcelLines) FILTER (WHERE Source = 'CDTFA'),
+               max(PctOnParcelLines) FILTER (WHERE Source = 'COUNTY'),
+               max(PctOnParcelLines) FILTER (WHERE Source = 'RECONCILED')
+        FROM mart_boundary_parcel_alignment GROUP BY City ORDER BY City""").fetchall()
     cause_rows = conn.sql("SELECT Cause, Side, count(*), round(sum(AreaKm2), 3) FROM mart_boundary_discrepancies "
                           "GROUP BY ALL ORDER BY Cause, Side").fetchall()
 
@@ -329,6 +338,9 @@ def main():
         },
         "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
         "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+        "parcel_alignment_pct": [
+            {"city": c, "cdtfa": pct(a), "county": pct(b), "reconciled": pct(r)} for c, a, b, r in align_rows
+        ],
         "boundary_discrepancies": [
             {"cause": c, "side": sd, "pieces": n, "area_km2": pct(a)} for c, sd, n, a in cause_rows
         ],
@@ -410,6 +422,9 @@ def main():
     print(f"  PRODUCT 2: CITY LIMITS VS CDTFA (CA STATE GEOPORTAL):")
     for c, st, a, s_, l in boundary_rows:
         print(f"  - {c:<16} {st:<18} {'' if a is None else f'{a}% agree'}  state-only {s_} km2, county-only {l} km2")
+    print(f"  Boundary on parcel lines (within ~3 m):  CDTFA / county / reconciled")
+    for c, a, b, r in align_rows:
+        print(f"  - {c:<16} {a}% / {b}% / {r}%")
     print(f"  Disagreeing areas (1 ha+) by likely cause:")
     for c, sd, n, a in cause_rows:
         print(f"  - {c:<13} {sd:<14} {n:>4} pieces, {a} km2")
