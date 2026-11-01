@@ -150,6 +150,37 @@ def boundary_layers():
     return layers
 
 
+OSM_ISSUES = [
+    ("MISSING_IN_OSM", "Missing in OpenStreetMap", "#f97316"),
+    ("NAME_DIFFERS", "Different name in OpenStreetMap", "#eab308"),
+]
+
+
+def osm_fix_layers():
+    """County roads OpenStreetMap (Overture's road source) is missing or names differently, one layer per
+    issue, each with its own published GeoJSON so the inline features and the URL match."""
+    fixes = load_geojson("open_data_fixes/osm_road_fixes.geojson")
+    popup = {"click": True, "hover": True, "titleField": "CountyStreetName", "fields": [
+        {"field": "CountyStreetName", "label": "County street name", "hover": True},
+        {"field": "Issue", "label": "Issue", "hover": True},
+        {"field": "OsmName", "label": "Name in OpenStreetMap"},
+        {"field": "LengthM", "label": "Length (m)"},
+        {"field": "OsmEditUrl", "label": "Fix in OpenStreetMap"},
+    ]}
+    layers = []
+    for issue, label, color in OSM_ISSUES:
+        fc = {"type": "FeatureCollection",
+              "features": [f for f in fixes["features"] if f["properties"].get("Issue") == issue]}
+        fname = f"open_data_fixes/osm_road_fixes_{issue.lower()}.geojson"
+        os.makedirs(os.path.dirname(os.path.join(OUTPUT_DIR, fname)), exist_ok=True)
+        with open(os.path.join(OUTPUT_DIR, fname), "w") as f:
+            json.dump(fc, f)
+        layers.append(geojson_layer(
+            f"osm_road_fixes_{issue.lower()}", f"OpenStreetMap road fixes: {label}", fname, fc,
+            {"fillColor": color, "fillOpacity": 0.0, "strokeColor": color, "strokeWidth": 3.0}, popup))
+    return layers
+
+
 def main():
     esb_geojson = load_geojson("mart_ng911_fresno_esb_sample.geojson")
 
@@ -215,6 +246,7 @@ def main():
                 }
             },
             *boundary_layers(),
+            *osm_fix_layers(),
             pmtiles_layer(
                 "mart_ng911_fresno_rcl",
                 "NENA Road Centerlines (All 53,474)",
@@ -303,6 +335,7 @@ def main():
         "interaction": {
             "identify": ["mart_ng911_fresno_ssap", "mart_ng911_fresno_fishbones", "mart_ng911_fresno_rcl", "mart_ng911_fresno_esb",
                          "reconciled_city_boundaries", "county_boundary_discrepancies",
+                         *[f"osm_road_fixes_{i.lower()}" for i, _, _ in OSM_ISSUES],
                          *[f"city_boundary_{c.lower()}" for c, _, _ in CAUSES]],
             "controls": {
                 "search": True,
