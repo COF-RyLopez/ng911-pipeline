@@ -39,7 +39,7 @@ SOURCES = {
     "Fresno centerlines":   f"{FRESNO}/REGIONAL_STREETS_VW/FeatureServer/1",
     "Fresno parcels":       f"{FRESNO}/REGIONAL_PARCELS_VW/FeatureServer/11",
     "Fresno city limits":   f"{FRESNO}/REGIONAL_CITY_LIMITS_VW/FeatureServer/1",
-    "Fresno fire districts": f"{FRESNO}/ELECTIONS_FIRE_DISTRICTS_VW/FeatureServer/41",
+    "Fresno fire dispatch": f"{FRESNO}/Fire/FeatureServer/0",
     "Fresno CAD law dispatch": f"{FRESNO}/City_County_CAD/FeatureServer/78",
     "Kings addresses":      f"{KINGS}/Address_Kings_County/FeatureServer/4",
     "Kings centerlines":    f"{KINGS}/Streets/FeatureServer/0",

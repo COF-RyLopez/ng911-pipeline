@@ -291,7 +291,9 @@ def fetch_fresno_county_boundaries():
     
     layers = [
         ("CAD/PSAP", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/City_County_CAD/FeatureServer/78/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_cad_psap.parquet"),
-        ("Fire Districts", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/ELECTIONS_FIRE_DISTRICTS_VW/FeatureServer/41/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_fire_districts.parquet"),
+        # Sheriff fire/EMS dispatch zones (covers the whole county), not ELECTIONS_FIRE_DISTRICTS_VW: that holds only
+        # the 8 elected special districts and misses ~5,900 addresses in Fresno's county islands alone
+        ("Fire Dispatch", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/Fire/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_fire_dispatch.parquet"),
         ("City Limits", "https://services3.arcgis.com/ibgDyuD2DLBge82s/arcgis/rest/services/REGIONAL_CITY_LIMITS_VW/FeatureServer/1/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "county_city_limits.parquet")
     ]
     counts = {}
@@ -586,7 +588,7 @@ if __name__ == "__main__":
     print(f"  - Tulare County Addresses:      {tulare_addr_cnt:,}")
     print(f"  - OA Road Centerlines:          {county_street_cnt:,}")
     print(f"  - County CAD / PSAP:           {boundary_counts.get('CAD/PSAP', 0):,}")
-    print(f"  - County Fire Districts:       {boundary_counts.get('Fire Districts', 0):,}")
+    print(f"  - County Fire Dispatch Zones:  {boundary_counts.get('Fire Dispatch', 0):,}")
     print(f"  - County City Limits:          {boundary_counts.get('City Limits', 0):,}")
     print(f"  - CDTFA Cities / Counties:     {cdtfa_counts['cdtfa_cities.parquet']:,} / {cdtfa_counts['cdtfa_counties.parquet']:,}")
     print(f"  - CDTFA Filed Boundary Changes: {cdtfa_change_cnt:,}")
