@@ -16,7 +16,8 @@ lc AS (
 ),
 pairs AS (
     SELECT s.city AS state_city, l.city AS local_city,
-           {{ area_km2('ST_Intersection(s.geom, l.geom)') }} AS overlap_km2
+           {{ area_km2('ST_Intersection(s.geom, l.geom)') }} AS overlap_km2,
+           ST_Area(ST_Intersection(s.geom, l.geom)) AS overlap_deg2  -- plain area, only to rank pairs
     FROM st s
     JOIN lc l ON ST_Intersects(s.geom, l.geom)
 ),
@@ -24,8 +25,8 @@ pairs AS (
 matched AS (
     SELECT p.*
     FROM pairs p
-    QUALIFY row_number() OVER (PARTITION BY state_city ORDER BY overlap_km2 DESC) = 1
-        AND row_number() OVER (PARTITION BY local_city ORDER BY overlap_km2 DESC) = 1
+    QUALIFY row_number() OVER (PARTITION BY state_city ORDER BY overlap_deg2 DESC) = 1
+        AND row_number() OVER (PARTITION BY local_city ORDER BY overlap_deg2 DESC) = 1
 )
 SELECT s.city AS state_city, m.local_city, s.geom AS state_geom, l.geom AS local_geom,
        coalesce(m.overlap_km2, 0) AS overlap_km2
