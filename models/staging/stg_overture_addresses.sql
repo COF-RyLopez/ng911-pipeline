@@ -32,12 +32,12 @@ parsed_overture AS (
         overture_id,
         upper(trim(overture_number)) AS house_number,
         -- type suffix comes off first, so "E ST" (E Street) keeps "E" as its name rather than "ST"
-        {{ normalize_direction("nullif(regexp_extract(regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|HWY|PKWY|PW|TRL|LOOP)$', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
+        {{ normalize_direction("nullif(regexp_extract(regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|CI|HWY|PKWY|PW|TRL|TR|LOOP|LP)$', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
         nullif(trim(regexp_replace(
-            regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|HWY|PKWY|PW|TRL|LOOP)$', ''),
+            regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|CI|HWY|PKWY|PW|TRL|TR|LOOP|LP)$', ''),
             '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', ''
         )), '') AS street_name,
-        {{ normalize_street_type("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|HWY|PKWY|PW|TRL|LOOP)$', 1), '')") }} AS street_type,
+        {{ normalize_street_type("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|CI|HWY|PKWY|PW|TRL|TR|LOOP|LP)$', 1), '')") }} AS street_type,
         coalesce(upper(trim(overture_city)), '{{ county("name") }}') AS community_name,
         nullif(trim(overture_postcode), '') AS postcode,
         '{{ county("name") }}' AS county,
