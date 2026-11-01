@@ -191,6 +191,10 @@ SELECT
         ELSE 'Validated OK against building footprint & road centerline'
     END AS RecommendedRemediationAction,
 
+    -- lineage: the source Overture republished for the matched address (for Fresno, the county's own
+    -- layer via OpenAddresses), so the county can see that fixing its data fixes Overture's copy
+    ov.source_dataset AS OvertureSourceDataset,
+    {{ oa_source_url('ov.source_dataset') }} AS OvertureSourceUrl,
     a.enhanced_geom AS ST_Geometry
 
 FROM addresses a
@@ -199,6 +203,7 @@ LEFT JOIN building_intersection bi ON a.SSAP_NGUID = bi.SSAP_NGUID
 LEFT JOIN street_imagery si ON a.SSAP_NGUID = si.SSAP_NGUID
 LEFT JOIN fishbones f ON a.SSAP_NGUID = f.SSAP_NGUID AND f.rn = 1
 LEFT JOIN discrepancies d ON (a.CountyLocalID = d.CountyFeatureID OR a.SSAP_NGUID = d.CountyFeatureID) AND d.rn = 1
+LEFT JOIN {{ ref('stg_overture_addresses') }} ov ON ov.overture_id = a.GERS_ID
 
 -- Source address points (county data republished via OpenAddresses/Overture) that have a house number
 -- but no street. They cannot be SSAPs, so the pipeline drops them; list them here for the county to complete.
@@ -223,6 +228,8 @@ SELECT
     FALSE AS StreetImageryPano,
     'https://www.mapillary.com/app/?lat=' || cast(o.latitude AS VARCHAR) || '&lng=' || cast(o.longitude AS VARCHAR) || '&z=18' AS MapillaryGroundTruthURL,
     'Address point has a house number but no street name; add the street so it can be dispatched' AS RecommendedRemediationAction,
+    o.source_dataset AS OvertureSourceDataset,
+    {{ oa_source_url('o.source_dataset') }} AS OvertureSourceUrl,
     ST_GeomFromWKB(ST_AsWKB(o.geom)) AS ST_Geometry
 FROM {{ ref('stg_overture_addresses') }} o
 CROSS JOIN {{ ref('oo_county_boundary') }} c

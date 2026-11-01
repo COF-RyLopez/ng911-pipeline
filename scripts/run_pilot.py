@@ -213,7 +213,7 @@ def main():
     os.makedirs(boundary_dir, exist_ok=True)
     conn.sql(f"COPY (SELECT * FROM mart_boundary_comparison ORDER BY City) TO '{os.path.join(boundary_dir, 'city_boundary_comparison.csv')}' (HEADER)")
     export_geojson_feature_collection(
-        "SELECT City, Side, AreaKm2, MeanWidthM, Cause, PctInFiledChange, FiledChangeLayer, FiledChangeRecord, "
+        "SELECT City, Side, AreaKm2, MeanWidthM, Cause, PctLengthAlongRoad, PctInFiledChange, FiledChangeLayer, FiledChangeRecord, FixUrl, "
         "ST_AsGeoJSON(ST_Geometry) AS geometry FROM mart_boundary_discrepancies",
         os.path.join(boundary_dir, "city_boundary_discrepancies.geojson"))
     boundary_rows = conn.sql("SELECT City, Status, PctAgreement, OnlyInStateKm2, OnlyInLocalKm2 FROM mart_boundary_comparison ORDER BY PctAgreement NULLS FIRST, City").fetchall()
@@ -229,12 +229,22 @@ def main():
         FROM mart_boundary_parcel_alignment GROUP BY City ORDER BY City""").fetchall()
     conn.sql(f"COPY (SELECT * FROM mart_county_boundary_comparison ORDER BY ComparedTo) TO '{os.path.join(boundary_dir, 'county_boundary_comparison.csv')}' (HEADER)")
     export_geojson_feature_collection(
-        "SELECT ComparedTo, Side, AreaKm2, MeanWidthM, Cause, CountyAddressPoints, ST_AsGeoJSON(ST_Geometry) AS geometry "
+        "SELECT ComparedTo, Side, AreaKm2, MeanWidthM, Cause, CountyAddressPoints, FixUrl, ST_AsGeoJSON(ST_Geometry) AS geometry "
         "FROM mart_county_boundary_discrepancies",
         os.path.join(boundary_dir, "county_boundary_discrepancies.geojson"))
     county_rows = conn.sql("SELECT ComparedTo, PctAgreement, UnexplainedKm2, AddressPointsInDisagreement, "
                            "CountyAddressPointsOutsideCdtfa, CountyAddressPoints FROM mart_county_boundary_comparison "
                            "ORDER BY ComparedTo").fetchall()
+    # Open-data lineage: county roads OpenStreetMap is missing or names differently, with OSM edit links
+    lineage_dir = os.path.join(OUTPUT_DIR, "open_data_fixes")
+    os.makedirs(lineage_dir, exist_ok=True)
+    conn.sql(f"COPY (SELECT * EXCLUDE (ST_Geometry) FROM mart_osm_road_fixes ORDER BY Issue, CountyStreetName) "
+             f"TO '{os.path.join(lineage_dir, 'osm_road_fixes.csv')}' (HEADER)")
+    export_geojson_feature_collection(
+        "SELECT RCL_NGUID, CountyStreetName, LengthM, Issue, OsmName, OsmEditUrl, ST_AsGeoJSON(ST_Geometry) AS geometry "
+        "FROM mart_osm_road_fixes", os.path.join(lineage_dir, "osm_road_fixes.geojson"))
+    osm_fix_rows = conn.sql("SELECT Issue, count(*), round(sum(LengthM) / 1000, 1) FROM mart_osm_road_fixes "
+                            "GROUP BY 1 ORDER BY 1").fetchall()
     cause_rows = conn.sql("SELECT Cause, Side, count(*), round(sum(AreaKm2), 3) FROM mart_boundary_discrepancies "
                           "GROUP BY ALL ORDER BY Cause, Side").fetchall()
 
@@ -346,6 +356,7 @@ def main():
         },
         "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
         "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+        "osm_road_fixes": [{"issue": i, "segments": int(n), "km": pct(km)} for i, n, km in osm_fix_rows],
         "county_boundary_comparison": [
             {"compared_to": src, "pct_agreement": pct(a), "unexplained_km2": pct(u), "address_points_in_disagreement": int(n)}
             for src, a, u, n, _, _ in county_rows
@@ -435,6 +446,9 @@ def main():
     print(f"  PRODUCT 2: CITY LIMITS VS CDTFA (CA STATE GEOPORTAL):")
     for c, st, a, s_, l in boundary_rows:
         print(f"  - {c:<16} {st:<18} {'' if a is None else f'{a}% agree'}  state-only {s_} km2, county-only {l} km2")
+    print(f"  OpenStreetMap road fixes (open_data_fixes/osm_road_fixes.csv, with OSM edit links):")
+    for i, n, km in osm_fix_rows:
+        print(f"  - {i:<15} {n:,} county segments, {km} km")
     print(f"  County line vs CDTFA:")
     for src, a, u, n, out, tot in county_rows:
         print(f"  - {src:<9} {a}% agree, {u} km2 unexplained, {n:,} county address points in disagreeing areas")

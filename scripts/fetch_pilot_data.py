@@ -417,6 +417,9 @@ def fetch_overture_addresses():
             street AS overture_street,
             postcode AS overture_postcode,
             postal_city AS overture_city,
+            -- lineage: Overture names the dataset it republished (an OpenAddresses source, e.g. us/ca/fresno)
+            sources[1].dataset AS source_dataset,
+            sources[1].record_id AS source_record_id,
             bbox.xmin AS minx,
             bbox.xmax AS maxx,
             bbox.ymin AS miny,
@@ -444,6 +447,8 @@ def fetch_overture_transportation():
             names.primary AS road_name,
             class AS road_class,
             subtype AS road_subtype,
+            -- lineage: the OpenStreetMap way behind the segment (e.g. w1192336214@1), for edit links
+            [s.record_id FOR s IN sources IF s.dataset = 'OpenStreetMap'][1] AS osm_record_id,
             geometry AS geom,
             bbox.xmin AS minx,
             bbox.xmax AS maxx,
@@ -473,6 +478,7 @@ def fetch_overture_divisions():
             names.primary AS name,
             subtype,
             class,
+            [s.record_id FOR s IN sources IF s.dataset = 'OpenStreetMap'][1] AS osm_record_id,  -- e.g. r396492@32
             geometry AS geom
         FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=divisions/type=division_area/*.parquet')
         WHERE country = 'US' AND region = 'US-CA' AND subtype IN ('county', 'locality')

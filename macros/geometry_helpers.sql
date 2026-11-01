@@ -120,3 +120,18 @@ END)
 {% macro area_km2(geom) -%}
 (ST_Area({{ geom }}) * 12392.1 * cos(radians(ST_Y(ST_Centroid({{ geom }})))))
 {%- endmacro %}
+
+{#- Where to fix an open-data record at its source.
+    osm_edit_url('w1192336214@1') -> https://www.openstreetmap.org/edit?way=1192336214 (NULL if not OSM)
+    oa_source_url('us/ca/fresno') -> the OpenAddresses source entry Overture republished (NULL otherwise) -#}
+{% macro osm_edit_url(record_id) -%}
+CASE WHEN regexp_matches({{ record_id }}, '^[nwr][0-9]+')
+     THEN 'https://www.openstreetmap.org/edit?'
+          || CASE left({{ record_id }}, 1) WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' ELSE 'relation' END
+          || '=' || regexp_extract({{ record_id }}, '^[nwr]([0-9]+)', 1) END
+{%- endmacro %}
+
+{% macro oa_source_url(dataset) -%}
+CASE WHEN regexp_matches({{ dataset }}, '^[a-z]{2}/[a-z0-9_/]+$')
+     THEN 'https://github.com/openaddresses/openaddresses/blob/master/sources/' || {{ dataset }} || '.json' END
+{%- endmacro %}

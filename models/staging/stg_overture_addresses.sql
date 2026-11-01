@@ -12,6 +12,8 @@ WITH raw_overture AS (
         street AS overture_street,
         postcode AS overture_postcode,
         postal_city AS overture_city,
+        sources[1].dataset AS source_dataset,
+        sources[1].record_id AS source_record_id,
         bbox.xmin AS minx,
         bbox.xmax AS maxx,
         bbox.ymin AS miny,
@@ -42,7 +44,9 @@ parsed_overture AS (
         ST_X(overture_geom) AS longitude,
         ST_Y(overture_geom) AS latitude,
         overture_geom AS geom,
-        'OVERTURE' AS source_agency
+        'OVERTURE' AS source_agency,
+        source_dataset,     -- lineage: the dataset Overture republished (an OpenAddresses source path)
+        source_record_id
     FROM raw_overture
     WHERE overture_number IS NOT NULL
 )

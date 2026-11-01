@@ -3395,6 +3395,15 @@
       });
     });
 
+    // "Fix at source" link for popups; only https URLs from our own outputs are linked
+    function appendFixLink(div, url, label) {
+      if (!url || !/^https:\/\//.test(url)) return;
+      const a = document.createElement("a");
+      a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = label;
+      a.style.cssText = "display:inline-block;margin-top:4px;color:#2563eb;font-weight:600";
+      div.appendChild(a);
+    }
+
     const CAUSE_TEXT = {
       FILED_CHANGE: "Inside a filed annexation / correction: the two sources differ in timing",
       SLIVER: "Sliver: the same line drawn twice (reconciled to the county's parcel-aligned line)",
@@ -3410,6 +3419,7 @@
        ["div", `${Number(p.AreaKm2 * 100).toFixed(1)} ha · about ${p.MeanWidthM} m wide`]].forEach(([tag, text]) => {
         const el = document.createElement(tag); el.textContent = text; div.appendChild(el);
       });
+      appendFixLink(div, p.FixUrl, "Report to CDTFA (state boundary changes) ↗");
       new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
     });
     map.on("mouseenter", "boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = "pointer"; });
@@ -3424,6 +3434,7 @@
        ["div", p.Cause === "SLIVER" ? "Sliver: the same line drawn twice" : "Unexplained difference"],
        ["div", `${Number(p.AreaKm2 * 100).toFixed(1)} ha · about ${p.MeanWidthM} m wide · ${p.CountyAddressPoints} county address points`]
       ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+      appendFixLink(div, p.FixUrl, p.ComparedTo === "TIGER" ? "Fix via the Census Boundary and Annexation Survey ↗" : "Fix in OpenStreetMap ↗");
       new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
     });
     map.on("mouseenter", "county_boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = "pointer"; });
