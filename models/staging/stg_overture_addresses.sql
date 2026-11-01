@@ -25,17 +25,19 @@ WITH raw_overture AS (
     {% endif %}
 ),
 
+-- street is read with trailing periods dropped: some sources write types as "ST." (Glenn: 'SHASTA ST.'),
+-- which the type-suffix regex below would otherwise miss, leaving the type in the street name
 parsed_overture AS (
     SELECT
         overture_id,
         upper(trim(overture_number)) AS house_number,
         -- type suffix comes off first, so "E ST" (E Street) keeps "E" as its name rather than "ST"
-        {{ normalize_direction("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), ' +(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
+        {{ normalize_direction("nullif(regexp_extract(regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
         nullif(trim(regexp_replace(
-            regexp_replace(upper(trim(overture_street)), ' +(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', ''),
+            regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', ''),
             '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', ''
         )), '') AS street_name,
-        {{ normalize_street_type("nullif(regexp_extract(upper(trim(overture_street)), ' +(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', 1), '')") }} AS street_type,
+        {{ normalize_street_type("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|BLVD|RD|DR|LN|WAY|CT|PL|CIR|HWY|PKWY|TRL|LOOP)$', 1), '')") }} AS street_type,
         coalesce(upper(trim(overture_city)), '{{ county("name") }}') AS community_name,
         nullif(trim(overture_postcode), '') AS postcode,
         '{{ county("name") }}' AS county,
