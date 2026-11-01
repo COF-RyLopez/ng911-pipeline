@@ -10,7 +10,7 @@ jobs:
   validate-and-test:
     name: Validate Overture Schema, dbt Tests & Cal OES Audit (${{ matrix.county }})
     runs-on: ubuntu-24.04  # pinned: ubuntu-latest moves to 26 and could change the apt tippecanoe build
-    timeout-minutes: 45  # a normal run takes ~15 min; a stuck runner (e.g. hung apt-get) otherwise holds the run for 6 h
+    timeout-minutes: 60  # a normal run takes ~35 min with the 40-county Overture-only build; a stuck runner (e.g. hung apt-get) otherwise holds the run for 6 h
     strategy:
       fail-fast: false  # one county's data problem must not cancel the other counties
       matrix:
