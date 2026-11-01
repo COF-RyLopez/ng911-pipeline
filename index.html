@@ -1382,6 +1382,10 @@
 
     .badge-odbl { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; color: #c4b5fd; background: rgba(139, 92, 246, 0.18); border: 1px solid rgba(139, 92, 246, 0.4); }
     .compare-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+    .p2-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+    .p2-causes { list-style: none; margin: 6px 0; padding: 0; font-size: 11px; }
+    .p2-causes li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; color: var(--text-muted); }
+    .p2-causes li span:last-child { color: #ffffff; font-weight: 600; white-space: nowrap; }
     .compare-table th { text-align: right; color: var(--text-muted); font-weight: 600; padding: 2px 0 4px 10px; white-space: nowrap; }
     .compare-table td { text-align: right; padding: 3px 0 3px 10px; color: #ffffff; font-weight: 600; border-top: 1px solid var(--border-subtle); white-space: nowrap; }
     .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--text-muted); font-weight: 400; white-space: normal; padding-left: 0; }
@@ -1574,6 +1578,23 @@
         </div>
       </div>
 
+      <!-- Product 2: county city limits vs CDTFA, and the reconciled (advisory) boundaries -->
+      <div class="layer-card" style="margin-top: 8px;">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-boundaries">
+            <span style="display: inline-block; width: 10px; height: 9px; background: rgba(239, 68, 68, 0.35); border: 1.5px solid #a78bfa; border-radius: 2px;"></span>
+            <span>City Boundary Review</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-boundaries" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>County vs state (CDTFA) · reconciled lines</span>
+        </div>
+      </div>
+
       <!-- Mapillary AI Vision & Street-Level Imagery -->
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
@@ -1691,6 +1712,25 @@
       </div>
       <div class="ban-card-footnote">
         Not in open data: PSAP / emergency service boundaries, published address ranges, MSAG / ESN.
+      </div>
+    </div>
+
+    <!-- Product 2: county city limits vs the state's (CDTFA) city boundaries -->
+    <div class="ban-certification-card" id="product2-card">
+      <div class="ban-card-title">
+        <span>🗺️ City limits vs state (CDTFA)</span>
+      </div>
+      <div class="overlap-label" id="product2-summary">Loading…</div>
+      <table class="compare-table">
+        <thead><tr><th>City</th><th>Agree</th><th id="product2-align-head" title="Share of the boundary within ~3 m of a parcel line">On parcel lines</th></tr></thead>
+        <tbody id="product2-rows"><tr><td colspan="3">Loading…</td></tr></tbody>
+      </table>
+      <ul class="p2-causes" id="product2-causes"></ul>
+      <div class="ban-card-footnote">
+        Where the two disagree: <span class="p2-dot" style="background:#3b82f6"></span>a filed annexation or correction (timing),
+        <span class="p2-dot" style="background:#94a3b8"></span>a sliver (the same line drawn twice),
+        <span class="p2-dot" style="background:#ef4444"></span>unexplained (for the county / LAFCo).
+        Purple lines are reconciled boundaries: advisory, the legal boundary is the filing with the State Board of Equalization.
       </div>
     </div>
   </aside>
@@ -2554,6 +2594,41 @@
         });
       }
 
+      // 3.0c Product 2: where county city limits and CDTFA disagree (by cause) + reconciled boundaries
+      const boundaryVis = getToggleState("toggle-boundaries") ? "visible" : "none";
+      if (!map.getSource("boundary_discrepancies_src")) {
+        map.addSource("boundary_discrepancies_src", {
+          type: "geojson", data: `${R2_BASE}/boundary_comparison/city_boundary_discrepancies.geojson`
+        });
+      }
+      if (!map.getLayer("boundary_discrepancies_fill")) {
+        map.addLayer({
+          id: "boundary_discrepancies_fill", type: "fill", source: "boundary_discrepancies_src",
+          layout: { visibility: boundaryVis },
+          paint: {
+            "fill-color": ["match", ["get", "Cause"], "FILED_CHANGE", "#3b82f6", "SLIVER", "#94a3b8", "#ef4444"],
+            "fill-opacity": 0.45,
+            "fill-outline-color": "#0f172a"
+          }
+        });
+      }
+      if (!map.getSource("reconciled_boundaries_src")) {
+        map.addSource("reconciled_boundaries_src", {
+          type: "geojson", data: `${R2_BASE}/boundary_comparison/reconciled_city_boundaries.geojson`
+        });
+      }
+      if (!map.getLayer("reconciled_boundaries_line")) {
+        map.addLayer({
+          id: "reconciled_boundaries_line", type: "line", source: "reconciled_boundaries_src",
+          layout: { visibility: boundaryVis },
+          paint: {
+            "line-color": "#a78bfa",
+            "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.0, 14, 2.5],
+            "line-opacity": 0.9
+          }
+        });
+      }
+
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
         map.addSource("fresno_buildings_src", {
@@ -3274,6 +3349,32 @@
       });
     }
 
+    document.getElementById("toggle-boundaries").addEventListener("change", (e) => {
+      const vis = e.target.checked ? "visible" : "none";
+      ["boundary_discrepancies_fill", "reconciled_boundaries_line"].forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+      });
+    });
+
+    const CAUSE_TEXT = {
+      FILED_CHANGE: "Inside a filed annexation / correction: the two sources differ in timing",
+      SLIVER: "Sliver: the same line drawn twice (reconciled to the county's parcel-aligned line)",
+      UNEXPLAINED: "Unexplained: for the county or LAFCo to resolve (reconciled keeps the state's line)"
+    };
+    map.on("click", "boundary_discrepancies_fill", (e) => {
+      const p = e.features[0].properties;
+      const side = p.Side === "ONLY_IN_STATE" ? "In the state's (CDTFA) city limits only" : "In the county's city limits only";
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
+      [["b", p.City], ["div", side], ["div", CAUSE_TEXT[p.Cause] || p.Cause],
+       ["div", `${Number(p.AreaKm2 * 100).toFixed(1)} ha · about ${p.MeanWidthM} m wide`]].forEach(([tag, text]) => {
+        const el = document.createElement(tag); el.textContent = text; div.appendChild(el);
+      });
+      new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+    });
+    map.on("mouseenter", "boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = ""; });
+
     function updateMapillaryLayerVisibilities() {
       const master = document.getElementById("toggle-mapillary")?.checked ?? true;
       const showDriveways = master && (document.getElementById("toggle-mly-driveways")?.checked ?? true);
@@ -3483,6 +3584,9 @@
         if (map.getLayer("parcels_line")) map.setLayoutProperty("parcels_line", "visibility", getToggleState("toggle-parcels") ? "visible" : "none");
         if (map.getLayer("buildings_fill")) map.setLayoutProperty("buildings_fill", "visibility", getToggleState("toggle-buildings") ? "visible" : "none");
         if (map.getLayer("buildings_line")) map.setLayoutProperty("buildings_line", "visibility", getToggleState("toggle-buildings") ? "visible" : "none");
+        ["boundary_discrepancies_fill", "reconciled_boundaries_line"].forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-boundaries") ? "visible" : "none");
+        });
         updateMapillaryLayerVisibilities();
       };
 
@@ -4897,6 +5001,7 @@
         } else {
           document.getElementById("product1-rows").innerHTML = '<tr><td colspan="3">Not in this pipeline run yet.</td></tr>';
         }
+        renderProduct2(sc);
         document.getElementById("readiness-footnote").textContent =
           `${sc.county} · pipeline run ${sc.generated}. ${sc.within_50m_pct}% of matched points are within 50 m of their road; ` +
           `points farther out are flagged for review.`;
@@ -4905,7 +5010,47 @@
         document.getElementById("readiness-status").textContent = "UNAVAILABLE";
         document.getElementById("readiness-footnote").textContent = "Pipeline figures (scorecard.json) could not be loaded.";
         document.getElementById("product1-rows").innerHTML = '<tr><td colspan="3">Unavailable.</td></tr>';
+        document.getElementById("product2-summary").textContent = "Unavailable.";
+        document.getElementById("product2-rows").innerHTML = "";
       });
+
+    function renderProduct2(sc) {
+      const cities = sc.boundary_comparison;
+      const rowsEl = document.getElementById("product2-rows");
+      if (!cities || !cities.length) {
+        document.getElementById("product2-summary").textContent = "Not in this pipeline run yet.";
+        rowsEl.innerHTML = "";
+        return;
+      }
+      const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const STATUS = {
+        MATCH: ["#10b981", "Match"], MINOR_DIFFERENCES: ["#f59e0b", "Minor differences"],
+        MAJOR_DIFFERENCES: ["#ef4444", "Major differences"], MISSING_LOCALLY: ["#ef4444", "Missing from county layer"],
+        MISSING_IN_STATE: ["#ef4444", "Missing from CDTFA"], NO_LOCAL_LAYER: ["#64748b", "No county layer to compare"]
+      };
+      const counts = {};
+      cities.forEach(c => { counts[c.status] = (counts[c.status] || 0) + 1; });
+      document.getElementById("product2-summary").textContent = `${cities.length} cities: ` +
+        Object.entries(counts).map(([k, n]) => `${n} ${(STATUS[k] || [0, k])[1].toLowerCase()}`).join(", ") + ".";
+      const align = Object.fromEntries((sc.parcel_alignment_pct || []).map(a => [a.city, a]));
+      document.getElementById("product2-align-head").style.display = sc.parcel_alignment_pct ? "" : "none";
+      rowsEl.innerHTML = cities.map(c => {
+        const [color, label] = STATUS[c.status] || ["#64748b", c.status];
+        const a = align[c.city];
+        const alignTxt = a ? `${a.cdtfa ?? "—"} → ${a.reconciled ?? "—"}%` : "";
+        return `<tr title="${esc(label)}"><td><span class="p2-dot" style="background:${color}"></span>${esc(c.city)}</td>` +
+          `<td>${c.pct_agreement == null ? "—" : c.pct_agreement + "%"}</td>` +
+          (sc.parcel_alignment_pct ? `<td title="CDTFA → reconciled">${alignTxt}</td>` : "") + `</tr>`;
+      }).join("");
+      const CAUSE = { FILED_CHANGE: "Filed annexation / correction", SLIVER: "Sliver", UNEXPLAINED: "Unexplained" };
+      const byCause = {};
+      (sc.boundary_discrepancies || []).forEach(d => {
+        const t = byCause[d.cause] || (byCause[d.cause] = { pieces: 0, km2: 0 });
+        t.pieces += d.pieces; t.km2 += d.area_km2 || 0;
+      });
+      document.getElementById("product2-causes").innerHTML = Object.entries(byCause).map(([k, t]) =>
+        `<li><span>${esc(CAUSE[k] || k)}</span><span>${t.pieces} areas · ${t.km2.toFixed(2)} km²</span></li>`).join("");
+    }
   </script>
 </body>
 </html>
