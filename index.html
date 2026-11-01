@@ -1583,7 +1583,7 @@
         <div class="layer-header">
           <label class="layer-label" for="toggle-boundaries">
             <span style="display: inline-block; width: 10px; height: 9px; background: rgba(239, 68, 68, 0.35); border: 1.5px solid #a78bfa; border-radius: 2px;"></span>
-            <span>City Boundary Review</span>
+            <span>Boundary Review</span>
           </label>
           <label class="layer-switch">
             <input type="checkbox" id="toggle-boundaries" checked>
@@ -1591,7 +1591,7 @@
           </label>
         </div>
         <div class="layer-meta">
-          <span>County vs state (CDTFA) · reconciled lines</span>
+          <span>City &amp; county lines vs state (CDTFA)</span>
         </div>
       </div>
 
@@ -1731,6 +1731,26 @@
         <span class="p2-dot" style="background:#94a3b8"></span>a sliver (the same line drawn twice),
         <span class="p2-dot" style="background:#ef4444"></span>unexplained (for the county / LAFCo).
         Purple lines are reconciled boundaries: advisory, the legal boundary is the filing with the State Board of Equalization.
+      </div>
+    </div>
+
+    <!-- Product 2: the county line from open sources vs the state's (CDTFA) -->
+    <div class="ban-certification-card" id="county-boundary-card">
+      <div class="ban-card-title">
+        <span>🧭 County line vs state (CDTFA)</span>
+      </div>
+      <table class="compare-table">
+        <thead><tr><th>Source</th><th>Agree</th><th title="Area that is neither a sliver nor explained">Unexplained</th><th title="County address points in disagreeing areas">Points</th></tr></thead>
+        <tbody id="county-boundary-rows"><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table>
+      <div class="overlap-stat">
+        <div class="overlap-value" id="county-outside-value">—</div>
+        <div class="overlap-label" id="county-outside-label">county address points fall outside the state's county line</div>
+      </div>
+      <div class="ban-card-footnote">
+        Overture's county comes from OpenStreetMap; TIGER is the US Census reference. On the map:
+        <span class="p2-dot" style="background:#14b8a6"></span>Overture and <span class="p2-dot" style="background:#f97316"></span>TIGER
+        differ from CDTFA there. Points outside the state's line may belong to a neighbouring county, or be misplaced.
       </div>
     </div>
   </aside>
@@ -2215,6 +2235,8 @@
 
     // Cloudflare R2 Public Base URL (or local HTTP byte-range server if testing on localhost)
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    // Layers behind the "Boundary Review" toggle
+    const BOUNDARY_LAYER_IDS = ["boundary_discrepancies_fill", "reconciled_boundaries_line", "county_boundary_discrepancies_fill"];
     const R2_BASE = isLocal
       ? window.location.origin
       : "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev";
@@ -2625,6 +2647,22 @@
             "line-color": "#a78bfa",
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.0, 14, 2.5],
             "line-opacity": 0.9
+          }
+        });
+      }
+      if (!map.getSource("county_boundary_discrepancies_src")) {
+        map.addSource("county_boundary_discrepancies_src", {
+          type: "geojson", data: `${R2_BASE}/boundary_comparison/county_boundary_discrepancies.geojson`
+        });
+      }
+      if (!map.getLayer("county_boundary_discrepancies_fill")) {
+        map.addLayer({
+          id: "county_boundary_discrepancies_fill", type: "fill", source: "county_boundary_discrepancies_src",
+          layout: { visibility: boundaryVis },
+          paint: {
+            "fill-color": ["match", ["get", "ComparedTo"], "TIGER", "#f97316", "#14b8a6"],
+            "fill-opacity": 0.4,
+            "fill-outline-color": "#0f172a"
           }
         });
       }
@@ -3351,7 +3389,7 @@
 
     document.getElementById("toggle-boundaries").addEventListener("change", (e) => {
       const vis = e.target.checked ? "visible" : "none";
-      ["boundary_discrepancies_fill", "reconciled_boundaries_line"].forEach(id => {
+      BOUNDARY_LAYER_IDS.forEach(id => {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
       });
     });
@@ -3374,6 +3412,20 @@
     });
     map.on("mouseenter", "boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", "boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = ""; });
+    map.on("click", "county_boundary_discrepancies_fill", (e) => {
+      const p = e.features[0].properties;
+      const src = p.ComparedTo === "TIGER" ? "TIGER (US Census)" : "Overture (OpenStreetMap)";
+      const side = p.Side === "ONLY_IN_STATE" ? `Inside the state's county line, outside ${src}'s` : `Inside ${src}'s county line, outside the state's`;
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
+      [["b", "County line"], ["div", side],
+       ["div", p.Cause === "SLIVER" ? "Sliver: the same line drawn twice" : "Unexplained difference"],
+       ["div", `${Number(p.AreaKm2 * 100).toFixed(1)} ha · about ${p.MeanWidthM} m wide · ${p.CountyAddressPoints} county address points`]
+      ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+      new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+    });
+    map.on("mouseenter", "county_boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "county_boundary_discrepancies_fill", () => { map.getCanvas().style.cursor = ""; });
 
     function updateMapillaryLayerVisibilities() {
       const master = document.getElementById("toggle-mapillary")?.checked ?? true;
@@ -3584,7 +3636,7 @@
         if (map.getLayer("parcels_line")) map.setLayoutProperty("parcels_line", "visibility", getToggleState("toggle-parcels") ? "visible" : "none");
         if (map.getLayer("buildings_fill")) map.setLayoutProperty("buildings_fill", "visibility", getToggleState("toggle-buildings") ? "visible" : "none");
         if (map.getLayer("buildings_line")) map.setLayoutProperty("buildings_line", "visibility", getToggleState("toggle-buildings") ? "visible" : "none");
-        ["boundary_discrepancies_fill", "reconciled_boundaries_line"].forEach(id => {
+        BOUNDARY_LAYER_IDS.forEach(id => {
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-boundaries") ? "visible" : "none");
         });
         updateMapillaryLayerVisibilities();
@@ -5002,6 +5054,7 @@
           document.getElementById("product1-rows").innerHTML = '<tr><td colspan="3">Not in this pipeline run yet.</td></tr>';
         }
         renderProduct2(sc);
+        renderCountyBoundary(sc);
         document.getElementById("readiness-footnote").textContent =
           `${sc.county} · pipeline run ${sc.generated}. ${sc.within_50m_pct}% of matched points are within 50 m of their road; ` +
           `points farther out are flagged for review.`;
@@ -5012,7 +5065,25 @@
         document.getElementById("product1-rows").innerHTML = '<tr><td colspan="3">Unavailable.</td></tr>';
         document.getElementById("product2-summary").textContent = "Unavailable.";
         document.getElementById("product2-rows").innerHTML = "";
+        document.getElementById("county-boundary-rows").innerHTML = '<tr><td colspan="4">Unavailable.</td></tr>';
       });
+
+    function renderCountyBoundary(sc) {
+      const rows = sc.county_boundary_comparison;
+      const rowsEl = document.getElementById("county-boundary-rows");
+      if (!rows || !rows.length) {
+        rowsEl.innerHTML = '<tr><td colspan="4">Not in this pipeline run yet.</td></tr>';
+        return;
+      }
+      const NAME = { OVERTURE: "Overture", TIGER: "TIGER (Census)" };
+      const fmt = n => n == null ? "—" : Number(n).toLocaleString();
+      rowsEl.innerHTML = rows.map(r =>
+        `<tr><td>${NAME[r.compared_to] || r.compared_to}</td><td>${r.pct_agreement == null ? "—" : r.pct_agreement + "%"}</td>` +
+        `<td>${r.unexplained_km2 == null ? "—" : r.unexplained_km2 + " km²"}</td><td>${fmt(r.address_points_in_disagreement)}</td></tr>`).join("");
+      document.getElementById("county-outside-value").textContent = fmt(sc.county_address_points_outside_cdtfa);
+      document.getElementById("county-outside-label").textContent =
+        `of ${sc.county}'s own address points fall outside the state's county line`;
+    }
 
     function renderProduct2(sc) {
       const cities = sc.boundary_comparison;
