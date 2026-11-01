@@ -39,7 +39,7 @@ SOURCES = {
     "Fresno centerlines":   f"{FRESNO}/REGIONAL_STREETS_VW/FeatureServer/1",
     "Fresno parcels":       f"{FRESNO}/REGIONAL_PARCELS_VW/FeatureServer/11",
     "Fresno city limits":   f"{FRESNO}/REGIONAL_CITY_LIMITS_VW/FeatureServer/1",
-    "Fresno fire districts": f"{FRESNO}/ELECTIONS_FIRE_DISTRICTS_VW/FeatureServer/41",
+    "Fresno fire dispatch": f"{FRESNO}/Fire/FeatureServer/0",
     "Fresno CAD law dispatch": f"{FRESNO}/City_County_CAD/FeatureServer/78",
     "Kings addresses":      f"{KINGS}/Address_Kings_County/FeatureServer/4",
     "Kings centerlines":    f"{KINGS}/Streets/FeatureServer/0",
@@ -172,6 +172,12 @@ def main():
     esb_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb.parquet")
     conn.sql(f"COPY mart_ng911_emergency_boundaries TO '{esb_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported Emergency Service Boundaries: {esb_parquet}")
+    # Fire / EMS dispatch zones for the web app map (~10 m simplification keeps the file small)
+    export_geojson_feature_collection(
+        "SELECT ESB_NGUID, Agency_Name, Agency_Code, "
+        "ST_AsGeoJSON(ST_SimplifyPreserveTopology(ST_Geometry, 0.0001)) AS geometry "
+        "FROM mart_ng911_emergency_boundaries WHERE Agency_Type = 'FIRE'",
+        os.path.join(OUTPUT_DIR, "esb_fire_zones.geojson"))
     esb_qa_parquet = os.path.join(OUTPUT_DIR, "mart_ng911_fresno_esb_qa.parquet")
     conn.sql(f"COPY mart_ng911_esb_qa TO '{esb_qa_parquet}' (FORMAT PARQUET)")
     print(f"  -> Exported ESB Topology QA: {esb_qa_parquet}")
