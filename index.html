@@ -1613,6 +1613,23 @@
         </div>
       </div>
 
+      <!-- NG911 ESB Fire layer: the Sheriff's fire / EMS dispatch zones -->
+      <div class="layer-card" style="margin-top: 8px;">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-fire-zones">
+            <span style="display: inline-block; width: 12px; height: 12px; background: #ec4899; border-radius: 3px; opacity: .6;"></span>
+            <span>Fire / EMS Dispatch Zones</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-fire-zones">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>Sheriff dispatch: CAL FIRE (red) / EMS FIRE (pink) / Firebaugh Fire (amber)</span>
+        </div>
+      </div>
+
       <!-- Mapillary AI Vision & Street-Level Imagery -->
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
@@ -2705,6 +2722,21 @@
         });
       }
 
+      // 3.0e NG911 ESB Fire layer: the Sheriff's fire / EMS dispatch zones
+      if (!map.getSource("fire_zones_src")) {
+        map.addSource("fire_zones_src", { type: "geojson", data: `${R2_BASE}/esb_fire_zones.geojson` });
+      }
+      const FIRE_ZONE_COLOR = ["match", ["get", "Agency_Name"], "CAL FIRE", "#dc2626", "EMS FIRE", "#ec4899", "#f59e0b"];
+      const fireVis = getToggleState("toggle-fire-zones") ? "visible" : "none";
+      if (!map.getLayer("fire_zones_fill")) {
+        map.addLayer({ id: "fire_zones_fill", type: "fill", source: "fire_zones_src", layout: { visibility: fireVis },
+                       paint: { "fill-color": FIRE_ZONE_COLOR, "fill-opacity": 0.15 } });
+      }
+      if (!map.getLayer("fire_zones_line")) {
+        map.addLayer({ id: "fire_zones_line", type: "line", source: "fire_zones_src", layout: { visibility: fireVis },
+                       paint: { "line-color": FIRE_ZONE_COLOR, "line-width": 1.5 } });
+      }
+
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
         map.addSource("fresno_buildings_src", {
@@ -3457,6 +3489,20 @@
       new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
     });
     map.on("mouseenter", "osm_road_fixes_line", () => { map.getCanvas().style.cursor = "pointer"; });
+
+    const FIRE_ZONE_IDS = ["fire_zones_fill", "fire_zones_line"];
+    document.getElementById("toggle-fire-zones").addEventListener("change", (e) => {
+      FIRE_ZONE_IDS.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", e.target.checked ? "visible" : "none"); });
+    });
+    map.on("click", "fire_zones_fill", (e) => {
+      const p = e.features[0].properties;
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
+      [["b", p.Agency_Name], ["div", `Dispatch zone ${p.Agency_Code}`], ["div", `ESB_NGUID ${p.ESB_NGUID}`],
+       ["div", "Fire / EMS dispatch area (Fresno County Sheriff)"]
+      ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+      new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+    });
     map.on("mouseleave", "osm_road_fixes_line", () => { map.getCanvas().style.cursor = ""; });
 
     const CAUSE_TEXT = {
@@ -3708,6 +3754,9 @@
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-boundaries") ? "visible" : "none");
         });
         if (map.getLayer("osm_road_fixes_line")) map.setLayoutProperty("osm_road_fixes_line", "visibility", getToggleState("toggle-osm-fixes") ? "visible" : "none");
+        FIRE_ZONE_IDS.forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-fire-zones") ? "visible" : "none");
+        });
         updateMapillaryLayerVisibilities();
       };
 
