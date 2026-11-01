@@ -343,7 +343,7 @@ def fetch_cdtfa_boundary_changes():
     bbox = f"{_minx},{_miny},{_maxx},{_maxy}"
     records = []
     for layer in layers:
-        offset = 0
+        offset, before = 0, len(records)
         while True:  # page past the service's maxRecordCount
             q = urllib.parse.urlencode({"where": "1=1", "geometry": bbox, "geometryType": "esriGeometryEnvelope",
                                         "inSR": 4326, "spatialRel": "esriSpatialRelIntersects", "outFields": "*",
@@ -356,6 +356,7 @@ def fetch_cdtfa_boundary_changes():
             offset += len(feats)
             if not feats or not (data.get("exceededTransferLimit") or data.get("properties", {}).get("exceededTransferLimit")):
                 break
+        print(f"     layer {layer['id']} '{layer.get('name')}': {len(records) - before} features")
     out = os.path.join(CACHE_DIR, "cdtfa_boundary_changes.parquet")
     df = pd.DataFrame(records, columns=["layer_name", "props_json", "geom_geojson"]).astype(str)
     conn.register("df_changes", df)  # astype(str): an empty frame still registers VARCHAR columns
