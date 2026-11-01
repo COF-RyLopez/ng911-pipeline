@@ -16,6 +16,7 @@ Usage (after cloning OpenAddresses as in discover_endpoints.yml):
 Writes data/output/discovery/<state>_oa_conform_audit.csv.
 """
 import csv
+import difflib
 import glob
 import json
 import os
@@ -51,17 +52,29 @@ def count(url, where):
     return get_json(f"{url}/query?{q}").get("count")
 
 
-def filled(url, field, ftype):
-    if ftype in ("esriFieldTypeString",):
+def sample(url, n=1000):
+    """Attributes of up to n features. Fill is measured on these in Python rather than with per-field SQL
+    counts, whose dialect varies by server (San Bernardino answered 0 for fields Overture shows are full)."""
+    q = urllib.parse.urlencode({"where": "1=1", "outFields": "*", "returnGeometry": "false", "resultRecordCount": n})
+    return [f.get("attributes", {}) for f in get_json(f"{url}/query?{q}").get("features", [])]
+
+
+def fill(url, total, rows, field, ftype):
+    """Share of features with the field filled: an exact SQL count, falling back to the sample when the
+    server answers 0 or rejects the query. The sample alone is biased (first n by OBJECTID)."""
+    if ftype == "esriFieldTypeString":
         where = f"{field} IS NOT NULL AND {field} <> '' AND {field} <> ' '"
     elif ftype in ("esriFieldTypeInteger", "esriFieldTypeSmallInteger", "esriFieldTypeDouble", "esriFieldTypeSingle"):
         where = f"{field} IS NOT NULL AND {field} <> 0"
     else:
         where = f"{field} IS NOT NULL"
     try:
-        return count(url, where)
+        n = count(url, where)
+        if n:
+            return n / total
     except Exception:
-        return None  # the server rejected or timed out on this field's count: unknown, not a failed audit
+        pass
+    return sum(1 for r in rows if str(r.get(field) if r.get(field) is not None else "").strip() not in ("", "0")) / len(rows)
 
 
 def audit(source_file, layer):
@@ -69,11 +82,14 @@ def audit(source_file, layer):
     row = {"source_file": source_file, "layer": layer.get("name", ""), "url": url}
     try:
         meta = get_json(url)
-        types = {f["name"].upper(): (f["name"], f["type"]) for f in meta.get("fields", [])}
+        fields = {f["name"].upper(): (f["name"], f.get("type")) for f in meta.get("fields", [])
+                  if f.get("type") not in ("esriFieldTypeOID", "esriFieldTypeGeometry")}
+        names = {k: v[0] for k, v in fields.items()}
         total = count(url, "1=1")
+        rows = sample(url) if total else []
     except Exception as e:
         return [{**row, "issue": "UNREACHABLE", "detail": f"{type(e).__name__}: {str(e)[:120]}"}]
-    if not total:
+    if not rows:
         return [{**row, "issue": "EMPTY_LAYER", "detail": "layer has no features"}]
 
     # a role is judged by its best-filled field: street lists optional parts (pre/post direction) that are
@@ -85,28 +101,29 @@ def audit(source_file, layer):
             if f.startswith("oa:"):
                 continue  # an intermediate value an earlier conform function made, not a county field
             mapped.add(f.upper())
-            if f.upper() not in types:
+            if f.upper() not in names:
+                near = difflib.get_close_matches(f.upper(), list(names), n=2, cutoff=0.6)
                 issues.append({**row, "issue": "MISSING_FIELD", "role": role, "field": f,
-                               "detail": f"'{f}' is not on the layer"})
+                               "detail": f"'{f}' is not on the layer" +
+                                         (f"; closest: {', '.join(names[k] for k in near)}" if near else "")})
                 continue
-            name, ftype = types[f.upper()]
-            n = filled(url, name, ftype)
-            if n is not None and (best is None or n > best):
-                best, best_field = n, name
-        if role != "unit" and best is not None and best / total < MOSTLY_EMPTY:
+            share = fill(url, total, rows, *fields[f.upper()])
+            if best is None or share > best:
+                best, best_field = share, names[f.upper()]
+        if role != "unit" and best is not None and best < MOSTLY_EMPTY:
             weak[role] = best
             issues.append({**row, "issue": "MOSTLY_EMPTY", "role": role, "field": best_field,
-                           "pct_filled": round(100 * best / total, 1), "detail": f"{best:,} of {total:,} features"})
+                           "pct_filled": round(100 * best, 1), "detail": f"{100 * best:.0f}% of {total:,} features"})
     if weak:
         worst = min(weak.values())
-        for key, (name, ftype) in types.items():
-            if key in mapped or not CANDIDATE.search(name) or ftype in ("esriFieldTypeOID", "esriFieldTypeGeometry"):
+        for key, name in names.items():
+            if key in mapped or not CANDIDATE.search(name):
                 continue
-            n = filled(url, name, ftype)
-            if n and n > worst and n / total >= MOSTLY_EMPTY:
+            share = fill(url, total, rows, *fields[key])
+            if share > worst and share >= MOSTLY_EMPTY:
                 issues.append({**row, "issue": "BETTER_FIELD", "role": "/".join(weak), "field": name,
-                               "pct_filled": round(100 * n / total, 1),
-                               "detail": f"unmapped, filled on {n:,} of {total:,} (mapped best {worst:,})"})
+                               "pct_filled": round(100 * share, 1),
+                               "detail": f"unmapped, filled on {100 * share:.0f}% (mapped best {100 * worst:.0f}%)"})
     return [{**i, "total_features": total} for i in issues] or [{**row, "issue": "OK", "total_features": total}]
 
 
