@@ -574,7 +574,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ['FILED_CHANGE', 'COUNTY_ISLAND', 'ROAD_RIGHT_OF_WAY', 'SLIVER', 'UNEXPLAINED']
+                values: ['FILED_CHANGE', 'ROAD_RIGHT_OF_WAY', 'SLIVER', 'UNEXPLAINED']
 
   - name: mart_reconciled_city_boundaries
     description: "Product 2 (advisory): CDTFA city boundaries with the county's line used for slivers and filed changes."
