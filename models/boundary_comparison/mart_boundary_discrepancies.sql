@@ -4,10 +4,11 @@
 -- and for handing back to the county / LAFCo, each with a likely cause:
 --   FILED_CHANGE  half or more of the piece lies in a boundary change filed with the state (Gov. Code 54900):
 --                 a timing difference between the two sources, not an error in either
---   SLIVER        under 25 m wide on average: the same line drawn twice, fixable by snapping to parcels
+--   SLIVER        under 50 m wide on average: the same line drawn twice, fixable by snapping to parcels
 --   UNEXPLAINED   neither: a real disagreement for the county or LAFCo to resolve
 -- Pieces under 1 ha are digitizing noise and are dropped.
--- ponytail: 1 ha / 25 m / 50% cutoffs are first guesses; tune them on the Fresno results.
+-- ponytail: 1 ha / 50 m / 50% cutoffs. 50 m (was 25) because the county layer is better parcel-aligned than
+-- CDTFA in all 15 Fresno cities; the next unexplained piece up is 57 m wide.
 WITH diffs AS (
     SELECT coalesce(state_city, local_city) AS city, 'ONLY_IN_STATE' AS side,
            ST_Difference(state_geom, coalesce(local_geom, ST_GeomFromText('POLYGON EMPTY'))) AS geom
@@ -43,7 +44,7 @@ SELECT
           / nullif(ST_Perimeter(p.geom) * 111320 * sqrt(cos(radians(ST_Y(ST_Centroid(p.geom))))), 0), 1) AS MeanWidthM,
     CASE
         WHEN f.share >= 0.5 THEN 'FILED_CHANGE'
-        WHEN MeanWidthM < 25 THEN 'SLIVER'
+        WHEN MeanWidthM < 50 THEN 'SLIVER'
         ELSE 'UNEXPLAINED'
     END AS Cause,
     round(100 * f.share, 1) AS PctInFiledChange,
