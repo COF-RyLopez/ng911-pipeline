@@ -53,4 +53,14 @@ parsed_overture AS (
     WHERE overture_number IS NOT NULL
 )
 
-SELECT * FROM parsed_overture
+-- Calaveras' OpenAddresses source doubles the street name in Overture ("HANLEY HANLEY DR", "HWY 12 HWY 12"),
+-- so an exactly repeated name is collapsed to one copy until that is fixed upstream (openaddresses/openaddresses
+-- sources/us/ca/calaveras.json). ponytail: also collapses a genuinely doubled name (WALLA WALLA), which is rare
+-- next to a whole county of broken names
+SELECT * REPLACE (
+    CASE WHEN len(string_split(street_name, ' ')) % 2 = 0
+          AND array_to_string(list_slice(string_split(street_name, ' '), 1, len(string_split(street_name, ' ')) // 2), ' ')
+            = array_to_string(list_slice(string_split(street_name, ' '), len(string_split(street_name, ' ')) // 2 + 1, len(string_split(street_name, ' '))), ' ')
+         THEN array_to_string(list_slice(string_split(street_name, ' '), 1, len(string_split(street_name, ' ')) // 2), ' ')
+         ELSE street_name END AS street_name)
+FROM parsed_overture
