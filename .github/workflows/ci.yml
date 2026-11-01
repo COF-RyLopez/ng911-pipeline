@@ -68,6 +68,13 @@ jobs:
         run: |
           python scripts/statewide_overture_scorecard.py --state CA
 
+      # Product 1 for counties without county GIS here: the Overture-only build (oo_* models) for the
+      # five counties the statewide scorecard rates weakest. Also in the Fresno job, to ride the R2 publish.
+      - name: Overture-only build for the weakest counties
+        if: matrix.county == '06019'
+        run: |
+          python scripts/overture_only_counties.py --top 5
+
       - name: Publish GeoParquet & PMTiles to Cloudflare R2
         if: github.ref == 'refs/heads/main' && matrix.county == '06019'
         env:
