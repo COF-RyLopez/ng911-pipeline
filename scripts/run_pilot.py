@@ -213,10 +213,13 @@ def main():
     os.makedirs(boundary_dir, exist_ok=True)
     conn.sql(f"COPY (SELECT * FROM mart_boundary_comparison ORDER BY City) TO '{os.path.join(boundary_dir, 'city_boundary_comparison.csv')}' (HEADER)")
     export_geojson_feature_collection(
-        "SELECT City, Side, AreaKm2, ST_AsGeoJSON(ST_Geometry) AS geometry FROM mart_boundary_discrepancies",
+        "SELECT City, Side, AreaKm2, MeanWidthM, Cause, PctInFiledChange, FiledChangeLayer, FiledChangeRecord, "
+        "ST_AsGeoJSON(ST_Geometry) AS geometry FROM mart_boundary_discrepancies",
         os.path.join(boundary_dir, "city_boundary_discrepancies.geojson"))
     boundary_rows = conn.sql("SELECT City, Status, PctAgreement, OnlyInStateKm2, OnlyInLocalKm2 FROM mart_boundary_comparison ORDER BY PctAgreement NULLS FIRST, City").fetchall()
     print(f"  -> Exported CDTFA boundary comparison ({len(boundary_rows)} cities): {boundary_dir}")
+    cause_rows = conn.sql("SELECT Cause, Side, count(*), round(sum(AreaKm2), 3) FROM mart_boundary_discrepancies "
+                          "GROUP BY ALL ORDER BY Cause, Side").fetchall()
 
 
 
@@ -326,6 +329,9 @@ def main():
         },
         "within_50m_pct": pct(audit_row["Pct_Fishbones_Within_50m"]),
         "cal_oes_status": audit_row["Cal_OES_Readiness_Status"],
+        "boundary_discrepancies": [
+            {"cause": c, "side": sd, "pieces": n, "area_km2": pct(a)} for c, sd, n, a in cause_rows
+        ],
         "boundary_comparison": [
             {"city": c, "status": st, "pct_agreement": pct(a), "only_in_state_km2": pct(s_), "only_in_local_km2": pct(l)}
             for c, st, a, s_, l in boundary_rows
@@ -404,6 +410,9 @@ def main():
     print(f"  PRODUCT 2: CITY LIMITS VS CDTFA (CA STATE GEOPORTAL):")
     for c, st, a, s_, l in boundary_rows:
         print(f"  - {c:<16} {st:<18} {'' if a is None else f'{a}% agree'}  state-only {s_} km2, county-only {l} km2")
+    print(f"  Disagreeing areas (1 ha+) by likely cause:")
+    for c, sd, n, a in cause_rows:
+        print(f"  - {c:<13} {sd:<14} {n:>4} pieces, {a} km2")
     print("-" * 75)
     print(f"  MULTI-COUNTY REGIONAL EXPANSION (CENTRAL VALLEY):")
     print(f"  - Total Regional SSAP:    {total_reg_addr:,} addresses across 3 counties")

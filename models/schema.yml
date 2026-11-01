@@ -562,10 +562,16 @@ models:
                 values: ['MATCH', 'MINOR_DIFFERENCES', 'MAJOR_DIFFERENCES', 'MISSING_LOCALLY', 'MISSING_IN_STATE', 'NO_LOCAL_LAYER']
 
   - name: mart_boundary_discrepancies
-    description: "Product 2: polygons (1 ha and up) where county city limits and CDTFA disagree."
+    description: "Product 2: polygons (1 ha and up) where county city limits and CDTFA disagree, with a likely cause."
     columns:
       - name: Side
         tests:
           - accepted_values:
               arguments:
                 values: ['ONLY_IN_STATE', 'ONLY_IN_LOCAL']
+      - name: Cause
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['FILED_CHANGE', 'SLIVER', 'UNEXPLAINED']

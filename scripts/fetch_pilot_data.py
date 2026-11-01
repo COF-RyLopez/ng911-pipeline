@@ -327,6 +327,46 @@ CDTFA_SERVICES = {
 }
 
 
+# Change areas (annexations, detachments, corrections) filed with the state under Gov. Code 54900,
+# continuously maintained by CDTFA. Schema undocumented, so attributes are kept whole as props_json.
+CDTFA_CHANGES_SERVICE = "https://services6.arcgis.com/snwvZ3EmaoXJiugR/arcgis/rest/services/City_and_County_Boundary_Line_Changes/FeatureServer"
+
+
+def fetch_cdtfa_boundary_changes():
+    """Every layer of CDTFA's boundary-change service within the registered counties' extent."""
+    print("\n[3c] Fetching CDTFA filed boundary changes...")
+    conn = duckdb.connect()
+    conn.sql("INSTALL spatial; LOAD spatial;")
+    ua = {"User-Agent": "Fresno-NG911/1.0"}
+    with urllib.request.urlopen(urllib.request.Request(f"{CDTFA_CHANGES_SERVICE}?f=json", headers=ua)) as resp:
+        layers = json.load(resp).get("layers", [])
+    bbox = f"{_minx},{_miny},{_maxx},{_maxy}"
+    records = []
+    for layer in layers:
+        offset = 0
+        while True:  # page past the service's maxRecordCount
+            q = urllib.parse.urlencode({"where": "1=1", "geometry": bbox, "geometryType": "esriGeometryEnvelope",
+                                        "inSR": 4326, "spatialRel": "esriSpatialRelIntersects", "outFields": "*",
+                                        "outSR": 4326, "resultOffset": offset, "f": "geojson"})
+            with urllib.request.urlopen(urllib.request.Request(f"{CDTFA_CHANGES_SERVICE}/{layer['id']}/query?{q}", headers=ua)) as resp:
+                data = json.load(resp)
+            feats = data.get("features", [])
+            records += [{"layer_name": layer.get("name"), "props_json": json.dumps(f.get("properties", {})),
+                         "geom_geojson": json.dumps(f["geometry"])} for f in feats if f.get("geometry")]
+            offset += len(feats)
+            if not feats or not (data.get("exceededTransferLimit") or data.get("properties", {}).get("exceededTransferLimit")):
+                break
+    out = os.path.join(CACHE_DIR, "cdtfa_boundary_changes.parquet")
+    df = pd.DataFrame(records, columns=["layer_name", "props_json", "geom_geojson"]).astype(str)
+    conn.register("df_changes", df)  # astype(str): an empty frame still registers VARCHAR columns
+    conn.execute(f"""
+        COPY (SELECT layer_name, props_json, ST_GeomFromGeoJSON(geom_geojson) AS geom FROM df_changes)
+        TO '{out}' (FORMAT PARQUET)
+    """)
+    print(f"  -> Saved {len(df)} change areas from {len(layers)} layers to {out}")
+    return len(df)
+
+
 def fetch_cdtfa_boundaries():
     """CDTFA city and county polygons for every registered county, for the Product 2 boundary comparison."""
     print("\n[3b] Fetching CDTFA city and county boundaries (CA state geoportal)...")
@@ -500,6 +540,7 @@ if __name__ == "__main__":
     county_street_cnt = fetch_oa_centerlines()
     boundary_counts = fetch_fresno_county_boundaries()
     cdtfa_counts = fetch_cdtfa_boundaries()
+    cdtfa_change_cnt = fetch_cdtfa_boundary_changes()
     overture_addr_cnt = fetch_overture_addresses()
     overture_trans_cnt = fetch_overture_transportation()
     places_cnt = fetch_overture_places()
@@ -522,6 +563,7 @@ if __name__ == "__main__":
     print(f"  - County Fire Districts:       {boundary_counts.get('Fire Districts', 0):,}")
     print(f"  - County City Limits:          {boundary_counts.get('City Limits', 0):,}")
     print(f"  - CDTFA Cities / Counties:     {cdtfa_counts['cdtfa_cities.parquet']:,} / {cdtfa_counts['cdtfa_counties.parquet']:,}")
+    print(f"  - CDTFA Filed Boundary Changes: {cdtfa_change_cnt:,}")
     print(f"  - Overture Addresses:          {overture_addr_cnt:,}")
     print(f"  - Overture Road Segments:       {overture_trans_cnt:,}")
     print(f"  - Overture Places (Landmarks):  {places_cnt:,}")
