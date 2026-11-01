@@ -81,7 +81,9 @@ class NENAQACollisionScorecard(BaseModel):
 
 class GeoLibreLayerConfig(BaseModel):
     """GeoLibre Layer spec validator."""
-    model_config = ConfigDict(extra="ignore")
+    # allow, not ignore: GeoLibre reads fields this model doesn't declare (inline `geojson`, pmtiles
+    # `metadata.nativeLayerIds`), and "ignore" silently dropped them from the published project.
+    model_config = ConfigDict(extra="allow")
 
     id: str = Field(..., description="Layer unique ID")
     name: str = Field(..., description="Display layer name")
@@ -95,7 +97,7 @@ class GeoLibreLayerConfig(BaseModel):
 
 class GeoLibreProjectConfig(BaseModel):
     """GeoLibre Project File (.geolibre.json) spec validator."""
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")  # keeps `interaction` and other GeoLibre fields
 
     version: str = Field("0.1.0", description="GeoLibre project schema version")
     name: str = Field(..., description="Project title")
