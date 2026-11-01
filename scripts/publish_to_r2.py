@@ -18,6 +18,8 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "data", "output")
 
 DEFAULT_PUBLIC_URL = "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev"
+# Keys the separate overture-only CI job builds and publishes; the county job leaves them alone.
+OVERTURE_ONLY_KEYS = ("statewide/", "overture_only/", "tiles/overture_only_")
 
 
 def get_content_type(file_path):
@@ -59,6 +61,9 @@ def resolve_r2_endpoint(raw_account_id):
 
 
 def main():
+    # --part overture: publish (and prune) only OVERTURE_ONLY_KEYS; --part county (default): everything else
+    part = sys.argv[sys.argv.index("--part") + 1] if "--part" in sys.argv else "county"
+    owned = lambda key: key.startswith(OVERTURE_ONLY_KEYS) == (part == "overture")
     print("=" * 70)
     print("     CLOUDFLARE R2 PIPELINE PUBLISHER (GEOPARQUET & PMTILES)")
     print("=" * 70)
@@ -114,7 +119,8 @@ def main():
             if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".geolibre", ".csv", ".html", ".gpkg"]:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(abs_path, OUTPUT_DIR)
-                files_to_upload.append((abs_path, rel_path))
+                if owned(rel_path):
+                    files_to_upload.append((abs_path, rel_path))
 
     print(f"Found {len(files_to_upload)} deliverables to sync to R2...")
 
@@ -138,15 +144,15 @@ def main():
         uploaded_count += 1
         total_bytes += file_size
 
-    # Remote cleanup: the bucket mirrors this run's outputs, so any key this run didn't
-    # upload (any file type) is left over from an older pipeline version and is removed.
+    # Remote cleanup: the bucket mirrors this run's outputs, so any key in this part that this run
+    # didn't upload (any file type) is left over from an older pipeline version and is removed.
     local_rel_keys = set(rel for _, rel in files_to_upload)
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         remote_keys_to_delete = []
         for page in paginator.paginate(Bucket=bucket_name):
             for obj in page.get("Contents", []):
-                if obj["Key"] not in local_rel_keys:
+                if owned(obj["Key"]) and obj["Key"] not in local_rel_keys:
                     remote_keys_to_delete.append(obj["Key"])
 
         if remote_keys_to_delete:
