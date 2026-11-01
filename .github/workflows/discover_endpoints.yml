@@ -40,6 +40,7 @@ jobs:
       # live county layer (renamed / mostly empty fields, better unused ones) for fixes worth an OA PR
       - name: Audit OpenAddresses field mappings
         run: |
+          set -o pipefail  # a crash in the audit must fail the step, not hide behind tee
           python scripts/oa_conform_audit.py oa/sources/us/ca | tee audit.log
           { echo '### OpenAddresses field-mapping audit'; echo '```'; cat audit.log; echo '```'; } >> summary.md
           cat audit.log >> "$GITHUB_STEP_SUMMARY"

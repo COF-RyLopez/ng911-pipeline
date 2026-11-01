@@ -58,7 +58,10 @@ def filled(url, field, ftype):
         where = f"{field} IS NOT NULL AND {field} <> 0"
     else:
         where = f"{field} IS NOT NULL"
-    return count(url, where)
+    try:
+        return count(url, where)
+    except Exception:
+        return None  # the server rejected or timed out on this field's count: unknown, not a failed audit
 
 
 def audit(source_file, layer):
