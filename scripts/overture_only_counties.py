@@ -9,9 +9,9 @@ statewide scorecard rates weakest, using the same oo_* dbt models as the Fresno 
 Each county gets a one-off registry entry passed through --vars, so dbt_project.yml and the
 Fresno/Kings caches are untouched (the Overture caches are swapped in and restored afterwards).
 
-Writes data/output/overture_only/<county>/{address_points,road_centerlines}.parquet, address_points.geojson
-(for the map) and
-data/output/overture_only/counties_summary.{csv,json}.
+Writes data/output/overture_only/<county>/{address_points,road_centerlines}.parquet,
+data/output/overture_only/counties_summary.{csv,json}, and one statewide map layer of every county's points,
+data/output/tiles/overture_only_address_points.pmtiles (per-county GeoJSON was 1.9 GB at 56 counties).
 Usage: python scripts/overture_only_counties.py [--top 5]   (after statewide_overture_scorecard.py)
 """
 import argparse
@@ -74,20 +74,15 @@ def build(feature, dbt_bin):
     os.makedirs(out, exist_ok=True)
     with duckdb.connect(os.path.join(PROJECT_DIR, "ng911_database.duckdb"), read_only=True) as c:
         c.sql("LOAD spatial")
-        c.sql(f"COPY oo_address_points TO '{out}/address_points.parquet' (FORMAT PARQUET)")
-        c.sql(f"COPY oo_road_centerlines TO '{out}/road_centerlines.parquet' (FORMAT PARQUET)")
-        # map layer: each point with its fishbone result (same-named road within 50 m / farther / none)
-        pts = c.execute("""
-            SELECT round(ST_X(p.geom), 6), round(ST_Y(p.geom), 6),
-                   trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type)),
+        # each point carries its fishbone result (same-named road within 50 m / farther / none) for the map
+        c.sql(f"""COPY (
+            SELECT p.*, trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type)) AS Address,
                    CASE WHEN f.overture_id IS NULL THEN 'NO_NAMED_ROAD'
-                        WHEN f.is_excessive_offset THEN 'FAR' ELSE 'OK' END, f.distance_meters
-            FROM oo_address_points p LEFT JOIN oo_fishbones f USING (overture_id)""").fetchall()
-        with open(f"{out}/address_points.geojson", "w") as fh:
-            json.dump({"type": "FeatureCollection", "features": [
-                {"type": "Feature", "geometry": {"type": "Point", "coordinates": [x, y]},
-                 "properties": {"Address": a, "RoadMatch": m, "DistanceM": d}} for x, y, a, m, d in pts]},
-                fh, separators=(",", ":"), default=float)
+                        WHEN f.is_excessive_offset THEN 'FAR' ELSE 'OK' END AS RoadMatch,
+                   f.distance_meters AS DistanceM
+            FROM oo_address_points p LEFT JOIN oo_fishbones f USING (overture_id)
+        ) TO '{out}/address_points.parquet' (FORMAT PARQUET)""")
+        c.sql(f"COPY oo_road_centerlines TO '{out}/road_centerlines.parquet' (FORMAT PARQUET)")
         row = c.execute("""
             WITH a AS (SELECT count(*) AS n, count(*) FILTER (WHERE house_number IS NULL) AS no_num FROM oo_address_points),
                  f AS (SELECT count(*) AS n, count(*) FILTER (WHERE NOT is_excessive_offset) AS near FROM oo_fishbones),
@@ -101,6 +96,22 @@ def build(feature, dbt_bin):
     summary = {"County": entry["label"], "Key": key, **dict(zip(cols, row))}
     print(f"[{name}] {summary}")
     return summary if row[0] else None  # no address points: the county polygon or a fetch came back empty
+
+
+def build_map_tiles():
+    """One PMTiles layer of every built county's points, streamed by the web app (no per-county downloads)."""
+    import build_pmtiles as bp
+    engine = bp.pick_engine()
+    if engine is None:
+        print("[WARNING] Neither tylertoo nor tippecanoe is installed; skipping the Overture-only map tiles.")
+        return
+    with duckdb.connect() as c:
+        c.sql("INSTALL spatial; LOAD spatial;")
+        bp.build_layer(c, engine, "overture_only", os.path.join(OUT_DIR, "*", "address_points.parquet"),
+                       "Address, RoadMatch, round(DistanceM, 1) AS DistanceM", "geom",
+                       ["-Z8", "-z15", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping"],
+                       os.path.join(bp.TILES_DIR, "overture_only_address_points.pmtiles"),
+                       attribution="Overture Maps Foundation (OpenAddresses, OpenStreetMap)")
 
 
 def main():
@@ -129,6 +140,8 @@ def main():
         with open(os.path.join(OUT_DIR, "counties_summary.json"), "w") as fh:
             json.dump(rows, fh, indent=1, default=float)
     print(f"\nBuilt {len(rows)} of {top} counties into {OUT_DIR}")
+    if rows:
+        build_map_tiles()
     if len(rows) < top:
         sys.exit(1)
 
