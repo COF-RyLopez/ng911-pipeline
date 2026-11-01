@@ -91,6 +91,7 @@ def geojson_layer(layer_id, name, filename, geojson, style, popup, opacity=1.0):
 # Product 2 boundary review: one layer per disagreement cause (GeoLibre styles are one colour per layer).
 CAUSES = [
     ("FILED_CHANGE", "Filed annexation / correction (timing)", "#3b82f6"),
+    ("COUNTY_ISLAND", "Unincorporated island (county layer fills it in)", "#14b8a6"),
     ("SLIVER", "Sliver (same line drawn twice)", "#94a3b8"),
     ("ROAD_RIGHT_OF_WAY", "Road right-of-way (which city owns the road)", "#eab308"),
     ("UNEXPLAINED", "Unexplained (for county / LAFCo)", "#ef4444"),
