@@ -40,7 +40,9 @@ city_limits AS (
         trim(AGENCY_CODE) AS agency_code,
         NULL::VARCHAR AS service_number,
         NULL::VARCHAR AS area_code,
-        geom
+        -- per feature, before anyone unions them: Fresno's city is one invalid multipolygon whose county
+        -- islands are nested parts, not holes. ST_Union_Agg first would merge them into the city (+25 km2)
+        ST_MakeValid(geom) AS geom
     FROM read_parquet('data/cache/county_city_limits.parquet')
     WHERE geom IS NOT NULL
 )

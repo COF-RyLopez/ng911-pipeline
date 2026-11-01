@@ -1747,7 +1747,6 @@
       <ul class="p2-causes" id="product2-causes"></ul>
       <div class="ban-card-footnote">
         Where the two disagree: <span class="p2-dot" style="background:#3b82f6"></span>a filed annexation or correction (timing),
-        <span class="p2-dot" style="background:#14b8a6"></span>an unincorporated island the county's layer fills in,
         <span class="p2-dot" style="background:#94a3b8"></span>a sliver (the same line drawn twice),
         <span class="p2-dot" style="background:#eab308"></span>a road right-of-way (which city owns the road),
         <span class="p2-dot" style="background:#ef4444"></span>unexplained (for the county / LAFCo).
@@ -2649,7 +2648,7 @@
           id: "boundary_discrepancies_fill", type: "fill", source: "boundary_discrepancies_src",
           layout: { visibility: boundaryVis },
           paint: {
-            "fill-color": ["match", ["get", "Cause"], "FILED_CHANGE", "#3b82f6", "COUNTY_ISLAND", "#14b8a6", "SLIVER", "#94a3b8", "ROAD_RIGHT_OF_WAY", "#eab308", "#ef4444"],
+            "fill-color": ["match", ["get", "Cause"], "FILED_CHANGE", "#3b82f6", "SLIVER", "#94a3b8", "ROAD_RIGHT_OF_WAY", "#eab308", "#ef4444"],
             "fill-opacity": 0.45,
             "fill-outline-color": "#0f172a"
           }
@@ -3462,7 +3461,6 @@
 
     const CAUSE_TEXT = {
       FILED_CHANGE: "Inside a filed annexation / correction: the two sources differ in timing",
-      COUNTY_ISLAND: "Unincorporated county island: the state is right, the county's city-limits layer fills it in (Sheriff / county fire area for 911)",
       SLIVER: "Sliver: the same line drawn twice (reconciled to the county's parcel-aligned line)",
       ROAD_RIGHT_OF_WAY: "Road right-of-way: the sources disagree on whether the city includes this road (reconciled keeps the state's line)",
       UNEXPLAINED: "Unexplained: for the county or LAFCo to resolve (reconciled keeps the state's line)"
@@ -5203,7 +5201,7 @@
           `<td>${c.pct_agreement == null ? "—" : c.pct_agreement + "%"}</td>` +
           (sc.parcel_alignment_pct ? `<td title="CDTFA → reconciled">${alignTxt}</td>` : "") + `</tr>`;
       }).join("");
-      const CAUSE = { FILED_CHANGE: "Filed annexation / correction", COUNTY_ISLAND: "Unincorporated island", SLIVER: "Sliver", ROAD_RIGHT_OF_WAY: "Road right-of-way", UNEXPLAINED: "Unexplained" };
+      const CAUSE = { FILED_CHANGE: "Filed annexation / correction", SLIVER: "Sliver", ROAD_RIGHT_OF_WAY: "Road right-of-way", UNEXPLAINED: "Unexplained" };
       const byCause = {};
       (sc.boundary_discrepancies || []).forEach(d => {
         const t = byCause[d.cause] || (byCause[d.cause] = { pieces: 0, km2: 0 });
