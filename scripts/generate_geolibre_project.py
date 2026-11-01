@@ -77,6 +77,77 @@ def pmtiles_layer(layer_id, name, filename, source_layer, style, popup, opacity=
     }
 
 
+def geojson_layer(layer_id, name, filename, geojson, style, popup, opacity=1.0):
+    """A GeoLibre `geojson` layer: features inline, plus the published URL they came from."""
+    url = f"{GITHUB_BASE_URL}/{filename}"
+    return {
+        "id": layer_id, "name": name, "type": "geojson", "visible": True, "opacity": opacity,
+        "geojson": geojson, "source": {"type": "geojson", "url": url}, "sourcePath": url,
+        "style": {"strokeWidthUnit": "pixels", "minZoom": 0, "maxZoom": 24, **style},
+        "popup": popup,
+    }
+
+
+# Product 2 boundary review: one layer per disagreement cause (GeoLibre styles are one colour per layer).
+CAUSES = [
+    ("FILED_CHANGE", "Filed annexation / correction (timing)", "#3b82f6"),
+    ("SLIVER", "Sliver (same line drawn twice)", "#94a3b8"),
+    ("UNEXPLAINED", "Unexplained (for county / LAFCo)", "#ef4444"),
+]
+
+
+def boundary_layers():
+    """Reconciled city boundaries, city disagreements by cause, and county-line disagreements.
+    Writes one GeoJSON per cause beside the full file so each layer's URL matches its inline features."""
+    layers = []
+    city = load_geojson("boundary_comparison/city_boundary_discrepancies.geojson")
+    city_popup = {"click": True, "hover": True, "titleField": "City", "fields": [
+        {"field": "City", "label": "City", "hover": True},
+        {"field": "Side", "label": "Only in (ONLY_IN_STATE = CDTFA, ONLY_IN_LOCAL = county)", "hover": True},
+        {"field": "Cause", "label": "Likely cause", "hover": True},
+        {"field": "AreaKm2", "label": "Area (km²)"},
+        {"field": "MeanWidthM", "label": "Mean width (m)"},
+        {"field": "FiledChangeLayer", "label": "Filed change layer"},
+    ]}
+    for cause, label, color in CAUSES:
+        fc = {"type": "FeatureCollection",
+              "features": [f for f in city["features"] if f["properties"].get("Cause") == cause]}
+        fname = f"boundary_comparison/city_boundary_discrepancies_{cause.lower()}.geojson"
+        with open(os.path.join(OUTPUT_DIR, fname), "w") as f:
+            json.dump(fc, f)
+        layers.append(geojson_layer(
+            f"city_boundary_{cause.lower()}", f"City limits vs CDTFA: {label}", fname, fc,
+            {"fillColor": color, "fillOpacity": 0.45, "strokeColor": color, "strokeWidth": 1.0},
+            city_popup))
+    layers.append(geojson_layer(
+        "county_boundary_discrepancies", "County line vs CDTFA (Overture / TIGER differences)",
+        "boundary_comparison/county_boundary_discrepancies.geojson",
+        load_geojson("boundary_comparison/county_boundary_discrepancies.geojson"),
+        {"fillColor": "#f97316", "fillOpacity": 0.35, "strokeColor": "#c2410c", "strokeWidth": 1.0},
+        {"click": True, "hover": True, "titleField": "ComparedTo", "fields": [
+            {"field": "ComparedTo", "label": "Compared with CDTFA", "hover": True},
+            {"field": "Side", "label": "Only in (ONLY_IN_STATE = CDTFA)", "hover": True},
+            {"field": "Cause", "label": "Likely cause"},
+            {"field": "AreaKm2", "label": "Area (km²)"},
+            {"field": "CountyAddressPoints", "label": "County address points inside", "hover": True},
+        ]}))
+    # Reconciled lines on top of the disagreement fills
+    layers.append(geojson_layer(
+        "reconciled_city_boundaries", "Reconciled city boundaries (advisory)",
+        "boundary_comparison/reconciled_city_boundaries.geojson",
+        load_geojson("boundary_comparison/reconciled_city_boundaries.geojson"),
+        {"fillColor": "#a78bfa", "fillOpacity": 0.0, "strokeColor": "#7c3aed", "strokeWidth": 2.5},
+        {"click": True, "hover": True, "titleField": "City", "fields": [
+            {"field": "City", "label": "City", "hover": True},
+            {"field": "AreaKm2", "label": "Area (km²)", "hover": True},
+            {"field": "ChangeFromCdtfaKm2", "label": "Change from CDTFA (km²)"},
+            {"field": "PiecesTakenFromCounty", "label": "Pieces taken from the county line"},
+            {"field": "UnexplainedPiecesKept", "label": "Unexplained pieces (CDTFA line kept)"},
+            {"field": "Status", "label": "Status"},
+        ]}))
+    return layers
+
+
 def main():
     esb_geojson = load_geojson("mart_ng911_fresno_esb_sample.geojson")
 
@@ -141,6 +212,7 @@ def main():
                     ]
                 }
             },
+            *boundary_layers(),
             pmtiles_layer(
                 "mart_ng911_fresno_rcl",
                 "NENA Road Centerlines (All 53,474)",
@@ -227,7 +299,9 @@ def main():
             ),
         ],
         "interaction": {
-            "identify": ["mart_ng911_fresno_ssap", "mart_ng911_fresno_fishbones", "mart_ng911_fresno_rcl", "mart_ng911_fresno_esb"],
+            "identify": ["mart_ng911_fresno_ssap", "mart_ng911_fresno_fishbones", "mart_ng911_fresno_rcl", "mart_ng911_fresno_esb",
+                         "reconciled_city_boundaries", "county_boundary_discrepancies",
+                         *[f"city_boundary_{c.lower()}" for c, _, _ in CAUSES]],
             "controls": {
                 "search": True,
                 "measure": True,
@@ -248,7 +322,7 @@ def main():
 
     proj_path_json = os.path.join(OUTPUT_DIR, "fresno_ng911_pilot.geolibre.json")
     with open(proj_path_json, "w") as f:
-        json.dump(validated_dict, f, indent=2)
+        json.dump(validated_dict, f, separators=(",", ":"))  # compact: inline boundary GeoJSON is a few MB
 
     size_mb = os.path.getsize(proj_path_json) / 1e6
     print(f"Generated GeoLibre project ({size_mb:.1f} MB, PMTiles-streamed layers):\n  -> {proj_path_json}")
