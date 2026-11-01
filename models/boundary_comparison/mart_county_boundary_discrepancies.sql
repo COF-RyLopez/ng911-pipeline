@@ -13,7 +13,7 @@ diffs AS (
     UNION ALL
     SELECT o.source, 'ONLY_IN_OTHER', ST_Difference(o.geom, f.geom) FROM frame f, others o
 ),
-pieces AS (
+pieces AS MATERIALIZED (  -- computed once: row_number() OVER () must give each piece one id across every join
     SELECT row_number() OVER () AS piece_id, source, side, geom
     FROM (SELECT source, side, unnest(ST_Dump(geom), recursive := true) FROM diffs)  -- -> geom, path
     WHERE ST_Dimension(geom) = 2 AND {{ area_km2('geom') }} >= 0.01

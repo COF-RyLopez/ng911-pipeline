@@ -5,7 +5,8 @@
 -- line is used only where mart_boundary_discrepancies says it should be:
 --   county-only SLIVER or FILED_CHANGE pieces are added (parcel-aligned linework / county ahead of CDTFA),
 --   CDTFA-only SLIVER pieces are removed,
---   UNEXPLAINED pieces keep CDTFA's line and stay on the review list.
+--   UNEXPLAINED and ROAD_RIGHT_OF_WAY pieces keep CDTFA's line and stay on the review list
+--   (UnexplainedPiecesKept / UnexplainedKm2 count both).
 -- Added pieces are clipped out of every neighbour (after the neighbour's own sliver removals), so no city
 -- grows into land another city keeps. Finally the
 -- boundary is snapped to parcel lines within ~4 m (vertices move onto the nearest parcel edge/vertex).
@@ -41,7 +42,7 @@ adds_clipped AS (
 ),
 unexplained AS (
     SELECT city, count(*) AS n, sum({{ area_km2('geom') }}) AS km2
-    FROM d WHERE Cause = 'UNEXPLAINED'
+    FROM d WHERE Cause IN ('UNEXPLAINED', 'ROAD_RIGHT_OF_WAY')
     GROUP BY city
 ),
 merged AS (
