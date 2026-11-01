@@ -4,7 +4,7 @@
 -- and for handing back to the county / LAFCo, each with a likely cause:
 --   FILED_CHANGE  half or more of the piece lies in a boundary change filed with the state (Gov. Code 54900):
 --                 a timing difference between the two sources, not an error in either
---   ROAD_RIGHT_OF_WAY  10 m wide or more with a county road centerline along half its length or more: the
+--   ROAD_RIGHT_OF_WAY  10-100 m wide with a county road centerline along half its length or more: the
 --                 sources disagree on whether the city includes the road (e.g. SR-99 at Kingsburg). That is
 --                 a jurisdiction question, not a drawing error, so the reconciled boundary keeps CDTFA's line
 --   SLIVER        under 50 m wide on average: the same line drawn twice, fixable by snapping to parcels
@@ -55,7 +55,9 @@ SELECT
           / nullif(ST_Perimeter(p.geom) * 111320 * sqrt(cos(radians(ST_Y(ST_Centroid(p.geom))))), 0), 1) AS MeanWidthM,
     CASE
         WHEN f.share >= 0.5 THEN 'FILED_CHANGE'
-        WHEN MeanWidthM >= 10 AND rd.road_share >= 0.5 THEN 'ROAD_RIGHT_OF_WAY'
+        -- a right-of-way is a strip: under 100 m (wide freeways like SR-99 fit); without the cap, a large area
+        -- full of streets (Fresno's ~26 km2 county-only area) passed as one
+        WHEN MeanWidthM >= 10 AND MeanWidthM < 100 AND rd.road_share >= 0.5 THEN 'ROAD_RIGHT_OF_WAY'
         WHEN MeanWidthM < 50 THEN 'SLIVER'
         ELSE 'UNEXPLAINED'
     END AS Cause,
