@@ -77,6 +77,18 @@ def fill(url, total, rows, field, ftype):
     return sum(1 for r in rows if str(r.get(field) if r.get(field) is not None else "").strip() not in ("", "0")) / len(rows)
 
 
+def examples(rows, field, n=4):
+    """'FIELD (e.g. 'A', 'B')': distinct non-empty sample values, so a suggested replacement can be judged."""
+    vals = []
+    for r in rows:
+        v = str(r.get(field) if r.get(field) is not None else "").strip()
+        if v and v not in vals:
+            vals.append(v)
+        if len(vals) == n:
+            break
+    return f"{field} (e.g. {', '.join(repr(v) for v in vals)})" if vals else f"{field} (empty in sample)"
+
+
 def audit(source_file, layer):
     url = layer.get("data", "").split("?")[0].rstrip("/")
     row = {"source_file": source_file, "layer": layer.get("name", ""), "url": url}
@@ -105,7 +117,7 @@ def audit(source_file, layer):
                 near = difflib.get_close_matches(f.upper(), list(names), n=2, cutoff=0.6)
                 issues.append({**row, "issue": "MISSING_FIELD", "role": role, "field": f,
                                "detail": f"'{f}' is not on the layer" +
-                                         (f"; closest: {', '.join(names[k] for k in near)}" if near else "")})
+                                         (f"; closest: {'; '.join(examples(rows, names[k]) for k in near)}" if near else "")})
                 continue
             share = fill(url, total, rows, *fields[f.upper()])
             if best is None or share > best:
