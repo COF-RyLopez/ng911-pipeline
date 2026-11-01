@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - scripts/discover_county_endpoints.py
+      - scripts/oa_conform_audit.py
       - .github/workflows/discover_endpoints.yml
 
 jobs:
@@ -34,6 +35,15 @@ jobs:
             echo '<details><summary>Per-jurisdiction summary</summary>'; echo; echo '```'
             cat data/output/discovery/ca_discovery_summary.csv; echo '```'; echo '</details>'; } > summary.md
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Overture's addresses are these OpenAddresses records: check each source's field mapping against the
+      # live county layer (renamed / mostly empty fields, better unused ones) for fixes worth an OA PR
+      - name: Audit OpenAddresses field mappings
+        run: |
+          set -o pipefail  # a crash in the audit must fail the step, not hide behind tee
+          python scripts/oa_conform_audit.py oa/sources/us/ca | tee audit.log
+          { echo '### OpenAddresses field-mapping audit'; echo '```'; cat audit.log; echo '```'; } >> summary.md
+          cat audit.log >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post summary on the PR
         if: github.event_name == 'pull_request'
