@@ -50,7 +50,7 @@ def main():
                      ST_SimplifyPreserveTopology(geometry, 0.002) AS g
               FROM read_parquet('{RELEASE}/theme=divisions/type=division_area/*.parquet', hive_partitioning=1)
               WHERE subtype = 'county' AND class = 'land' AND region = 'US-{st}'""")
-    print(f"[{st}] {c.execute('SELECT count(*) FROM cty').fetchone()[0]} counties")
+    print(f"[{st}] {c.execute('SELECT count(*) FROM cty').fetchall()[0][0]} counties")
 
     c.sql(f"""CREATE TABLE a AS SELECT
                   coalesce(trim(street), '') <> '' AS has_street, coalesce(trim(number), '') <> '' AS has_number,
@@ -61,8 +61,8 @@ def main():
                   ST_Length_Spheroid(ST_FlipCoordinates(geometry)) / 1000 AS km, ST_Centroid(geometry) AS pt
               FROM read_parquet('{RELEASE}/theme=transportation/type=segment/*.parquet', hive_partitioning=1)
               WHERE subtype = 'road' AND class IN {PUBLIC_CLASSES} AND {in_box}""")
-    print(f"[{st}] {c.execute('SELECT count(*) FROM a').fetchone()[0]:,} address points, "
-          f"{c.execute('SELECT count(*) FROM r').fetchone()[0]:,} public road segments")
+    print(f"[{st}] {c.execute('SELECT count(*) FROM a').fetchall()[0][0]:,} address points, "
+          f"{c.execute('SELECT count(*) FROM r').fetchall()[0][0]:,} public road segments")
 
     hu = census_housing_units(STATE_FIPS[st])
     c.sql("CREATE TABLE hu (county VARCHAR, housing_units BIGINT)")
