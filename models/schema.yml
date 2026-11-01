@@ -575,3 +575,21 @@ models:
           - accepted_values:
               arguments:
                 values: ['FILED_CHANGE', 'SLIVER', 'UNEXPLAINED']
+
+  - name: mart_reconciled_city_boundaries
+    description: "Product 2 (advisory): CDTFA city boundaries with the county's line used for slivers and filed changes."
+    columns:
+      - name: City
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_boundary_parcel_alignment
+    description: "Product 2: share of each city boundary within ~3 m of a parcel line, per source (CDTFA, COUNTY, RECONCILED)."
+    columns:
+      - name: Source
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['CDTFA', 'COUNTY', 'RECONCILED']
+
