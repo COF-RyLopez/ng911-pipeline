@@ -128,9 +128,41 @@ def build_with_tylertoo(conn, name, src, cols, geom_col, tip_args, out):
         os.remove(p)
 
 
-def main():
+def pick_engine():
+    """tylertoo when installed (or forced with PMTILES_ENGINE), else tippecanoe; None when neither exists."""
     engine = os.environ.get("PMTILES_ENGINE") or ("tylertoo" if tylertoo else "tippecanoe")
-    if engine == "tippecanoe" and not shutil.which("tippecanoe"):
+    return None if engine == "tippecanoe" and not shutil.which("tippecanoe") else engine
+
+
+def build_layer(conn, engine, name, src, cols, geom_col, tip_args, out,
+                attribution="County of Fresno (authoritative); Overture Maps Foundation"):
+    """Tile one layer (src may be a Parquet glob) into out; returns the feature count, or None if empty."""
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    os.makedirs(TMP_DIR, exist_ok=True)
+    seq = os.path.join(TMP_DIR, f"{name}.geojsonl")
+    for p in (seq, out):
+        if os.path.exists(p):
+            os.remove(p)
+    n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE {geom_col} IS NOT NULL").fetchall()[0][0]
+    if n == 0:
+        return None
+    if engine == "tylertoo":
+        build_with_tylertoo(conn, name, src, cols, geom_col, tip_args, out)
+    else:
+        conn.sql(f"""
+            COPY (SELECT {cols}, {geom_col} AS geom FROM '{src}' WHERE {geom_col} IS NOT NULL)
+            TO '{seq}' WITH (FORMAT GDAL, DRIVER 'GeoJSONSeq', LAYER_CREATION_OPTIONS 'COORDINATE_PRECISION=6')
+        """)
+        subprocess.run(["tippecanoe", "-q", "-f", "-o", out, "-l", name, "--attribution", attribution]
+                       + tip_args + [seq], check=True)
+        os.remove(seq)
+    print(f"  -> {out}  ({n:,} features, {os.path.getsize(out) / 1e6:.1f} MB)")
+    return n
+
+
+def main():
+    engine = pick_engine()
+    if engine is None:
         print("[WARNING] Neither tylertoo nor tippecanoe is installed. Skipping PMTiles vector tile build.")
         return
 
@@ -155,33 +187,12 @@ def main():
             print(f"Skipping tile build for {name}: {src} missing.")
             continue
 
-        seq = os.path.join(TMP_DIR, f"{name}.geojsonl")
-        out = os.path.join(TILES_DIR, f"fresno_{name}.pmtiles")
-        for p in (seq, out):
-            if os.path.exists(p):
-                os.remove(p)
-        n = conn.sql(f"SELECT count(*) FROM '{src}' WHERE {geom_col} IS NOT NULL").fetchall()[0][0]
-        if n == 0:
+        n = build_layer(conn, engine, name, src, cols, geom_col, tip_args,
+                        os.path.join(TILES_DIR, f"fresno_{name}.pmtiles"))
+        if n is None:
             # e.g. ESB for a county without boundary layers. An empty Parquet carries no GeoParquet
             # metadata, so its geometry reads back as BLOB and cannot be tiled anyway.
             print(f"Skipping tile build for {name}: no features.")
-            continue
-
-        if engine == "tylertoo":
-            build_with_tylertoo(conn, name, src, cols, geom_col, tip_args, out)
-            print(f"  -> {out}  ({n:,} features, {os.path.getsize(out) / 1e6:.1f} MB)")
-            continue
-
-        conn.sql(f"""
-            COPY (SELECT {cols}, {geom_col} AS geom FROM '{src}' WHERE {geom_col} IS NOT NULL)
-            TO '{seq}' WITH (FORMAT GDAL, DRIVER 'GeoJSONSeq', LAYER_CREATION_OPTIONS 'COORDINATE_PRECISION=6')
-        """)
-
-        cmd = ["tippecanoe", "-q", "-f", "-o", out, "-l", name,
-               "--attribution", "County of Fresno (authoritative); Overture Maps Foundation"] + tip_args + [seq]
-        subprocess.run(cmd, check=True)
-        os.remove(seq)
-        print(f"  -> {out}  ({n:,} features, {os.path.getsize(out) / 1e6:.1f} MB)")
 
     shutil.rmtree(TMP_DIR, ignore_errors=True)
 

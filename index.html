@@ -1774,11 +1774,18 @@
         <a id="statewide-csv" style="color:#60a5fa">All counties (CSV)</a>
       </div>
       <div id="oo-builds" style="display:none">
-        <div class="overlap-label" style="margin-top:8px">Overture-only NG911 builds (no county GIS):</div>
+        <div class="overlap-label" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+          <span>Overture-only NG911 builds (no county GIS):</span>
+          <label class="layer-switch" title="Show every county's Overture address points on the map">
+            <input type="checkbox" id="toggle-oo-points"><span class="slider"></span>
+          </label>
+        </div>
+        <div style="max-height:220px;overflow-y:auto">
         <table class="compare-table">
           <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th></th></tr></thead>
           <tbody id="oo-builds-rows"></tbody>
         </table>
+        </div>
         <div class="ban-card-footnote">Points: <span class="p2-dot" style="background:#22c55e"></span>same-named road within 50 m
           <span class="p2-dot" style="background:#f59e0b"></span>farther <span class="p2-dot" style="background:#ef4444"></span>no road with that name</div>
       </div>
@@ -2309,40 +2316,43 @@
     const BOUNDARY_LAYER_IDS = ["boundary_discrepancies_fill", "reconciled_boundaries_line", "county_boundary_discrepancies_fill"];
     // Statewide county readiness: colour by the weaker of address completeness and named public roads
     const STATEWIDE_LAYER_IDS = ["statewide_fill", "statewide_line"];
-    // Overture-only county builds (overture_only_counties.py): points loaded per county on demand
+    // Overture-only county builds (overture_only_counties.py): every county's points in one PMTiles layer,
+    // streamed by zoom (per-county GeoJSON was 1.9 GB; Los Angeles alone 447 MB)
     const OO_MATCH_COLOR = ["match", ["get", "RoadMatch"], "OK", "#22c55e", "FAR", "#f59e0b", "#ef4444"];
-    const ooLoaded = {};  // county key -> FeatureCollection, re-added after a basemap switch
-    function addOoCountyLayer(key) {
-      if (!map.getSource(`oo_${key}_src`)) map.addSource(`oo_${key}_src`, { type: "geojson", data: ooLoaded[key] });
-      if (!map.getLayer(`oo_${key}_pts`)) {
-        map.addLayer({ id: `oo_${key}_pts`, type: "circle", source: `oo_${key}_src`,
-                       paint: { "circle-color": OO_MATCH_COLOR, "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1.5, 15, 5],
-                                "circle-stroke-color": "#0f172a", "circle-stroke-width": 0.3 } });
-        map.on("click", `oo_${key}_pts`, (e) => {
-          const p = e.features[0].properties;
-          const div = document.createElement("div");
-          div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
-          [["b", p.Address],
-           ["div", p.RoadMatch === "OK" ? `Same-named road ${p.DistanceM} m away`
-                 : p.RoadMatch === "FAR" ? `Nearest same-named road is ${p.DistanceM} m away (over 50 m)`
-                 : "No road with this name nearby in Overture / OpenStreetMap"],
-           ["div", "Overture address (OpenAddresses), no county GIS"]
-          ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
-          new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
-        });
+    const countyBounds = {};  // county key (e.g. "los_angeles") -> [[w, s], [e, n]], from the statewide layer
+    let ooClickBound = false;
+    function addOoLayer() {
+      if (!map.getSource("oo_points_src")) {
+        map.addSource("oo_points_src", { type: "vector", url: `pmtiles://${R2_BASE}/tiles/overture_only_address_points.pmtiles` });
       }
+      if (!map.getLayer("oo_points")) {
+        map.addLayer({ id: "oo_points", type: "circle", source: "oo_points_src", "source-layer": "overture_only", minzoom: 8,
+                       layout: { visibility: getToggleState("toggle-oo-points", false) ? "visible" : "none" },
+                       paint: { "circle-color": OO_MATCH_COLOR, "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1, 15, 5],
+                                "circle-stroke-color": "#0f172a", "circle-stroke-width": 0.3 } });
+      }
+      if (ooClickBound) return;
+      ooClickBound = true;
+      map.on("click", "oo_points", (e) => {
+        const p = e.features[0].properties;
+        const div = document.createElement("div");
+        div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
+        [["b", p.Address],
+         ["div", p.RoadMatch === "OK" ? `Same-named road ${p.DistanceM} m away`
+               : p.RoadMatch === "FAR" ? `Nearest same-named road is ${p.DistanceM} m away (over 50 m)`
+               : "No road with this name nearby in Overture / OpenStreetMap"],
+         ["div", "Overture address (OpenAddresses), no county GIS"]
+        ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+        new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+      });
+    }
+    function setOoVisible(on) {
+      document.getElementById("toggle-oo-points").checked = on;
+      if (map.getLayer("oo_points")) map.setLayoutProperty("oo_points", "visibility", on ? "visible" : "none");
     }
     function showOoCounty(key) {
-      const go = () => {
-        addOoCountyLayer(key);
-        const b = [180, 90, -180, -90];  // a loop, not Math.min(...xs): spreading 100k+ points overflows the stack
-        ooLoaded[key].features.forEach(({ geometry: { coordinates: [x, y] } }) => {
-          b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y);
-        });
-        if (b[0] <= b[2]) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 900 });
-      };
-      if (ooLoaded[key]) return go();
-      fetch(`${R2_BASE}/overture_only/${key}/address_points.geojson`).then(r => r.json()).then(fc => { ooLoaded[key] = fc; go(); });
+      setOoVisible(true);
+      if (countyBounds[key]) map.fitBounds(countyBounds[key], { padding: 40, duration: 900 });
     }
     const STATEWIDE_COLOR = ["step",
       ["min", ["coalesce", ["get", "PctNumberAndStreet"], 0], ["coalesce", ["get", "PctPublicRoadKmNamed"], 0]],
@@ -2824,7 +2834,7 @@
                        paint: { "line-color": "#0f172a", "line-width": 0.8 } });
       }
 
-      Object.keys(ooLoaded).forEach(addOoCountyLayer);  // county points already shown before a basemap switch
+      addOoLayer();  // Overture-only address points for every built county (off until shown)
 
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
@@ -5303,6 +5313,14 @@
     fetch(`${SCORECARD_BASE}/statewide/ca_overture_county_scorecard.geojson`, { cache: "no-cache" })
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(fc => {
+        fc.features.forEach(f => {  // bounds per county, for the Overture-only "Map" buttons
+          const b = [180, 90, -180, -90];
+          const walk = c => typeof c[0] === "number"
+            ? (b[0] = Math.min(b[0], c[0]), b[1] = Math.min(b[1], c[1]), b[2] = Math.max(b[2], c[0]), b[3] = Math.max(b[3], c[1]))
+            : c.forEach(walk);
+          walk(f.geometry.coordinates);
+          countyBounds[f.properties.County.replace(/ County$/, "").toLowerCase().replace(/ /g, "_")] = [[b[0], b[1]], [b[2], b[3]]];
+        });
         const rows = fc.features.map(f => f.properties);
         const sum = k => rows.reduce((n, r) => n + (Number(r[k]) || 0), 0);
         const wavg = (k, w) => (rows.reduce((n, r) => n + (Number(r[k]) || 0) * (Number(r[w]) || 0), 0) / sum(w)).toFixed(1);
@@ -5339,6 +5357,7 @@
           td.appendChild(b); tr.appendChild(td); tbody.appendChild(tr);
         });
         document.getElementById("oo-builds").style.display = "";
+        document.getElementById("toggle-oo-points").addEventListener("change", e => setOoVisible(e.target.checked));
       })
       .catch(() => {});  // not in this pipeline run yet
 
