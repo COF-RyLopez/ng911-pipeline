@@ -1595,6 +1595,24 @@
         </div>
       </div>
 
+      <!-- Open-data lineage: county roads OpenStreetMap is missing or names differently -->
+      <div class="layer-card" style="margin-top: 8px;">
+        <div class="layer-header">
+          <label class="layer-label" for="toggle-osm-fixes">
+            <span style="display: inline-block; width: 12px; height: 3px; background: #f97316; border-radius: 2px;"></span>
+            <span>OpenStreetMap Road Fixes</span>
+          </label>
+          <label class="layer-switch">
+            <input type="checkbox" id="toggle-osm-fixes" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="layer-meta">
+          <span>Missing (orange) / different name (yellow)</span>
+          <span class="layer-count" id="osm-fixes-count">—</span>
+        </div>
+      </div>
+
       <!-- Mapillary AI Vision & Street-Level Imagery -->
       <div class="layer-card" style="margin-top: 8px;">
         <div class="layer-header">
@@ -1711,6 +1729,7 @@
         <div class="overlap-label" id="product1-overlap-label">of the county's own centerline length is also in Overture's open road map</div>
       </div>
       <div class="ban-card-footnote">
+        <span id="product1-osm-fixes"></span>
         Not in open data: PSAP / emergency service boundaries, published address ranges, MSAG / ESN.
       </div>
     </div>
@@ -2668,6 +2687,24 @@
         });
       }
 
+      // 3.0d Open-data lineage: county roads OpenStreetMap is missing / names differently (fix in OSM)
+      if (!map.getSource("osm_road_fixes_src")) {
+        map.addSource("osm_road_fixes_src", {
+          type: "geojson", data: `${R2_BASE}/open_data_fixes/osm_road_fixes.geojson`
+        });
+      }
+      if (!map.getLayer("osm_road_fixes_line")) {
+        map.addLayer({
+          id: "osm_road_fixes_line", type: "line", source: "osm_road_fixes_src",
+          layout: { visibility: getToggleState("toggle-osm-fixes") ? "visible" : "none", "line-cap": "round" },
+          paint: {
+            "line-color": ["match", ["get", "Issue"], "MISSING_IN_OSM", "#f97316", "#eab308"],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 16, 5],
+            "line-opacity": 0.9
+          }
+        });
+      }
+
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
         map.addSource("fresno_buildings_src", {
@@ -3404,6 +3441,24 @@
       div.appendChild(a);
     }
 
+    document.getElementById("toggle-osm-fixes").addEventListener("change", (e) => {
+      if (map.getLayer("osm_road_fixes_line")) map.setLayoutProperty("osm_road_fixes_line", "visibility", e.target.checked ? "visible" : "none");
+    });
+    map.on("click", "osm_road_fixes_line", (e) => {
+      const p = e.features[0].properties;
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;max-width:240px;color:#0f172a";
+      [["b", p.CountyStreetName],
+       ["div", p.Issue === "MISSING_IN_OSM" ? "Not in OpenStreetMap (so not in Overture's roads)"
+                                            : `OpenStreetMap names it "${p.OsmName}"`],
+       ["div", `County segment, ${Math.round(p.LengthM)} m`]
+      ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+      appendFixLink(div, p.OsmEditUrl, "Fix in OpenStreetMap ↗");
+      new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+    });
+    map.on("mouseenter", "osm_road_fixes_line", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "osm_road_fixes_line", () => { map.getCanvas().style.cursor = ""; });
+
     const CAUSE_TEXT = {
       FILED_CHANGE: "Inside a filed annexation / correction: the two sources differ in timing",
       SLIVER: "Sliver: the same line drawn twice (reconciled to the county's parcel-aligned line)",
@@ -3652,6 +3707,7 @@
         BOUNDARY_LAYER_IDS.forEach(id => {
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", getToggleState("toggle-boundaries") ? "visible" : "none");
         });
+        if (map.getLayer("osm_road_fixes_line")) map.setLayoutProperty("osm_road_fixes_line", "visibility", getToggleState("toggle-osm-fixes") ? "visible" : "none");
         updateMapillaryLayerVisibilities();
       };
 
@@ -5068,6 +5124,7 @@
         }
         renderProduct2(sc);
         renderCountyBoundary(sc);
+        renderOsmFixes(sc);
         document.getElementById("readiness-footnote").textContent =
           `${sc.county} · pipeline run ${sc.generated}. ${sc.within_50m_pct}% of matched points are within 50 m of their road; ` +
           `points farther out are flagged for review.`;
@@ -5080,6 +5137,24 @@
         document.getElementById("product2-rows").innerHTML = "";
         document.getElementById("county-boundary-rows").innerHTML = '<tr><td colspan="4">Unavailable.</td></tr>';
       });
+
+    function renderOsmFixes(sc) {
+      const rows = sc.osm_road_fixes;
+      if (!rows || !rows.length) return;  // not in this pipeline run yet
+      const by = Object.fromEntries(rows.map(r => [r.issue, r]));
+      const miss = by.MISSING_IN_OSM, diff = by.NAME_DIFFERS;
+      const total = rows.reduce((n, r) => n + r.segments, 0);
+      document.getElementById("osm-fixes-count").textContent = `${total.toLocaleString()} segments`;
+      const el = document.getElementById("product1-osm-fixes");
+      el.textContent = "Fixable at the source: OpenStreetMap " +
+        (miss ? `is missing ${miss.segments.toLocaleString()} county road segments (${miss.km} km)` : "has every county road") +
+        (diff ? ` and names ${diff.segments.toLocaleString()} differently` : "") + " — ";
+      const a = document.createElement("a");
+      a.href = `${SCORECARD_BASE}/open_data_fixes/osm_road_fixes.csv`; a.textContent = "list with edit links";
+      a.style.color = "#60a5fa";
+      el.appendChild(a);
+      el.appendChild(document.createTextNode(". "));
+    }
 
     function renderCountyBoundary(sc) {
       const rows = sc.county_boundary_comparison;
