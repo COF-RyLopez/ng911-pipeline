@@ -9,7 +9,8 @@ statewide scorecard rates weakest, using the same oo_* dbt models as the Fresno 
 Each county gets a one-off registry entry passed through --vars, so dbt_project.yml and the
 Fresno/Kings caches are untouched (the Overture caches are swapped in and restored afterwards).
 
-Writes data/output/overture_only/<county>/{address_points,road_centerlines}.parquet and
+Writes data/output/overture_only/<county>/{address_points,road_centerlines}.parquet, address_points.geojson
+(for the map) and
 data/output/overture_only/counties_summary.{csv,json}.
 Usage: python scripts/overture_only_counties.py [--top 5]   (after statewide_overture_scorecard.py)
 """
@@ -75,6 +76,18 @@ def build(feature, dbt_bin):
         c.sql("LOAD spatial")
         c.sql(f"COPY oo_address_points TO '{out}/address_points.parquet' (FORMAT PARQUET)")
         c.sql(f"COPY oo_road_centerlines TO '{out}/road_centerlines.parquet' (FORMAT PARQUET)")
+        # map layer: each point with its fishbone result (same-named road within 50 m / farther / none)
+        pts = c.execute("""
+            SELECT round(ST_X(p.geom), 6), round(ST_Y(p.geom), 6),
+                   trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type)),
+                   CASE WHEN f.overture_id IS NULL THEN 'NO_NAMED_ROAD'
+                        WHEN f.is_excessive_offset THEN 'FAR' ELSE 'OK' END, f.distance_meters
+            FROM oo_address_points p LEFT JOIN oo_fishbones f USING (overture_id)""").fetchall()
+        with open(f"{out}/address_points.geojson", "w") as fh:
+            json.dump({"type": "FeatureCollection", "features": [
+                {"type": "Feature", "geometry": {"type": "Point", "coordinates": [x, y]},
+                 "properties": {"Address": a, "RoadMatch": m, "DistanceM": d}} for x, y, a, m, d in pts]},
+                fh, separators=(",", ":"), default=float)
         row = c.execute("""
             WITH a AS (SELECT count(*) AS n, count(*) FILTER (WHERE house_number IS NULL) AS no_num FROM oo_address_points),
                  f AS (SELECT count(*) AS n, count(*) FILTER (WHERE NOT is_excessive_offset) AS near FROM oo_fishbones),
