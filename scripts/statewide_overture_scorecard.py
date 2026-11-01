@@ -46,6 +46,7 @@ def main():
 
     c = duckdb.connect()
     c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
+    c.sql("SET geometry_always_xy = true")  # lon/lat order, as in profiles.yml (DuckDB 2.0 requires it set)
     c.sql(f"""CREATE TABLE cty AS SELECT names."primary" AS county, geometry AS geom,
                      ST_SimplifyPreserveTopology(geometry, 0.002) AS g
               FROM read_parquet('{RELEASE}/theme=divisions/type=division_area/*.parquet', hive_partitioning=1)
@@ -58,7 +59,7 @@ def main():
               FROM read_parquet('{RELEASE}/theme=addresses/type=address/*.parquet', hive_partitioning=1)
               WHERE country = 'US' AND address_levels[1].value = '{st}' AND {in_box}""")
     c.sql(f"""CREATE TABLE r AS SELECT names."primary" IS NOT NULL AS named,
-                  ST_Length_Spheroid(ST_FlipCoordinates(geometry)) / 1000 AS km, ST_Centroid(geometry) AS pt
+                  ST_Length_Spheroid(geometry) / 1000 AS km, ST_Centroid(geometry) AS pt
               FROM read_parquet('{RELEASE}/theme=transportation/type=segment/*.parquet', hive_partitioning=1)
               WHERE subtype = 'road' AND class IN {PUBLIC_CLASSES} AND {in_box}""")
     print(f"[{st}] {c.execute('SELECT count(*) FROM a').fetchall()[0][0]:,} address points, "
