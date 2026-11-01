@@ -112,3 +112,8 @@ END)
 {%- endfor -%}
 {{ ns.sql }}
 {%- endmacro %}
+
+{#- Area in km² of a lon/lat geometry, measured in California Teale Albers (EPSG:3310), as CDTFA's AREA_SQMI is. -#}
+{% macro area_km2(geom) -%}
+(ST_Area(ST_Transform({{ geom }}, 'OGC:CRS84', 'EPSG:3310')) / 1e6)
+{%- endmacro %}
