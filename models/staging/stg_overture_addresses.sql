@@ -1,4 +1,6 @@
 {{ config(materialized='view') }}
+{#- street type suffixes, abbreviated or spelled out (31% of California streets spell it out: 'PARK AVENUE') -#}
+{%- set sfx = ' +(ST|STREET|AVE|AV|AVENUE|BLVD|BL|BOULEVARD|RD|ROAD|DR|DRIVE|LN|LANE|WAY|WY|CT|COURT|PL|PLACE|CIR|CI|CIRCLE|HWY|HIGHWAY|PKWY|PW|PARKWAY|TRL|TR|TRAIL|TER|TERRACE|ALY|ALLEY|PLZ|PLAZA|LOOP|LP)$' %}
 
 WITH raw_overture AS (
     {% if var('use_cached_data', true) %}
@@ -11,7 +13,8 @@ WITH raw_overture AS (
         number AS overture_number,
         street AS overture_street,
         postcode AS overture_postcode,
-        postal_city AS overture_city,
+        coalesce(nullif(trim(postal_city), ''), address_levels[2].value) AS overture_city,
+        unit AS overture_unit,
         sources[1].dataset AS source_dataset,
         sources[1].record_id AS source_record_id,
         bbox.xmin AS minx,
@@ -32,12 +35,13 @@ parsed_overture AS (
         overture_id,
         upper(trim(overture_number)) AS house_number,
         -- type suffix comes off first, so "E ST" (E Street) keeps "E" as its name rather than "ST"
-        {{ normalize_direction("nullif(regexp_extract(regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|CI|HWY|PKWY|PW|TRL|TR|LOOP|LP)$', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
+        {{ normalize_direction("nullif(regexp_extract(regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), '" ~ sfx ~ "', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
         nullif(trim(regexp_replace(
-            regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|CI|HWY|PKWY|PW|TRL|TR|LOOP|LP)$', ''),
+            regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), '{{ sfx }}', ''),
             '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', ''
         )), '') AS street_name,
-        {{ normalize_street_type("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), ' +(ST|AVE|AV|BLVD|BL|RD|DR|LN|WAY|WY|CT|PL|CIR|CI|HWY|PKWY|PW|TRL|TR|LOOP|LP)$', 1), '')") }} AS street_type,
+        {{ normalize_street_type("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), '" ~ sfx ~ "', 1), '')") }} AS street_type,
+        nullif(upper(trim(overture_unit)), '') AS unit,
         coalesce(upper(trim(overture_city)), '{{ county("name") }}') AS community_name,
         nullif(trim(overture_postcode), '') AS postcode,
         '{{ county("name") }}' AS county,

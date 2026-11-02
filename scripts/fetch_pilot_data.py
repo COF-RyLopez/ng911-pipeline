@@ -418,7 +418,9 @@ def fetch_overture_addresses():
             number AS overture_number,
             street AS overture_street,
             postcode AS overture_postcode,
-            postal_city AS overture_city,
+            -- postal_city is nearly empty in California (2%); Overture keeps the city in address_levels[2] (98%)
+            coalesce(nullif(trim(postal_city), ''), address_levels[2].value) AS overture_city,
+            unit AS overture_unit,
             -- lineage: Overture names the dataset it republished (an OpenAddresses source, e.g. us/ca/fresno)
             sources[1].dataset AS source_dataset,
             sources[1].record_id AS source_record_id,

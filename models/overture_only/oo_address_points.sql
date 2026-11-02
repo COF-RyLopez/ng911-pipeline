@@ -1,7 +1,7 @@
 {{ config(materialized='table') }}
 
 -- Product 1: Overture address points inside the county (the SSAP layer an open-data-only build gets).
-SELECT a.overture_id, a.house_number, a.pre_directional, a.street_name, a.street_type,
+SELECT a.overture_id, a.house_number, a.pre_directional, a.street_name, a.street_type, a.unit,
        a.community_name, a.postcode, a.source_dataset,
        {{ oa_source_url('a.source_dataset') }} AS source_url,  -- where this address comes from (fix it there)
        ST_GeomFromWKB(ST_AsWKB(a.geom)) AS geom
