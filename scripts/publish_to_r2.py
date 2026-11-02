@@ -19,7 +19,7 @@ OUTPUT_DIR = os.path.join(PROJECT_DIR, "data", "output")
 
 DEFAULT_PUBLIC_URL = "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev"
 # Keys the separate overture-only CI job builds and publishes; the county job leaves them alone.
-OVERTURE_ONLY_KEYS = ("statewide/", "overture_only/", "tiles/overture_only_")
+OVERTURE_ONLY_KEYS = ("statewide/", "overture_only/", "tiles/overture_only_", "extensions/")
 
 
 def get_content_type(file_path):

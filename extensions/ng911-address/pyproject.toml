@@ -1,0 +1,16 @@
+[project]
+name = "overture-extension-ng911-address"
+version = "0.1.0"
+description = "Prototype GERS Extension: NENA NG9-1-1 (STA-006) address-point properties for Overture addresses"
+requires-python = ">=3.10"
+dependencies = ["overture-schema-theme-addresses>=2.0,<3", "pydantic>=2"]
+
+[project.optional-dependencies]
+test = ["pytest", "packaging"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["overture_ext_ng911"]
