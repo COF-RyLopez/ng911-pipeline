@@ -5366,6 +5366,7 @@
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(rows => {
         const tbody = document.getElementById("oo-builds-rows");
+        rows.sort((a, b) => a.County.localeCompare(b.County));  // the build writes them weakest first
         rows.forEach(r => {
           const tr = document.createElement("tr");
           [r.County.replace(/ County, CA$/, ""), Number(r.AddressPoints).toLocaleString(),
