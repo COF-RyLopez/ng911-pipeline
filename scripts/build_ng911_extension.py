@@ -8,6 +8,7 @@ namespace, and carries no geometry: consumers join on `id`.
 
   ng911_address         -> addresses/address        (package extensions/ng911-address)
   ng911_road_centerline -> transportation/segment   (package extensions/ng911-road-centerline)
+  ng911_railroad        -> transportation/segment, rail subtype (package extensions/ng911-railroad)
 
 Each writes data/output/extensions/<name>/:
   <name>_ca.parquet    the dataset
@@ -78,14 +79,27 @@ CALFIRE_DISTRICTS = ("https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/arcgis/rest/
                      "FeatureServer/0/query?where=1%3D1&outFields=Name,FDID&outSR=4326&maxAllowableOffset=0.0001&f=geojson")
 
 
+# Railroad owners: FRA's North American Rail Network (BTS NTAD, public domain), matched to Overture rail segments
+NARN = ("https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_North_American_Rail_Network_Lines/"
+        "FeatureServer/0/query?where=STATEAB%3D%27CA%27&outFields=FRAARCID,RROWNER1&outSR=4326&f=geojson")
+TIGER_COUNTIES = ("https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query"
+                  "?where=STATE%3D%2706%27&outFields=BASENAME&outSR=4326&maxAllowableOffset=0.0005&f=geojson")
+
+
 def load_places(c, table, url, field, code=None):
     """Polygons from an ArcGIS geojson query as table <table>(name, code, geom); one request each (under the record limit)."""
-    req = urllib.request.Request(url, headers={"User-Agent": "ng911-pipeline"})
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        features = json.load(resp)["features"]
+    features, offset = [], 0
+    while True:  # ArcGIS pages at its record limit (2,000 here); most layers fit in one page
+        req = urllib.request.Request(f"{url}&resultOffset={offset}", headers={"User-Agent": "ng911-pipeline"})
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            page = json.load(resp)
+        features += page["features"]
+        offset += len(page["features"])
+        if not page.get("exceededTransferLimit") and not page.get("properties", {}).get("exceededTransferLimit"):
+            break
     c.execute(f"CREATE TABLE {table}_raw (name VARCHAR, code VARCHAR, gj VARCHAR)")
     c.executemany(f"INSERT INTO {table}_raw VALUES (?, ?, ?)",
-                  [(f["properties"][field], f["properties"].get(code), json.dumps(f["geometry"])) for f in features if f["geometry"]])
+                  [(f["properties"][field], (None if f["properties"].get(code) is None else str(f["properties"][code])), json.dumps(f["geometry"])) for f in features if f["geometry"]])
     c.sql(f"""CREATE TABLE {table} AS SELECT name, code, geom, ST_Area(geom) AS area
               FROM (SELECT name, code, ST_MakeValid(ST_GeomFromGeoJSON(gj)) AS geom FROM {table}_raw)""")
     print(f"  -> {len(features)} {table} parts, {c.execute(f'SELECT count(DISTINCT name) FROM {table}').fetchall()[0][0]} names")
@@ -270,10 +284,39 @@ def road_centerline_dataset(c, updated):
                                    ORDER BY coalesce(l.k, 0) + coalesce(r.k, 0) DESC, s.county_key) = 1""")
 
 
+def railroad_dataset(c, updated):
+    # Overture rail segments statewide (not part of the county builds); owner from the nearest FRA rail line
+    # within ~30 m of the segment's midpoint, county from the midpoint.
+    xmin, ymin, xmax, ymax = STATE_BBOX["CA"]
+    c.sql(f"""CREATE TABLE rail AS
+        SELECT id, names.primary AS name, sources[1].record_id AS record_id, ST_LineInterpolatePoint(geometry, 0.5) AS pt
+        FROM read_parquet('{RELEASE}/theme=transportation/type=segment/*.parquet', hive_partitioning=1)
+        WHERE subtype = 'rail' AND bbox.xmin >= {xmin} AND bbox.xmax <= {xmax} AND bbox.ymin >= {ymin} AND bbox.ymax <= {ymax}
+          AND ST_GeometryType(geometry) = 'LINESTRING'""")
+    c.sql(f"""CREATE TABLE ext AS
+        WITH fra AS (SELECT r.id, arg_min(n.name, ST_Distance(n.geom, r.pt)) AS owner, arg_min(n.code, ST_Distance(n.geom, r.pt)) AS arc
+                     FROM rail r JOIN narn n ON ST_DWithin(n.geom, r.pt, 0.0003) GROUP BY 1),
+             cty AS (SELECT r.id, any_value(lower(replace(t.name, ' ', '_'))) AS county_key
+                     FROM rail r JOIN county t ON ST_Intersects(t.geom, r.pt) GROUP BY 1)
+        SELECT r.id, cty.county_key, NULL::VARCHAR AS raw_postyp, struct_pack(
+            discrpagid := cty.county_key || '.ca.gov',
+            dateupdate := '{updated}',
+            nguid := 'urn:emergency:uid:gis:RL:' || r.id || ':' || cty.county_key || '.ca.gov',
+            rlown := fra.owner,
+            rlname := r.name,
+            fra_arc_id := fra.arc::VARCHAR,
+            source_url := CASE WHEN regexp_matches(r.record_id, '^w[0-9]+')
+                               THEN 'https://www.openstreetmap.org/way/' || regexp_extract(r.record_id, '^w([0-9]+)', 1) END
+        ) AS ng911
+        FROM rail r JOIN cty USING (id) LEFT JOIN fra USING (id)  -- California only: the bbox also catches NV, AZ, OR and MX track""")
+    c.sql("DROP TABLE rail")
+
+
 # NENA-STA-006.3 mandatory fields per layer (the packages assert the same lists in their conformance tests)
 SSAP_REQUIRED = ("discrpagid", "dateupdate", "nguid", "country", "a1")
 RCL_REQUIRED = ("discrpagid", "dateupdate", "nguid", "fromaddr_l", "toaddr_l", "fromaddr_r", "toaddr_r",
                 "parity_l", "parity_r", "st_name", "country_l", "country_r", "a1_l", "a1_r")
+RL_REQUIRED = ("discrpagid", "dateupdate", "nguid")
 
 DATASETS = [
     # name, builder, package dir, release path for GERS coverage, target, reference schema package, NENA layer,
@@ -286,7 +329,26 @@ DATASETS = [
      "transportation/segment", "overture-schema-theme-transportation", "RoadCenterLine", RCL_REQUIRED,
      "Road names and classes derive from Overture transportation (ODbL); address ranges derive from Overture "
      "addresses, which keep their source licenses."),
+    ("ng911_railroad", railroad_dataset, "ng911-railroad", "theme=transportation/type=segment",
+     "transportation/segment (rail)", "overture-schema-theme-transportation", "RailroadCenterLine", RL_REQUIRED,
+     "Rail names derive from Overture transportation (ODbL); owners from FRA's North American Rail Network "
+     "(public domain)."),
 ]
+
+
+ADDR_ROAD_NOTES = {
+    "coded_values": "street types, directionals, road class and parity are NENA domain values; "
+        "checked by the package on every sample row",
+    "a3_source": "CDTFA city boundaries (CA state geoportal), fetched at build time; empty outside cities",
+    "a4_source": "Census Designated Places (Census TIGERweb), only where A3 is empty",
+    "msagcomm_source": "candidate only: A3, else A4, else the postal community, upper-cased; the 911 authority's MSAG governs",
+    "esn": "not filled: ESNs are assigned by each 911 authority; fire_district/fire_fdid (CAL FIRE local fire districts) are evidence for mapping to them",
+    "placement_source": "OpenAddresses source accuracy where stated (1 Structure, 2 Parcel, 3 Geocoding); else Structure inside an Overture building footprint, else Unknown",
+}
+RAIL_NOTES = {
+    "rlown_source": "FRA North American Rail Network (BTS NTAD) RROWNER1 reporting mark, from the FRA line nearest the segment's midpoint (within ~30 m)",
+    "not_filled": "RLOp (operator) and RMPL/RMPH (mileposts): not in open data; trackage rights differ from ownership",
+}
 
 
 def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_required, license_note):
@@ -317,11 +379,11 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
     # street types couldn't be mapped to a NENA registry word (left empty rather than guessed)
     all_required = " AND ".join(f"ng911.{f} IS NOT NULL" for f in nena_required)
     required_pct = c.execute(f"SELECT round(100.0 * count(*) FILTER (WHERE {all_required}) / count(*), 2) FROM ext").fetchall()[0][0]
-    unmapped = c.execute("""SELECT raw_postyp, count(*) n FROM ext WHERE raw_postyp IS NOT NULL AND ng911.st_postyp IS NULL
+    unmapped = [] if nena_layer == "RailroadCenterLine" else c.execute("""SELECT raw_postyp, count(*) n FROM ext WHERE raw_postyp IS NOT NULL AND ng911.st_postyp IS NULL
                             GROUP BY 1 ORDER BY 2 DESC LIMIT 10""").fetchall()
     manifest = {
         "extension": f"overture-extension-{package}",
-        "package_version": "0.6.0",
+        "package_version": "0.7.0",
         "status": "prototype",
         "target_feature_type": target,
         "join_key": "id (GERS ID)",
@@ -335,14 +397,8 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
         "nena": {"standard": "NENA-STA-006.3-2026", "layer": nena_layer,
                  "mandatory_fields": list(nena_required),
                  "records_with_all_mandatory_fields_pct": required_pct,
-                 "coded_values": "street types, directionals, road class and parity are NENA domain values; "
-                                 "checked by the package on every sample row",
-                 "a3_source": "CDTFA city boundaries (CA state geoportal), fetched at build time; empty outside cities",
-                 "a4_source": "Census Designated Places (Census TIGERweb), only where A3 is empty",
-                 "msagcomm_source": "candidate only: A3, else A4, else the postal community, upper-cased; the 911 authority's MSAG governs",
-                 "esn": "not filled: ESNs are assigned by each 911 authority; fire_district/fire_fdid (CAL FIRE local fire districts) are evidence for mapping to them",
-                 "placement_source": "OpenAddresses source accuracy where stated (1 Structure, 2 Parcel, 3 Geocoding); else Structure inside an Overture building footprint, else Unknown",
-                 "street_types_not_in_registry": dict(unmapped)},
+                 **(RAIL_NOTES if nena_layer == "RailroadCenterLine" else
+                    {**ADDR_ROAD_NOTES, "street_types_not_in_registry": dict(unmapped)})},
         "files": {"data": f"{name}_ca.parquet", "sample": f"{name}_sample.jsonl"},
         "license_note": license_note,  # ponytail: the license is the publisher's call
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
@@ -367,6 +423,8 @@ def main():
     load_places(c, "city", CDTFA_CITIES, "CDTFA_CITY")
     load_places(c, "cdp", CENSUS_CDPS, "BASENAME")
     load_places(c, "fire", CALFIRE_DISTRICTS, "Name", "FDID")
+    load_places(c, "narn", NARN, "RROWNER1", "FRAARCID")
+    load_places(c, "county", TIGER_COUNTIES, "BASENAME")
     add_admin(c)
     load_oa_accuracy(c)
     updated = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")  # DateUpdate: when built
