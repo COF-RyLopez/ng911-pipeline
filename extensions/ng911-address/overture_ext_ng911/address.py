@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from overture.schema.system.model_constraint import no_extra_fields
 from overture.schema.system.ref import Id
 
-from .nena import Country, State, StreetNameDirectional, StreetNameType
+from .nena import Country, Placement, State, StreetNameDirectional, StreetNameType
 
 TARGET = ("addresses", "address")
 REFERENCE_SCHEMA = ">=2.0,<3"  # overture-schema-theme-addresses versions this package was checked against
@@ -63,6 +63,7 @@ class Ng911Address(BaseModel):
     unit: Annotated[str | None, Field(description="Unit (Unit).")] = None
     post_comm: Annotated[str | None, Field(description="Postal community name (Post_Comm).")] = None
     post_code: Annotated[str | None, Field(description="Postal code (Post_Code).")] = None
+    placement: Annotated[Placement | None, Field(description="Placement method (Placement): the source's stated method (OpenAddresses accuracy) where it has one, else Structure when the point sits inside an Overture building footprint, else Unknown.")] = None
     # not NENA fields: the road check and where the address comes from
     road_match: Annotated[RoadMatch, Field(description="Same-named road check against Overture transportation.")]
     road_distance_m: Annotated[float | None, Field(ge=0, description="Distance to the matched road, in metres.")] = None

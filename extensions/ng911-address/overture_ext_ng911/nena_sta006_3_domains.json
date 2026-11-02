@@ -535,6 +535,17 @@
   "Validation": [
    "Y",
    "N"
+  ],
+  "PlacementMethodPoint": [
+   "ExteriorAccess",
+   "Geocoding",
+   "InteriorAccess",
+   "InteriorCentroid",
+   "Parcel",
+   "PropertyAccess",
+   "Site",
+   "Structure",
+   "Unknown"
   ]
  }
 }
