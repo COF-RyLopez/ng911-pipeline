@@ -113,12 +113,13 @@ jobs:
         run: |
           python scripts/overture_only_counties.py --top 56
 
-      # Prototype NG911 GERS Extension: the package (extensions/ng911-address) and its data, keyed on GERS IDs
-      - name: Build the NG911 GERS Extension dataset and check package conformance
+      # Prototype NG911 GERS Extensions (extensions/ng911-address, extensions/ng911-road-centerline) and their data, keyed on GERS IDs
+      - name: Build the NG911 GERS Extension datasets and check package conformance
         run: |
           python scripts/build_ng911_extension.py
-          uv pip install --system ./extensions/ng911-address packaging
+          uv pip install --system ./extensions/ng911-address ./extensions/ng911-road-centerline packaging
           python extensions/ng911-address/tests/test_conformance.py
+          python extensions/ng911-road-centerline/tests/test_conformance.py
 
       - name: Publish statewide & Overture-only outputs to Cloudflare R2
         if: github.ref == 'refs/heads/main'
