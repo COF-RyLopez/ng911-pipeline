@@ -30,6 +30,8 @@ def get_content_type(file_path):
         return "application/vnd.pmtiles"
     elif ext == ".geojson":
         return "application/geo+json"
+    elif ext == ".jsonl":
+        return "application/x-ndjson"
     elif ext in [".json", ".geolibre"]:
         return "application/json"
     elif ext == ".csv":
@@ -116,7 +118,7 @@ def main():
             if f.startswith(".") or f.endswith(".wal"):
                 continue
             ext = os.path.splitext(f)[1].lower()
-            if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".geolibre", ".csv", ".html", ".gpkg"]:
+            if ext in [".parquet", ".pmtiles", ".geojson", ".json", ".jsonl", ".geolibre", ".csv", ".html", ".gpkg"]:
                 abs_path = os.path.join(root, f)
                 rel_path = os.path.relpath(abs_path, OUTPUT_DIR)
                 if owned(rel_path):
