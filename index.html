@@ -1804,6 +1804,12 @@
             <input type="checkbox" id="toggle-oo-roads"><span class="slider"></span>
           </label>
         </div>
+        <div class="overlap-label" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">
+          <span><span class="p2-dot" style="background:#0ea5e9"></span>Hydrology: named streams and waterbodies (USGS 3DHP, NENA Hydrology layers):</span>
+          <label class="layer-switch" title="Show NENA Hydrology Line and Polygon layers from the USGS 3D Hydrography Program">
+            <input type="checkbox" id="toggle-hydro"><span class="slider"></span>
+          </label>
+        </div>
         <div style="max-height:220px;overflow-y:auto">
         <table class="compare-table">
           <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th></th></tr></thead>
@@ -2368,6 +2374,41 @@
     const OO_MATCH_COLOR = ["match", ["get", "RoadMatch"], "OK", "#22c55e", "FAR", "#f59e0b", "#ef4444"];
     const countyBounds = {};  // county key (e.g. "los_angeles") -> [[w, s], [e, n]], from the statewide layer
     let ooClickBound = false;
+    // NENA Hydrology Line / Polygon (supplemental dataset from USGS 3DHP; build_ng911_hydrology.py, monthly)
+    let hydroClickBound = false;
+    function addHydroLayers() {
+      const base = `${R2_BASE}/supplemental/ng911_hydrology/tiles`;
+      const vis = getToggleState("toggle-hydro", false) ? "visible" : "none";
+      if (!map.getSource("hydro_poly_src")) map.addSource("hydro_poly_src", { type: "vector", url: `pmtiles://${base}/hydrology_polygons.pmtiles` });
+      if (!map.getSource("hydro_line_src")) map.addSource("hydro_line_src", { type: "vector", url: `pmtiles://${base}/hydrology_lines.pmtiles` });
+      if (!map.getLayer("hydro_poly")) {
+        map.addLayer({ id: "hydro_poly", type: "fill", source: "hydro_poly_src", "source-layer": "hydrology_polygons", minzoom: 7,
+                       layout: { visibility: vis }, paint: { "fill-color": "#0ea5e9", "fill-opacity": 0.35, "fill-outline-color": "#0369a1" } });
+      }
+      if (!map.getLayer("hydro_line")) {
+        map.addLayer({ id: "hydro_line", type: "line", source: "hydro_line_src", "source-layer": "hydrology_lines", minzoom: 9,
+                       layout: { visibility: vis, "line-cap": "round" },
+                       paint: { "line-color": "#0284c7", "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.6, 14, 2.5] } });
+      }
+      if (hydroClickBound) return;
+      hydroClickBound = true;
+      ["hydro_line", "hydro_poly"].forEach(layer => map.on("click", layer, (e) => {
+        const others = ["oo_points", "oo_roads"].concat(layer === "hydro_poly" ? ["hydro_line"] : []).filter(id => map.getLayer(id));
+        if (others.length && map.queryRenderedFeatures(e.point, { layers: others }).length) return;  // points, roads, streams win
+        const p = e.features[0].properties;
+        const div = document.createElement("div");
+        div.style.cssText = "font-size:12px;max-width:260px;color:#0f172a";
+        [["b", p.Name || "(unnamed)"],
+         ["div", `${layer === "hydro_line" ? "NENA Hydrology Line" : "NENA Hydrology Polygon"} · ${p.Type}`],
+         ["div", `USGS 3DHP id ${p.id3dhp} (persistent; not an Overture GERS ID)`]
+        ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+        new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+      }));
+    }
+    function setHydroVisible(on) {
+      document.getElementById("toggle-hydro").checked = on;
+      ["hydro_poly", "hydro_line"].forEach(id => map.getLayer(id) && map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
+    }
     function addOoLayer() {
       if (!map.getSource("oo_roads_src")) {
         map.addSource("oo_roads_src", { type: "vector", url: `pmtiles://${R2_BASE}/tiles/overture_only_road_centerlines.pmtiles` });
@@ -2938,6 +2979,8 @@
                        paint: { "line-color": "#0f172a", "line-width": 0.8 } });
       }
 
+      addHydroLayers();  // under the Overture-only roads and points
+      setHydroVisible(getToggleState("toggle-hydro", false));
       addOoLayer();  // Overture-only address points for every built county (off until shown)
       setOoVisible(getToggleState("toggle-oo-points", false));  // restore the saved toggles and their legend
       setOoRoadsVisible(getToggleState("toggle-oo-roads", false));
@@ -3701,7 +3744,7 @@
     });
     map.on("click", "statewide_fill", (e) => {
       // an Overture-only road or point under the click has its own popup
-      const oo = ["oo_points", "oo_roads"].filter(id => map.getLayer(id));
+      const oo = ["oo_points", "oo_roads", "hydro_line", "hydro_poly"].filter(id => map.getLayer(id));
       if (oo.length && map.queryRenderedFeatures(e.point, { layers: oo }).length) return;
       const p = e.features[0].properties;
       const pct = v => (v == null || v === "null") ? "—" : `${v}%`;
@@ -5478,6 +5521,7 @@
         document.getElementById("oo-builds").style.display = "";
         document.getElementById("toggle-oo-points").addEventListener("change", e => setOoVisible(e.target.checked));
         document.getElementById("toggle-oo-roads").addEventListener("change", e => setOoRoadsVisible(e.target.checked));
+        document.getElementById("toggle-hydro").addEventListener("change", e => setHydroVisible(e.target.checked));
       })
       .catch(() => {});  // not in this pipeline run yet
 

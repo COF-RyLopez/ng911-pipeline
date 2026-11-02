@@ -23,7 +23,8 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 - `macros/geometry_helpers.sql` street parsing helpers: `street_type_suffix_regex`, `normalize_street_type`,
   `normalize_direction`, `street_match_key` (both sides of an address-to-road match go through it).
 - `scripts/` Python entry points: `fetch_pilot_data.py`, `run_pilot.py`, `overture_only_counties.py`,
-  `statewide_overture_scorecard.py`, `build_ng911_extension.py`, `build_pmtiles.py`, `publish_to_r2.py`.
+  `statewide_overture_scorecard.py`, `build_ng911_extension.py`, `build_ng911_hydrology.py`, `build_pmtiles.py`,
+  `publish_to_r2.py`.
 - `extensions/ng911-address`, `extensions/ng911-road-centerline`, `extensions/ng911-railroad`: GERS Extension packages (Pydantic on
   `overture-schema` v2) with conformance tests; the address and road packages vendor the NENA-STA-006.3 domains.
 - `index.html` is the whole web app (MapLibre + PMTiles); `apps.html` is the landing page.
@@ -40,7 +41,7 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 | fire_district, fire_fdid (and _l/_r) | CAL FIRE California Local Fire Districts | evidence, not NENA fields; smallest polygon wins overlaps |
 | rlown, rlname (railroad) | FRA North American Rail Network (owner, nearest line ≤ ~30 m); Overture rail names | built statewide in `railroad_dataset`, not from the county builds; California counties only |
 | esn (not filled) | — | authority-assigned; never derive or invent it |
-| hydrology (not an Extension) | — | Overture `base/water` IDs aren't stable GERS IDs; a 3DHP supplemental dataset is in progress |
+| hs_/hp_ type and name (hydrology) | USGS 3DHP feature service, tiled 1° with backoff and tile splitting | a supplemental dataset with geometry, not an Extension: Overture `base/water` IDs aren't stable GERS IDs; NGUID from `id3dhp` |
 | PSAP (not filled) | — | no open source: HIFLD's layer is offline, the FCC registry has no boundaries, Cal OES doesn't publish |
 | police / EMS (not filled) | — | no statewide layer; don't name agencies from A3 (contract cities) or use LEMSA as the responder |
 
@@ -74,7 +75,9 @@ source table, and a refreshed sample.
   minutes, and a CI job fails with them. Check the log names an outside host, re-run the failed job once, and
   treat a second failure as real. A county whose address service returns nothing stops `run_pilot.py` with a
   message naming the county.
-- Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture`) and
+- `.github/workflows/hydrology.yml` builds the hydrology layers monthly (and when its script changes, ~40 min)
+  and publishes the `supplemental/` part; `publish_to_r2.py`'s `PART_KEYS` keeps the other jobs from pruning it.
+- Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture|hydrology`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
 - The overture-only job takes ~50 min against an 80 min timeout; check it when adding work. The runner has
