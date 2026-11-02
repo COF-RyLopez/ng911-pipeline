@@ -54,6 +54,13 @@ parsed_overture AS (
         source_record_id
     FROM raw_overture
     WHERE overture_number IS NOT NULL
+),
+
+-- San Francisco's and San Diego's sources zero-pad single-digit ordinals ("05TH ST"), which then match no road
+-- ("5th Street" in OpenStreetMap): drop the padding. Multi-digit ordinals (10TH, 100TH) are left as they are.
+unpadded AS (
+    SELECT * REPLACE (regexp_replace(street_name, '\b0+([1-9][0-9]*(ST|ND|RD|TH))\b', '\1', 'g') AS street_name)
+    FROM parsed_overture
 )
 
 -- Calaveras' OpenAddresses source doubles the street name in Overture ("HANLEY HANLEY DR", "HWY 12 HWY 12"),
@@ -66,4 +73,4 @@ SELECT * REPLACE (
             = array_to_string(list_slice(string_split(street_name, ' '), len(string_split(street_name, ' ')) // 2 + 1, len(string_split(street_name, ' '))), ' ')
          THEN array_to_string(list_slice(string_split(street_name, ' '), 1, len(string_split(street_name, ' ')) // 2), ' ')
          ELSE street_name END AS street_name)
-FROM parsed_overture
+FROM unpadded
