@@ -28,25 +28,36 @@ row = Ng911AddressExtension.model_validate(json_row)   # id + ng911.{...}
 2. **Adds properties, not features:** no geometry and no new rows; consumers join to Overture for the point.
 3. **Joins on the GERS ID:** `id`.
 4. **Never redefines a reference property:** everything lives under the `ng911` namespace, including parsed
-   versions of values Overture already holds (Overture `street` → `ng911.st_predir` / `st_name` / `st_posttyp`).
+   versions of values Overture already holds (Overture `street` → `ng911.st_predir` / `st_pretyp` / `st_name` / `st_postyp` / `st_posdir`).
 5. **Declares a reference schema range:** `overture-schema-theme-addresses >=2.0,<3`.
 
 Plus the listing requirement: `sample/ng911_address_sample.jsonl` parses against the package.
 
-## Properties (`ng911.*`, NENA STA-006 names, lower-cased)
+## Properties (`ng911.*`, NENA-STA-006.3-2026 Site/Structure Address Point names, lower-cased)
+
+Coded fields hold NENA domain values, vendored from NENA's GIS data model template
+(`overture_ext_ng911/nena_sta006_3_domains.json`, with its source). The model rejects anything else, so
+every sample row is checked against them: street types and directionals are the NENA registry words
+("Avenue", "North"), not USPS abbreviations.
 
 | Field | NENA | Source |
 |---|---|---|
-| `nguid` | NGUID | `urn:emergency:uid:gis:SSAP:<GERS id>:<agency domain>`: the publisher's own ID next to the GERS ID |
+| `discrpagid` | DiscrpAgID (**mandatory**) | the agency domain that takes discrepancy reports; placeholder `<county>.ca.gov` until a 9-1-1 authority publishes |
+| `dateupdate` | DateUpdate (**mandatory**) | when the record was built (W3C dateTime) |
+| `nguid` | NGUID (**mandatory**) | `urn:emergency:uid:gis:SSAP:<GERS id>:<agency domain>`: the publisher's own ID next to the GERS ID |
+| `country`, `a1` | Country, A1 (**mandatory**) | `US`, `CA` |
+| `a2` | A2 | county, as the Census Bureau names it ("Fresno County") |
 | `add_number`, `addnum_suf` | Add_Number, AddNum_Suf | Overture `number`, split ("1025 1/2" → 1025, "1/2") |
-| `st_predir`, `st_name`, `st_posttyp` | St_PreDir, St_Name, St_PosTyp | Overture `street`, parsed and USPS-abbreviated |
+| `st_predir`, `st_pretyp`, `st_name`, `st_postyp`, `st_posdir` | St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir | Overture `street`, parsed: "HIGHWAY 41" → Highway / 41; "VIA MARIPOSA" → Via / MARIPOSA; "N BLACKSTONE AVE" → North / BLACKSTONE / Avenue; "TERRA VISTA PKWY W" → TERRA VISTA / Parkway / West |
 | `unit` | Unit | Overture `unit` |
 | `post_comm`, `post_code` | Post_Comm, Post_Code | Overture `address_levels` / `postcode` |
-| `county`, `state`, `country` | County, State, Country | location |
-| `road_match`, `road_distance_m`, `road_segment_id` | (validation) | nearest same-named Overture `transportation/segment` within ~400 m: `OK` ≤ 50 m, `FAR`, `NO_NAMED_ROAD`; the segment's GERS ID |
-| `source_url` | (lineage) | the OpenAddresses source to fix upstream |
+| `road_match`, `road_distance_m`, `road_segment_id` | (validation, not NENA) | nearest same-named Overture `transportation/segment` within ~400 m: `OK` ≤ 50 m, `FAR`, `NO_NAMED_ROAD`; the segment's GERS ID |
+| `source_url` | (lineage, not NENA) | the OpenAddresses source to fix upstream |
 
 `road_segment_id` is itself a GERS ID, so the Extension links two reference themes, addresses and roads.
+
+Not filled yet: A3 (incorporated municipality, needs city boundaries), Placement, ESN/MSAG (need the
+9-1-1 authority's service zones).
 
 ## Listing metadata (`manifest.json`, written with every data release)
 
