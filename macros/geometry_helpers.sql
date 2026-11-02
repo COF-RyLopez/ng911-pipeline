@@ -145,3 +145,7 @@ CASE WHEN regexp_matches({{ record_id }}, '^[nwr][0-9]+')
 CASE WHEN regexp_matches({{ dataset }}, '^[a-z]{2}/[a-z0-9_/]+$')
      THEN 'https://github.com/openaddresses/openaddresses/blob/master/sources/' || {{ dataset }} || '.json' END
 {%- endmacro %}
+
+{#- street type suffixes, abbreviated or spelled out (31% of California streets spell it out: 'PARK AVENUE');
+    shared by Overture addresses and Overture road names so both parse the same way -#}
+{% macro street_type_suffix_regex() %}{{ return(' +(ST|STREET|AVE|AV|AVENUE|BLVD|BL|BOULEVARD|RD|ROAD|DR|DRIVE|LN|LANE|WAY|WY|CT|COURT|PL|PLACE|CIR|CI|CIRCLE|HWY|HIGHWAY|PKWY|PW|PARKWAY|TRL|TR|TRAIL|TER|TERRACE|ALY|ALLEY|PLZ|PLAZA|LOOP|LP)$') }}{% endmacro %}

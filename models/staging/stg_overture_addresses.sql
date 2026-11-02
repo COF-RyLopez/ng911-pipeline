@@ -1,6 +1,5 @@
 {{ config(materialized='view') }}
-{#- street type suffixes, abbreviated or spelled out (31% of California streets spell it out: 'PARK AVENUE') -#}
-{%- set sfx = ' +(ST|STREET|AVE|AV|AVENUE|BLVD|BL|BOULEVARD|RD|ROAD|DR|DRIVE|LN|LANE|WAY|WY|CT|COURT|PL|PLACE|CIR|CI|CIRCLE|HWY|HIGHWAY|PKWY|PW|PARKWAY|TRL|TR|TRAIL|TER|TERRACE|ALY|ALLEY|PLZ|PLAZA|LOOP|LP)$' %}
+{%- set sfx = street_type_suffix_regex() %}
 
 WITH raw_overture AS (
     {% if var('use_cached_data', true) %}
