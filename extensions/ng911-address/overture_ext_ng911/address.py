@@ -53,6 +53,7 @@ class Ng911Address(BaseModel):
     a2: Annotated[str | None, Field(description="County (A2), as named in the Census Bureau list, e.g. 'Fresno County'.")] = None
     a3: Annotated[str | None, Field(description="Incorporated municipality (A3): the city the address is in, from the state's CDTFA city boundaries; empty outside cities.")] = None
     a4: Annotated[str | None, Field(description="Unincorporated community (A4): the Census Designated Place the address is in, only where A3 is empty.")] = None
+    msagcomm: Annotated[str | None, Field(description="MSAG Community Name (MSAGComm), a candidate: A3, else A4, else the postal community, upper-cased. The 911 authority's MSAG governs.")] = None
     add_number: Annotated[int | None, Field(ge=0, le=999999, description="Address number (Add_Number).")] = None
     addnum_suf: Annotated[str | None, Field(description="Address number suffix (AddNum_Suf), e.g. '1/2', 'A'.")] = None
     st_predir: Annotated[StreetNameDirectional | None, Field(description="Street name pre-directional (St_PreDir), e.g. 'North'.")] = None
@@ -65,6 +66,8 @@ class Ng911Address(BaseModel):
     post_code: Annotated[str | None, Field(description="Postal code (Post_Code).")] = None
     placement: Annotated[Placement | None, Field(description="Placement method (Placement): the source's stated method (OpenAddresses accuracy) where it has one, else Structure when the point sits inside an Overture building footprint, else Unknown.")] = None
     # not NENA fields: the road check and where the address comes from
+    fire_district: Annotated[str | None, Field(description="Local fire district the point is in (CAL FIRE statewide compilation): evidence for the authority's ESN, which is not filled.")] = None
+    fire_fdid: Annotated[str | None, Field(description="That fire district's FDID (NFIRS fire department ID).")] = None
     road_match: Annotated[RoadMatch, Field(description="Same-named road check against Overture transportation.")]
     road_distance_m: Annotated[float | None, Field(ge=0, description="Distance to the matched road, in metres.")] = None
     road_segment_id: Annotated[Id | None, Field(description="GERS ID of the matched transportation/segment.")] = None

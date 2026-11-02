@@ -39,8 +39,10 @@ NENA's GIS data model template); the model rejects anything else.
 | `a2_l/_r` | A2_L/R | the county the segment falls in |
 | `a3_l/_r` | A3_L/R | the most common CDTFA city among that side's addresses; a side with none takes the city at the segment's midpoint; empty outside cities |
 | `a4_l/_r` | A4_L/R | where that side's A3 is empty, the Census Designated Place, by the same rule |
+| `msagcomm_l/_r` | MSAGComm_L/R | a **candidate**: that side's A3, else A4, else postal community, upper-cased (ESN_L/R not filled: authority-assigned) |
 | `postcode_l/_r`, `postcomm_l/_r` | PostCode_L/R, PostComm_L/R | most common among that side's addresses |
 | `addr_count_l/_r` | (evidence, not NENA) | how many addresses each side's range rests on |
+| `fire_district_l/_r`, `fire_fdid_l/_r` | (evidence, not NENA) | each side's CAL FIRE local fire district and FDID, by the same rule as A3 |
 | `source_url` | (lineage, not NENA) | the OpenStreetMap way, to fix the road at the source |
 
 **How sides are decided:** each matched address is projected onto its segment. The sign of the cross product
