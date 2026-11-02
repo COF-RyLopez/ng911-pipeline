@@ -27,6 +27,23 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
   `overture-schema` v2) with conformance tests and vendored NENA-STA-006.3 domains.
 - `index.html` is the whole web app (MapLibre + PMTiles); `apps.html` is the landing page.
 
+## Where the NENA fields come from (`build_ng911_extension.py`)
+
+| Field(s) | Source | Notes |
+|---|---|---|
+| street parts, add_number, unit, post_comm, post_code | Overture addresses, parsed by the dbt models | registry words via `nena_setup` macros |
+| fromaddr/toaddr, parity (L/R) | addresses matched to each segment (same name, ≤ 50 m) | sides from the cross product; 0–0/Z when empty |
+| a3 / a4 (and _l/_r) | CDTFA cities, else Census Designated Places (TIGERweb) | `load_places` + `add_admin`; a4 only where a3 is empty |
+| msagcomm (and _l/_r) | a3, else a4, else postal community, upper-cased | a **candidate**; the 911 authority's MSAG governs |
+| placement | OpenAddresses source `accuracy` (1/2/3), else `InBuilding`, else Unknown | `InBuilding` is set per county in `overture_only_counties.py` from statewide Overture footprints |
+| fire_district, fire_fdid (and _l/_r) | CAL FIRE California Local Fire Districts | evidence, not NENA fields; smallest polygon wins overlaps |
+| esn (not filled) | — | authority-assigned; never derive or invent it |
+
+The polygon layers (CDTFA, TIGERweb, CAL FIRE) and the OpenAddresses source files are fetched at build time,
+one request each; the footprint file (1.8 GB) is fetched once per run and deleted after the county builds.
+A new NENA field goes in the package model, its README table, the manifest `nena` section, the main README's
+source table, and a refreshed sample.
+
 ## Running things
 
 - Python 3.12+, `uv pip install dbt-duckdb duckdb pyarrow pandas boto3 tylertoo overture-schema`.
@@ -51,7 +68,9 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 - Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
-- The overture-only job takes ~30 min; check its timeout when adding work to it.
+- The overture-only job takes ~35–40 min against a 60 min timeout; check it when adding work. The runner has
+  ~9 GB of DuckDB temp space: the extension build ran out once when it copied the 13.6M-row `addr` table to
+  add a column. Keep per-feature lookups (`addr_city`, `seg_admin`) as small tables joined where used.
 
 ## Rules we've learned
 
@@ -64,6 +83,9 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
   `nena_sta006_3_domains.json`.
 - **GERS Extensions**: properties only (no geometry), join on the GERS ID, never redefine an Overture
   property (put it under `ng911`), declare the schema range, ship a sample that parses.
+- **Don't invent authority-owned values.** ESN, the agency domain and MSAG names belong to each 911
+  authority. Leave ESN empty, keep DiscrpAgID/NGUID as the `<county>.ca.gov` placeholder, label derived
+  values (msagcomm, placement from footprints) as candidates or inferences, and carry evidence instead.
 - **Coverage is all 58 counties.** Don't exclude counties that also have a county-GIS build.
 - Overture transportation is ODbL; keep it out of county deliverables.
 
