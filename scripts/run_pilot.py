@@ -299,6 +299,9 @@ def main():
 
 
     total_addr = conn.sql("SELECT count(*) FROM mart_ng911_addresses").fetchall()[0][0]
+    if not total_addr:  # a county source that was down gets an empty stub in fetch_pilot_data.py; say so plainly
+        sys.exit(f"No address points for {county['label']}: the county address source returned nothing "
+                 "(see the [WARNING] from fetch_pilot_data.py above; usually the county's service was down).")
     addr_metrics = conn.sql("""
         SELECT ConflationStatus, count(*), round(avg(SpatialOffsetMeters), 3) 
         FROM mart_ng911_addresses GROUP BY ConflationStatus
