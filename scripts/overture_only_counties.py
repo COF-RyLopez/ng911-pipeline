@@ -79,7 +79,8 @@ def build(feature, dbt_bin):
             SELECT p.*, trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type)) AS Address,
                    CASE WHEN f.overture_id IS NULL THEN 'NO_NAMED_ROAD'
                         WHEN f.is_excessive_offset THEN 'FAR' ELSE 'OK' END AS RoadMatch,
-                   f.distance_meters AS DistanceM
+                   f.distance_meters AS DistanceM,
+                   f.overture_segment_id AS RoadSegmentId  -- GERS ID of the matched transportation segment
             FROM oo_address_points p LEFT JOIN oo_fishbones f USING (overture_id)
         ) TO '{out}/address_points.parquet' (FORMAT PARQUET)""")
         c.sql(f"COPY oo_road_centerlines TO '{out}/road_centerlines.parquet' (FORMAT PARQUET)")
