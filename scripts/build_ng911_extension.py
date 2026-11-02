@@ -65,28 +65,41 @@ SPANISH_PRETYPES = ("CALLE", "CAMINO", "VIA", "PASEO", "AVENIDA", "CORTE")
 CDTFA_CITIES = ("https://services3.arcgis.com/uknczv4rpevve42E/arcgis/rest/services/"
                 "California_Cities_and_Identifiers_Blue_Version_view/FeatureServer/2/query"
                 "?where=1%3D1&outFields=CDTFA_CITY&outSR=4326&f=geojson")
+# A4 ("Administrative Level 4", formerly Unincorporated Community): the Census Designated Place a feature is in,
+# only where A3 is empty. CDPs (Census TIGERweb, public domain; 1,139 in CA) are the Census Bureau's statistical
+# stand-in for named unincorporated communities. ponytail: CDP lines aren't the county's own community
+# boundaries; swap in a county's community-plan areas where it publishes them.
+CENSUS_CDPS = ("https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/"
+               "MapServer/5/query?where=STATE%3D%2706%27&outFields=BASENAME&outSR=4326&f=geojson")
 
 
-def load_cities(c):
-    """CDTFA city polygons as table city(name, geom); one request (549 parts, well under the 2,000 limit)."""
-    req = urllib.request.Request(CDTFA_CITIES, headers={"User-Agent": "ng911-pipeline"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
+def load_places(c, table, url, field):
+    """Polygons from an ArcGIS geojson query as table <table>(name, geom); one request each (under the record limit)."""
+    req = urllib.request.Request(url, headers={"User-Agent": "ng911-pipeline"})
+    with urllib.request.urlopen(req, timeout=180) as resp:
         features = json.load(resp)["features"]
-    c.execute("CREATE TABLE city_raw (name VARCHAR, gj VARCHAR)")
-    c.executemany("INSERT INTO city_raw VALUES (?, ?)",
-                  [(f["properties"]["CDTFA_CITY"], json.dumps(f["geometry"])) for f in features])
-    c.sql("CREATE TABLE city AS SELECT name, ST_MakeValid(ST_GeomFromGeoJSON(gj)) AS geom FROM city_raw")
-    print(f"  -> {len(features)} CDTFA city parts, {c.execute('SELECT count(DISTINCT name) FROM city').fetchall()[0][0]} cities")
+    c.execute(f"CREATE TABLE {table}_raw (name VARCHAR, gj VARCHAR)")
+    c.executemany(f"INSERT INTO {table}_raw VALUES (?, ?)",
+                  [(f["properties"][field], json.dumps(f["geometry"])) for f in features])
+    c.sql(f"CREATE TABLE {table} AS SELECT name, ST_MakeValid(ST_GeomFromGeoJSON(gj)) AS geom FROM {table}_raw")
+    print(f"  -> {len(features)} {table} parts, {c.execute(f'SELECT count(DISTINCT name) FROM {table}').fetchall()[0][0]} names")
 
 
-def add_a3(c):
-    """addr.a3 = the city each address is in; seg_city = the city at each segment's midpoint."""
-    c.sql("""CREATE TABLE addr_city AS SELECT a.overture_id, any_value(c.name) AS a3
-             FROM addr a JOIN city c ON ST_Intersects(c.geom, a.geom) GROUP BY 1""")
-    c.sql("CREATE OR REPLACE TABLE addr AS SELECT addr.*, ac.a3 FROM addr LEFT JOIN addr_city ac USING (overture_id)")
-    c.sql("""CREATE TABLE seg_city AS SELECT s.overture_segment_id AS sc_seg, s.county_key AS sc_county, any_value(c.name) AS a3
-             FROM seg s JOIN city c ON ST_Intersects(c.geom, ST_LineInterpolatePoint(s.geom, 0.5))
-             WHERE ST_GeometryType(s.geom) = 'LINESTRING' GROUP BY 1, 2""")
+def add_admin(c):
+    """addr.a3/a4 = the city, else the CDP, each address is in; seg_admin = the same at each segment's midpoint."""
+    def within(table, pts, key):  # inner spatial joins, so DuckDB plans them as spatial joins
+        return f"(SELECT p.{key}, any_value(t.name) AS name FROM {pts} p JOIN {table} t ON ST_Intersects(t.geom, p.pt) GROUP BY 1)"
+    for pts, key, src in (("addr_pt", "overture_id", "SELECT overture_id, geom AS pt FROM addr"),
+                          ("seg_pt", "sc_seg", """SELECT overture_segment_id AS sc_seg, any_value(county_key) AS sc_county,
+                                                  any_value(ST_LineInterpolatePoint(geom, 0.5)) AS pt FROM seg
+                                                  WHERE ST_GeometryType(geom) = 'LINESTRING' GROUP BY 1""")):
+        c.sql(f"CREATE TABLE {pts} AS {src}")
+        c.sql(f"""CREATE TABLE {pts}_admin AS SELECT p.*, ci.name AS a3, CASE WHEN ci.name IS NULL THEN cd.name END AS a4
+                  FROM {pts} p LEFT JOIN {within('city', pts, key)} ci USING ({key})
+                  LEFT JOIN {within('cdp', pts, key)} cd USING ({key})""")
+    c.sql("""CREATE OR REPLACE TABLE addr AS SELECT addr.*, aa.a3, aa.a4
+             FROM addr LEFT JOIN addr_pt_admin aa USING (overture_id)""")
+    c.sql("CREATE TABLE seg_admin AS SELECT sc_seg, sc_county, a3, a4 FROM seg_pt_admin")
 
 
 def _case(col, mapping):
@@ -127,6 +140,7 @@ def address_dataset(c, updated):
             a1 := 'CA',
             a2 := {COUNTY_NAME},
             a3 := a3,
+            a4 := a4,
             add_number := {ADD_NUMBER},
             addnum_suf := nullif(trim(regexp_replace(house_number, '^[0-9]+', '')), ''),
             st_predir := nena_dir_word(pre_directional),
@@ -150,7 +164,7 @@ def road_centerline_dataset(c, updated):
     # From/To follow the segment's digitized direction: numbers rising along it give From = min, To = max.
     c.sql(f"""CREATE TABLE side AS
         WITH p AS (
-            SELECT a.RoadSegmentId AS seg_id, {ADD_NUMBER} AS n, a.postcode, a.community_name, a.a3, a.geom AS pt,
+            SELECT a.RoadSegmentId AS seg_id, {ADD_NUMBER} AS n, a.postcode, a.community_name, a.a3, a.a4, a.geom AS pt,
                    s.geom AS line, ST_LineLocatePoint(s.geom, a.geom) AS f
             FROM addr a JOIN seg s ON s.overture_segment_id = a.RoadSegmentId AND s.county_key = a.county_key
             WHERE a.RoadMatch = 'OK' AND ST_GeometryType(s.geom) = 'LINESTRING'),
@@ -158,7 +172,7 @@ def road_centerline_dataset(c, updated):
             SELECT *, ST_LineInterpolatePoint(line, greatest(f - 0.001, 0)) AS a0,
                       ST_LineInterpolatePoint(line, least(f + 0.001, 1)) AS a1
             FROM p WHERE n IS NOT NULL)
-        SELECT seg_id, n, f, postcode, community_name, a3,
+        SELECT seg_id, n, f, postcode, community_name, a3, a4,
                CASE WHEN (ST_X(a1) - ST_X(a0)) * (ST_Y(pt) - ST_Y(a0)) - (ST_Y(a1) - ST_Y(a0)) * (ST_X(pt) - ST_X(a0)) > 0
                     THEN 'L' ELSE 'R' END AS side
         FROM d""")
@@ -167,7 +181,7 @@ def road_centerline_dataset(c, updated):
                CASE WHEN coalesce(corr(n, f), 0) >= 0 THEN min(n) ELSE max(n) END AS from_n,
                CASE WHEN coalesce(corr(n, f), 0) >= 0 THEN max(n) ELSE min(n) END AS to_n,
                CASE WHEN bool_and(n % 2 = 0) THEN 'E' WHEN bool_and(n % 2 = 1) THEN 'O' ELSE 'B' END AS parity,
-               mode(postcode) AS postcode, mode(community_name) AS postcomm, mode(a3) AS a3
+               mode(postcode) AS postcode, mode(community_name) AS postcomm, mode(a3) AS a3, mode(a4) AS a4
         FROM side GROUP BY ALL""")
     # ponytail: a segment crossing a county line is kept once, in the county where more of its addresses are,
     # and both sides take that county; per-side counties from the county polygons if border roads matter
@@ -190,6 +204,8 @@ def road_centerline_dataset(c, updated):
             a2_l := {COUNTY_NAME}, a2_r := {COUNTY_NAME},
             -- a side's city from its addresses; with none, the city at the segment's midpoint
             a3_l := CASE WHEN l.k > 0 THEN l.a3 ELSE sc.a3 END, a3_r := CASE WHEN r.k > 0 THEN r.a3 ELSE sc.a3 END,
+            a4_l := CASE WHEN l.k > 0 THEN (CASE WHEN l.a3 IS NULL THEN l.a4 END) ELSE sc.a4 END,
+            a4_r := CASE WHEN r.k > 0 THEN (CASE WHEN r.a3 IS NULL THEN r.a4 END) ELSE sc.a4 END,
             postcode_l := l.postcode, postcode_r := r.postcode,
             postcomm_l := l.postcomm, postcomm_r := r.postcomm,
             roadclass := CASE WHEN s.road_class = 'motorway' THEN 'Primary'
@@ -203,7 +219,7 @@ def road_centerline_dataset(c, updated):
         FROM s
         LEFT JOIN rng l ON l.seg_id = s.overture_segment_id AND l.side = 'L'
         LEFT JOIN rng r ON r.seg_id = s.overture_segment_id AND r.side = 'R'
-        LEFT JOIN seg_city sc ON sc.sc_seg = s.overture_segment_id AND sc.sc_county = s.county_key
+        LEFT JOIN seg_admin sc ON sc.sc_seg = s.overture_segment_id
         WHERE s.st_name IS NOT NULL
         QUALIFY row_number() OVER (PARTITION BY s.overture_segment_id
                                    ORDER BY coalesce(l.k, 0) + coalesce(r.k, 0) DESC, s.county_key) = 1""")
@@ -260,7 +276,7 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
                             GROUP BY 1 ORDER BY 2 DESC LIMIT 10""").fetchall()
     manifest = {
         "extension": f"overture-extension-{package}",
-        "package_version": "0.3.0",
+        "package_version": "0.4.0",
         "status": "prototype",
         "target_feature_type": target,
         "join_key": "id (GERS ID)",
@@ -277,6 +293,7 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
                  "coded_values": "street types, directionals, road class and parity are NENA domain values; "
                                  "checked by the package on every sample row",
                  "a3_source": "CDTFA city boundaries (CA state geoportal), fetched at build time; empty outside cities",
+                 "a4_source": "Census Designated Places (Census TIGERweb), only where A3 is empty",
                  "street_types_not_in_registry": dict(unmapped)},
         "files": {"data": f"{name}_ca.parquet", "sample": f"{name}_sample.jsonl"},
         "license_note": license_note,  # ponytail: the license is the publisher's call
@@ -299,8 +316,9 @@ def main():
     c.sql(f"""CREATE TABLE seg AS SELECT *, {COUNTY_KEY} AS county_key
               FROM read_parquet({glob.glob(os.path.join(BUILDS, 'road_centerlines.parquet'))!r}, filename = true, union_by_name = true)""")
     nena_setup(c)
-    load_cities(c)
-    add_a3(c)
+    load_places(c, "city", CDTFA_CITIES, "CDTFA_CITY")
+    load_places(c, "cdp", CENSUS_CDPS, "BASENAME")
+    add_admin(c)
     updated = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")  # DateUpdate: when built
     for name, build, *meta in DATASETS:
         build(c, updated)
