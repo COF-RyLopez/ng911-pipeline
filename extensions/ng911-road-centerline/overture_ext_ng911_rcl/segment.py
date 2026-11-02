@@ -61,6 +61,8 @@ class Ng911RoadCenterline(BaseModel):
     st_postyp: Annotated[StreetNameType | None, Field(description="Street name post type (St_PosTyp), NENA registry word.")] = None
     a2_l: Annotated[str | None, Field(description="Left county (A2_L).")] = None
     a2_r: Annotated[str | None, Field(description="Right county (A2_R).")] = None
+    a3_l: Annotated[str | None, Field(description="Left incorporated municipality (A3_L): from the left side's addresses, else the segment's midpoint.")] = None
+    a3_r: Annotated[str | None, Field(description="Right incorporated municipality (A3_R).")] = None
     postcode_l: Annotated[str | None, Field(description="Left postal code (PostCode_L): most common among left addresses.")] = None
     postcode_r: Annotated[str | None, Field(description="Right postal code (PostCode_R).")] = None
     postcomm_l: Annotated[str | None, Field(description="Left postal community (PostComm_L).")] = None
