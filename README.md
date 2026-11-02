@@ -2,7 +2,7 @@
 
 How far can open data get every California county toward a NENA NG9-1-1 GIS dataset? This repo builds
 address points and road centerlines for all 58 counties from [Overture Maps](https://overturemaps.org)
-alone, checks them against the road network, publishes them as two prototype **GERS Extensions** in the
+alone, checks them against the road network, publishes them as three prototype **GERS Extensions** in the
 NENA NG9-1-1 GIS Data Model (**NENA-STA-006.3-2026**) shape, and sets them next to a full county-GIS build
 for Fresno.
 
@@ -25,20 +25,25 @@ Published by CI to Cloudflare R2. The landing page links all three:
   address points parsed into NENA street parts, Overture road centerlines, and an address-to-road check (the
   nearest same-named road within ~400 m; "OK" within 50 m). Counties built from county GIS (Fresno, Kings)
   get an Overture-only build too, for comparison.
-- Statewide (Overture release 2026-09-23.1): about 13.6 million addresses and 1.65 million named road
-  segments; in most counties 80–99% of addresses match a same-named road.
+- Statewide (Overture release 2026-09-23.1): 13,597,208 addresses and 1,650,872 named road segments; in most
+  counties 80–99% of addresses match a same-named road, and about half of road segments carry address ranges.
+- NENA marks, statewide: 100% of address points and road centerlines carry every STA-006.3 mandatory field,
+  and no street type falls outside NENA's registry. 93.9% of addresses carry a city (A3, 80.5%) or a named
+  community (A4, 13.4%); placement is Structure for 73.0%, Parcel for 4.3% and Unknown for 22.7%; 99.4% carry
+  a fire district. Each manifest has the full per-field fill.
 
 ## GERS Extensions (prototype)
 
-Two packages add NENA properties to Overture features as columns keyed on the GERS ID, following the
+Three packages (0.7.0) add NENA properties to Overture features as columns keyed on the GERS ID, following the
 Overture GERS Extensions framework (properties not features, GERS ID join key, no redefined reference
-properties, declared schema range, a sample that parses). Each ships its NENA-STA-006.3 coded domains and a
-conformance test suite that runs in CI.
+properties, declared schema range, a sample that parses). Each ships a conformance test suite that runs in CI,
+and the NENA-STA-006.3 coded domains its layer uses.
 
 | Package | Extends | Adds | Data |
 |---|---|---|---|
 | [`extensions/ng911-address`](extensions/ng911-address) | `addresses/address` | NENA Site/Structure Address Point fields: street parts as NENA registry words, unit, postal fields, city (A3) and community (A4), MSAG community candidate, placement method, NGUID, the road check, fire-district evidence | [`ng911_address_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/ng911_address_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/manifest.json) |
 | [`extensions/ng911-road-centerline`](extensions/ng911-road-centerline) | `transportation/segment` | NENA Road Centerline fields: left/right address ranges and parity derived from matched addresses, NENA road class, street parts, city/community and MSAG community candidate per side, fire-district evidence per side | [`ng911_road_centerline_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/ng911_road_centerline_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/manifest.json) |
+| [`extensions/ng911-railroad`](extensions/ng911-railroad) | `transportation/segment` (rail) | NENA Railroad Centerline fields: rail line owner (FRA reporting mark, from FRA's North American Rail Network) and name; 23,598 California segments, 68.7% with an owner | [`ng911_railroad_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_railroad/ng911_railroad_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_railroad/manifest.json) |
 
 Each manifest reports rows, GERS ID coverage against the stated Overture release, per-field fill, and the
 NENA marks: the share of records carrying every mandatory field and any street type not in the NENA
@@ -64,7 +69,12 @@ LIMIT 10;
 | A4 (unincorporated community) | Census Designated Places (Census TIGERweb), where A3 is empty |
 | MSAGComm | **candidate**: A3, else A4, else the postal community; the 911 authority's MSAG governs |
 | Placement | the OpenAddresses source's stated accuracy where it has one, else Structure when the point is inside an Overture building footprint, else Unknown |
+| RLOwn, RLName (railroad) | FRA North American Rail Network (owner); Overture `transportation` rail names |
 | DiscrpAgID, NGUID | placeholder agency domain (`<county>.ca.gov`) until a 9-1-1 authority publishes |
+
+Not an Extension: **hydrology.** NENA's Hydrology layers would attach to Overture's `base/water`, but base-theme
+IDs aren't stable GERS IDs. A supplemental Hydrology Line/Polygon dataset from the USGS 3D Hydrography Program
+(3DHP), which has persistent IDs and GNIS names, is in progress.
 
 Not filled: **ESN**. Each 911 authority assigns ESNs to its own emergency service zones, so a number derived
 from open data would match no real MSAG. Each record carries its CAL FIRE local fire district and FDID
@@ -87,7 +97,8 @@ upstream with a PR. `scripts/oa_conform_audit.py` checks every California OpenAd
 ## How it runs
 
 - `.github/workflows/ci.yml` runs on every PR and on `main`: the county jobs (Fresno, Kings) and a parallel
-  Overture-only job (statewide scorecard, 58 counties, Extension datasets and conformance tests, map tiles).
+  Overture-only job (statewide scorecard, 58 counties, Extension datasets and conformance tests, map tiles;
+  about 50 minutes against an 80-minute timeout).
 - Only `main` publishes to R2; each job publishes and prunes only its own files.
 - Locally: `uv pip install dbt-duckdb duckdb pyarrow pandas boto3 tylertoo overture-schema`, then the
   scripts above. See [`AGENTS.md`](AGENTS.md) for the details (DuckDB 2.0 notes, running one county,
@@ -110,7 +121,7 @@ ng911_pipeline/
 ├── macros/
 │   └── geometry_helpers.sql # Custom macros for geometry conversions (WKB, points, spatial filters)
 ├── models/
-│   ├── schema.yml           # Data tests & NENA compliance assertions (83 tests)
+│   ├── schema.yml           # Data tests & NENA compliance assertions
 │   ├── staging/
 │   │   ├── stg_county_addresses.sql       # Authoritative Fresno County ArcGIS addresses (238k points)
 │   │   ├── stg_county_streets.sql         # Road centerlines from OpenAddresses county sources (Fresno 53k; +Kings/Tulare with published ranges)

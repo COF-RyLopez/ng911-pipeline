@@ -9,7 +9,8 @@ An open-data NG9-1-1 (NENA) pipeline for California counties, in three products,
 published site (`apps.html` links them):
 
 1. **Open data only** (`index.html?app=open`): every county built from Overture alone (addresses + roads),
-   statewide scorecard, and two prototype GERS Extensions (`extensions/`).
+   statewide scorecard, three prototype GERS Extensions (`extensions/`), and supplemental layers where
+   Overture has no stable IDs.
 2. **County sources** (`index.html?app=county`): a county's own GIS vs open data and the state (CDTFA).
 3. **Remediation** (`index.html`): the full Fresno hub.
 
@@ -23,8 +24,8 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
   `normalize_direction`, `street_match_key` (both sides of an address-to-road match go through it).
 - `scripts/` Python entry points: `fetch_pilot_data.py`, `run_pilot.py`, `overture_only_counties.py`,
   `statewide_overture_scorecard.py`, `build_ng911_extension.py`, `build_pmtiles.py`, `publish_to_r2.py`.
-- `extensions/ng911-address`, `extensions/ng911-road-centerline`: GERS Extension packages (Pydantic on
-  `overture-schema` v2) with conformance tests and vendored NENA-STA-006.3 domains.
+- `extensions/ng911-address`, `extensions/ng911-road-centerline`, `extensions/ng911-railroad`: GERS Extension packages (Pydantic on
+  `overture-schema` v2) with conformance tests; the address and road packages vendor the NENA-STA-006.3 domains.
 - `index.html` is the whole web app (MapLibre + PMTiles); `apps.html` is the landing page.
 
 ## Where the NENA fields come from (`build_ng911_extension.py`)
@@ -37,7 +38,9 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 | msagcomm (and _l/_r) | a3, else a4, else postal community, upper-cased | a **candidate**; the 911 authority's MSAG governs |
 | placement | OpenAddresses source `accuracy` (1/2/3), else `InBuilding`, else Unknown | `InBuilding` is set per county in `overture_only_counties.py` from statewide Overture footprints |
 | fire_district, fire_fdid (and _l/_r) | CAL FIRE California Local Fire Districts | evidence, not NENA fields; smallest polygon wins overlaps |
+| rlown, rlname (railroad) | FRA North American Rail Network (owner, nearest line ≤ ~30 m); Overture rail names | built statewide in `railroad_dataset`, not from the county builds; California counties only |
 | esn (not filled) | — | authority-assigned; never derive or invent it |
+| hydrology (not an Extension) | — | Overture `base/water` IDs aren't stable GERS IDs; a 3DHP supplemental dataset is in progress |
 | PSAP (not filled) | — | no open source: HIFLD's layer is offline, the FCC registry has no boundaries, Cal OES doesn't publish |
 | police / EMS (not filled) | — | no statewide layer; don't name agencies from A3 (contract cities) or use LEMSA as the responder |
 
