@@ -2,9 +2,10 @@
 """
 scripts/overture_only_counties.py
 
-Product 1 for counties with no county GIS in this pipeline: build the Overture-only NG911 layers
-(address points, road centerlines, address-to-road fishbones, localities) for the counties the
-statewide scorecard rates weakest, using the same oo_* dbt models as the Fresno build.
+Product 1 from open data alone: build the Overture-only NG911 layers (address points, road centerlines,
+address-to-road fishbones, localities) for every county, weakest first by the statewide scorecard, using
+the same oo_* dbt models as the Fresno build. Counties also built from county GIS (Fresno, Kings) are
+included, so the open-data-only view covers the whole state and can be compared with the county build.
 
 Each county gets a one-off registry entry passed through --vars, so dbt_project.yml and the
 Fresno/Kings caches are untouched (the Overture caches are swapped in and restored afterwards).
@@ -43,11 +44,9 @@ def bbox(geom):
 
 
 def weakest(top):
-    """The `top` counties with the lowest min(address completeness, named public roads), not already built."""
-    built = {c["name"] for c in county_config.COUNTIES.values()}
+    """The `top` counties with the lowest min(address completeness, named public roads)."""
     feats = json.load(open(STATEWIDE))["features"]
     score = lambda p: min(p["PctNumberAndStreet"] or 0, p["PctPublicRoadKmNamed"] or 0)
-    feats = [f for f in feats if f["properties"]["County"].removesuffix(" County").upper() not in built]
     return sorted(feats, key=lambda f: score(f["properties"]))[:top]
 
 
