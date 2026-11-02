@@ -103,10 +103,10 @@ def main():
         sys.exit(1)
 
     # Ensure root index.html is copied to data/output/index.html
-    root_index = os.path.join(PROJECT_DIR, "index.html")
-    if os.path.exists(root_index):
-        import shutil
-        shutil.copy2(root_index, os.path.join(OUTPUT_DIR, "index.html"))
+    import shutil
+    for page in ("index.html", "apps.html"):  # the web app and its landing page
+        if os.path.exists(os.path.join(PROJECT_DIR, page)):
+            shutil.copy2(os.path.join(PROJECT_DIR, page), os.path.join(OUTPUT_DIR, page))
 
     # Collect files to upload
     files_to_upload = []

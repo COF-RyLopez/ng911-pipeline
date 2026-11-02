@@ -1068,6 +1068,14 @@
 
     .legend-panel.off { display: none; }
 
+    /* Three apps in one page (?app=open | county; no app = the full Fresno hub): parts not in the current app hide */
+    body[data-app="open"] .app-part:not([data-apps~="open"]),
+    body[data-app="county"] .app-part:not([data-apps~="county"]) { display: none !important; }
+    .app-nav { display: flex; gap: 4px; margin-top: 4px; font-size: 11px; }
+    .app-nav a { color: #94a3b8; text-decoration: none; padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; }
+    .app-nav a:hover { color: #e2e8f0; }
+    .app-nav a.active { color: #e2e8f0; border-color: rgba(148, 163, 184, 0.45); }
+
     .legend-item {
       display: flex;
       align-items: center;
@@ -1428,6 +1436,12 @@
       <div class="brand-text">
         <h1>County of Fresno · NG911 Remediation Hub</h1>
         <p class="brand-subtitle">Address points checked against buildings, road centerlines and Cal OES readiness</p>
+        <nav class="app-nav" aria-label="Apps">
+          <a href="?app=open" data-app-link="open">1 · Open data only</a>
+          <a href="?app=county" data-app-link="county">2 · County sources</a>
+          <a href="?" data-app-link="full">3 · Fresno remediation</a>
+          <a href="apps.html">All apps</a>
+        </nav>
       </div>
     </div>
     <button class="action-btn layers-toggle" id="btn-toggle-sidebar" aria-controls="sidebar-panel" aria-expanded="false">☰ Layers</button>
@@ -1440,16 +1454,16 @@
         <option value="satellite">Satellite</option>
         <option value="dark">Dark map</option>
       </select>
-      <button class="action-btn wallet-btn" id="wallet-btn" title="View Fix Tokens & Reputation Rank">
+      <button data-apps="" class="app-part action-btn wallet-btn" id="wallet-btn" title="View Fix Tokens & Reputation Rank">
         🪙 <span id="wallet-tokens">0</span> FTs · <span id="wallet-rank">Novice</span>
       </button>
-      <button class="action-btn changeset-btn" id="export-changeset-btn" title="Export Authoritative Changeset for County GIS">
+      <button data-apps="" class="app-part action-btn changeset-btn" id="export-changeset-btn" title="Export Authoritative Changeset for County GIS">
         💾 Changeset (<span id="changeset-count">0</span>)
       </button>
-      <button class="action-btn" id="btn-toggle-3d" title="Toggle 3D Building Extrusions & Perspective">
+      <button data-apps="" class="app-part action-btn" id="btn-toggle-3d" title="Toggle 3D Building Extrusions & Perspective">
         🏢 3D Buildings
       </button>
-      <button class="action-btn" id="btn-mapillary-settings" title="Configure Mapillary Token & Driveway Detections">
+      <button data-apps="" class="app-part action-btn" id="btn-mapillary-settings" title="Configure Mapillary Token & Driveway Detections">
         🔑 Mapillary
       </button>
       <a href="https://web.geolibre.app/?url=https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/ng911_address_comparison_r2.geolibre.json" 
@@ -1481,13 +1495,13 @@
 
   <!-- Left Sidebar (Layer Manager & Filters) -->
   <aside class="sidebar-panel" id="sidebar-panel">
-    <div>
+    <div data-apps="county" class="app-part">
       <div class="sidebar-section-title">
         <span>Map layers</span>
       </div>
 
       <!-- Address Points Layer -->
-      <div class="layer-card">
+      <div data-apps="county" class="app-part layer-card">
         <div class="layer-header">
           <label class="layer-label" for="toggle-ssap">
             <span style="display: inline-flex; gap: 3px; align-items: center;">
@@ -1509,7 +1523,7 @@
       </div>
 
       <!-- Centerlines Layer -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="county" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-rcl">
             <span style="display: inline-block; width: 12px; height: 3px; background: #059669; border-radius: 1px;"></span>
@@ -1527,7 +1541,7 @@
       </div>
 
       <!-- Fishbones Layer -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-fishbones">
             <span style="display: inline-block; width: 12px; height: 0; border-top: 2px dashed #dc2626;"></span>
@@ -1545,7 +1559,7 @@
       </div>
 
       <!-- Buildings Layer -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-buildings">
             <span style="display: inline-block; width: 10px; height: 9px; background: rgba(148, 163, 184, 0.4); border: 1px solid #64748b; border-radius: 2px;"></span>
@@ -1563,7 +1577,7 @@
       </div>
 
       <!-- Authoritative Tax Parcels Layer -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="county" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-parcels">
             <span style="display: inline-block; width: 10px; height: 9px; background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; border-radius: 2px;"></span>
@@ -1581,7 +1595,7 @@
       </div>
 
       <!-- Product 2: county city limits vs CDTFA, and the reconciled (advisory) boundaries -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="county" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-boundaries">
             <span style="display: inline-block; width: 10px; height: 9px; background: rgba(239, 68, 68, 0.35); border: 1.5px solid #a78bfa; border-radius: 2px;"></span>
@@ -1598,7 +1612,7 @@
       </div>
 
       <!-- Open-data lineage: county roads OpenStreetMap is missing or names differently -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="county" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-osm-fixes">
             <span style="display: inline-block; width: 12px; height: 3px; background: #f97316; border-radius: 2px;"></span>
@@ -1616,7 +1630,7 @@
       </div>
 
       <!-- NG911 ESB Fire layer: the Sheriff's fire / EMS dispatch zones -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="county" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-fire-zones">
             <span style="display: inline-block; width: 12px; height: 12px; background: #ec4899; border-radius: 3px; opacity: .6;"></span>
@@ -1633,7 +1647,7 @@
       </div>
 
       <!-- Mapillary AI Vision & Street-Level Imagery -->
-      <div class="layer-card" style="margin-top: 8px;">
+      <div data-apps="" class="app-part layer-card" style="margin-top: 8px;">
         <div class="layer-header">
           <label class="layer-label" for="toggle-mapillary">
             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #06b6d4; border: 1.5px solid #ffffff;"></span>
@@ -1685,7 +1699,7 @@
     </div>
 
     <!-- BAN Quick Street Filter / Search -->
-    <div class="ban-street-search-box">
+    <div data-apps="county" class="app-part ban-street-search-box">
       <div class="sidebar-section-title">
         <span>Find a street</span>
       </div>
@@ -1696,7 +1710,7 @@
     </div>
 
     <!-- Quick Violation Filters -->
-    <div>
+    <div data-apps="" class="app-part">
       <div class="sidebar-section-title">
         <span>Show points</span>
       </div>
@@ -1709,7 +1723,7 @@
     </div>
 
     <!-- BAN-Inspired Certification & Audit Card -->
-    <div class="ban-certification-card" id="readiness-card">
+    <div data-apps="" class="app-part ban-certification-card" id="readiness-card">
       <div class="ban-card-title">
         <span>🛡️ Cal OES readiness (NENA-STA-006.x)</span>
         <span class="ban-badge-green" id="readiness-status">Loading…</span>
@@ -1734,7 +1748,7 @@
     </div>
 
     <!-- Product 1: what open data alone gets you, next to the county build -->
-    <div class="ban-certification-card" id="product1-card">
+    <div data-apps="county" class="app-part ban-certification-card" id="product1-card">
       <div class="ban-card-title">
         <span>🌐 Open data only (Overture)</span>
         <span class="badge-odbl" title="Overture roads are derived from OpenStreetMap and licensed ODbL">ODbL roads</span>
@@ -1754,7 +1768,7 @@
     </div>
 
     <!-- Product 1 at state scale: Overture-only readiness for every county (statewide_overture_scorecard.py) -->
-    <div class="ban-certification-card" id="statewide-card">
+    <div data-apps="open" class="app-part ban-certification-card" id="statewide-card">
       <div class="ban-card-title">
         <span>🌎 Statewide: open data only</span>
         <label class="layer-switch" title="Show counties on the map">
@@ -1794,7 +1808,7 @@
     </div>
 
     <!-- Product 2: county city limits vs the state's (CDTFA) city boundaries -->
-    <div class="ban-certification-card" id="product2-card">
+    <div data-apps="county" class="app-part ban-certification-card" id="product2-card">
       <div class="ban-card-title">
         <span>🗺️ City limits vs state (CDTFA)</span>
       </div>
@@ -1814,7 +1828,7 @@
     </div>
 
     <!-- Product 2: the county line from open sources vs the state's (CDTFA) -->
-    <div class="ban-certification-card" id="county-boundary-card">
+    <div data-apps="county" class="app-part ban-certification-card" id="county-boundary-card">
       <div class="ban-card-title">
         <span>🧭 County line vs state (CDTFA)</span>
       </div>
@@ -2115,7 +2129,7 @@
   </aside>
 
   <!-- Bottom Legend (Fresno layers; swapped for the Overture-only legend while those points are on) -->
-  <div class="legend-panel" id="legend-county">
+  <div data-apps="county" class="app-part legend-panel" id="legend-county">
     <div class="legend-item">
       <span class="color-dot" style="background: #10b981;"></span>
       <span>Valid (Inside Footprint)</span>
@@ -2132,15 +2146,15 @@
       <span style="background: #059669; width: 14px; height: 3px; border-radius: 2px;"></span>
       <span>Road Centerline</span>
     </div>
-    <div class="legend-item">
+    <div data-apps="" class="app-part legend-item">
       <span style="width: 14px; height: 0; border-top: 2px dashed #10b981;"></span>
       <span>Fishbone (≤50m)</span>
     </div>
-    <div class="legend-item">
+    <div data-apps="" class="app-part legend-item">
       <span style="width: 14px; height: 0; border-top: 2px dashed #dc2626;"></span>
       <span>Fishbone (>50m / Error)</span>
     </div>
-    <div class="legend-item">
+    <div data-apps="" class="app-part legend-item">
       <span style="width: 12px; height: 10px; background: rgba(148, 163, 184, 0.35); border: 1px solid #64748b; border-radius: 2px;"></span>
       <span>Building Footprint</span>
     </div>
@@ -2423,9 +2437,31 @@
       basemapSelectEl.value = initialBasemap;
     }
 
-    const initialLat = parseFloat(urlParams.get("lat")) || 36.7468;
-    const initialLng = parseFloat(urlParams.get("lng")) || -119.7871;
-    const initialZoom = parseFloat(urlParams.get("zoom")) || 15.5;
+    // Which of the three apps this is: ?app=open (Overture only, statewide), ?app=county (the county's own
+    // sources vs open data and the state), or none (the full Fresno remediation hub)
+    const APPS = {
+      open: { title: "California NG911 · Open data only", view: [-119.4, 37.2, 5.6],
+              subtitle: "How far Overture addresses and roads alone get every California county toward NG911" },
+      county: { title: "County of Fresno · NG911 from county sources", view: [-119.65, 36.76, 9],
+                subtitle: "The county's own address, road and boundary layers, checked against open data and the state" },
+    };
+    const APP = APPS[urlParams.get("app")] ? urlParams.get("app") : "full";
+    document.querySelectorAll("[data-app-link]").forEach(a => a.classList.toggle("active", a.dataset.appLink === APP));
+    if (APP !== "full") {
+      document.body.dataset.app = APP;
+      document.title = APPS[APP].title;
+      document.querySelector(".brand-text h1").textContent = APPS[APP].title;
+      document.querySelector(".brand-subtitle").textContent = APPS[APP].subtitle;
+      // layers whose card isn't in this app start off (every layer reads its checkbox when it's added)
+      document.querySelectorAll(".app-part").forEach(el => {
+        if (getComputedStyle(el).display === "none") el.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = false; });
+      });
+      if (APP === "open") ["toggle-statewide", "toggle-oo-points"].forEach(id => { document.getElementById(id).checked = true; });
+    }
+    const [appLng, appLat, appZoom] = APPS[APP]?.view || [-119.7871, 36.7468, 15.5];
+    const initialLat = parseFloat(urlParams.get("lat")) || appLat;
+    const initialLng = parseFloat(urlParams.get("lng")) || appLng;
+    const initialZoom = parseFloat(urlParams.get("zoom")) || appZoom;
 
     // 2. Initialize MapLibre GL Map
     const map = new maplibregl.Map({
