@@ -53,12 +53,13 @@ every sample row is checked against them: street types and directionals are the 
 | `st_predir`, `st_pretyp`, `st_name`, `st_postyp`, `st_posdir` | St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir | Overture `street`, parsed: "HIGHWAY 41" → Highway / 41; "VIA MARIPOSA" → Via / MARIPOSA; "N BLACKSTONE AVE" → North / BLACKSTONE / Avenue; "TERRA VISTA PKWY W" → TERRA VISTA / Parkway / West |
 | `unit` | Unit | Overture `unit` |
 | `post_comm`, `post_code` | Post_Comm, Post_Code | Overture `address_levels` / `postcode` |
+| `placement` | Placement | the source's own method where OpenAddresses records one (accuracy 1 → Structure, 2 → Parcel, 3 → Geocoding); otherwise Structure when the point sits inside an Overture building footprint, else Unknown |
 | `road_match`, `road_distance_m`, `road_segment_id` | (validation, not NENA) | nearest same-named Overture `transportation/segment` within ~400 m: `OK` ≤ 50 m, `FAR`, `NO_NAMED_ROAD`; the segment's GERS ID |
 | `source_url` | (lineage, not NENA) | the OpenAddresses source to fix upstream |
 
 `road_segment_id` is itself a GERS ID, so the Extension links two reference themes, addresses and roads.
 
-Not filled yet: Placement, ESN/MSAG (need the
+Not filled yet: ESN/MSAG (need the
 9-1-1 authority's service zones).
 
 ## Listing metadata (`manifest.json`, written with every data release)
