@@ -37,8 +37,8 @@ conformance test suite that runs in CI.
 
 | Package | Extends | Adds | Data |
 |---|---|---|---|
-| [`extensions/ng911-address`](extensions/ng911-address) | `addresses/address` | NENA Site/Structure Address Point fields: street parts as NENA registry words, unit, postal fields, NGUID, the road check | [`ng911_address_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/ng911_address_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/manifest.json) |
-| [`extensions/ng911-road-centerline`](extensions/ng911-road-centerline) | `transportation/segment` | NENA Road Centerline fields: left/right address ranges and parity derived from matched addresses, NENA road class, street parts | [`ng911_road_centerline_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/ng911_road_centerline_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/manifest.json) |
+| [`extensions/ng911-address`](extensions/ng911-address) | `addresses/address` | NENA Site/Structure Address Point fields: street parts as NENA registry words, unit, postal fields, city (A3) and community (A4), MSAG community candidate, placement method, NGUID, the road check, fire-district evidence | [`ng911_address_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/ng911_address_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/manifest.json) |
+| [`extensions/ng911-road-centerline`](extensions/ng911-road-centerline) | `transportation/segment` | NENA Road Centerline fields: left/right address ranges and parity derived from matched addresses, NENA road class, street parts, city/community and MSAG community candidate per side, fire-district evidence per side | [`ng911_road_centerline_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/ng911_road_centerline_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/manifest.json) |
 
 Each manifest reports rows, GERS ID coverage against the stated Overture release, per-field fill, and the
 NENA marks: the share of records carrying every mandatory field and any street type not in the NENA
@@ -52,8 +52,24 @@ WHERE a.bbox.xmin BETWEEN -124.5 AND -114.1 AND a.bbox.ymin BETWEEN 32.5 AND 42.
 LIMIT 10;
 ```
 
-Not in open data, so not filled: PSAP/fire/EMS/law boundaries, ESN and MSAG communities, incorporated
-municipality (A3), and the 9-1-1 authority's agency domain (a placeholder until an authority publishes).
+### Where each NENA field comes from
+
+| NENA field | Source |
+|---|---|
+| Street parts (St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir), Add_Number, Unit, Post_Comm, Post_Code | Overture `addresses` (OpenAddresses), parsed into NENA registry words |
+| FromAddr/ToAddr, Parity (left/right) | derived from the addresses matched to each Overture road segment; 0-0 / Z when a side has none |
+| RoadClass | Overture `transportation` class |
+| A1 (state), A2 (county) | fixed / the county each feature is built for |
+| A3 (incorporated municipality) | CDTFA city boundaries (state geoportal) |
+| A4 (unincorporated community) | Census Designated Places (Census TIGERweb), where A3 is empty |
+| MSAGComm | **candidate**: A3, else A4, else the postal community; the 911 authority's MSAG governs |
+| Placement | the OpenAddresses source's stated accuracy where it has one, else Structure when the point is inside an Overture building footprint, else Unknown |
+| DiscrpAgID, NGUID | placeholder agency domain (`<county>.ca.gov`) until a 9-1-1 authority publishes |
+
+Not filled: **ESN**. Each 911 authority assigns ESNs to its own emergency service zones, so a number derived
+from open data would match no real MSAG. Each record carries its CAL FIRE local fire district and FDID
+instead (not NENA fields), as evidence for mapping to the authority's ESN. PSAP, police and EMS boundaries
+aren't in open data.
 
 ## Fixing open data
 

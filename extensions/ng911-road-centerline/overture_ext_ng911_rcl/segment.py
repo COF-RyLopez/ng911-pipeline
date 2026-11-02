@@ -65,6 +65,8 @@ class Ng911RoadCenterline(BaseModel):
     a3_r: Annotated[str | None, Field(description="Right incorporated municipality (A3_R).")] = None
     a4_l: Annotated[str | None, Field(description="Left unincorporated community (A4_L): Census Designated Place, only where A3_L is empty.")] = None
     a4_r: Annotated[str | None, Field(description="Right unincorporated community (A4_R).")] = None
+    msagcomm_l: Annotated[str | None, Field(description="Left MSAG Community Name (MSAGComm_L), a candidate: A3, else A4, else postal community, upper-cased.")] = None
+    msagcomm_r: Annotated[str | None, Field(description="Right MSAG Community Name (MSAGComm_R), a candidate.")] = None
     postcode_l: Annotated[str | None, Field(description="Left postal code (PostCode_L): most common among left addresses.")] = None
     postcode_r: Annotated[str | None, Field(description="Right postal code (PostCode_R).")] = None
     postcomm_l: Annotated[str | None, Field(description="Left postal community (PostComm_L).")] = None
@@ -73,6 +75,10 @@ class Ng911RoadCenterline(BaseModel):
     # not NENA fields: the evidence behind the ranges and where the road comes from
     addr_count_l: Annotated[int, Field(ge=0, description="Addresses the left range rests on.")]
     addr_count_r: Annotated[int, Field(ge=0, description="Addresses the right range rests on.")]
+    fire_district_l: Annotated[str | None, Field(description="Left side's local fire district (CAL FIRE): evidence for the authority's ESN_L, which is not filled.")] = None
+    fire_district_r: Annotated[str | None, Field(description="Right side's local fire district.")] = None
+    fire_fdid_l: Annotated[str | None, Field(description="Left fire district's FDID (NFIRS).")] = None
+    fire_fdid_r: Annotated[str | None, Field(description="Right fire district's FDID (NFIRS).")] = None
     source_url: Annotated[str | None, Field(description="OpenStreetMap way to fix the road at the source.")] = None
 
 
