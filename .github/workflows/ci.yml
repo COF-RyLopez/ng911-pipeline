@@ -116,6 +116,10 @@ jobs:
       # Prototype NG911 GERS Extensions (extensions/ng911-address, extensions/ng911-road-centerline, extensions/ng911-railroad) and their data, keyed on GERS IDs
       - name: Build the NG911 GERS Extension datasets and check package conformance
         run: |
+          # DuckDB spills ~9 GB building the statewide tables, about all the root disk has left by now;
+          # the hosted runner's /mnt disk has room to spare (fall back to the default if it isn't there)
+          if sudo mkdir -p /mnt/duckdb_tmp && sudo chown "$USER" /mnt/duckdb_tmp; then export DUCKDB_TEMP_DIR=/mnt/duckdb_tmp; fi
+          df -h / /mnt || true
           python scripts/build_ng911_extension.py
           uv pip install --system ./extensions/ng911-address ./extensions/ng911-road-centerline ./extensions/ng911-railroad packaging
           python extensions/ng911-address/tests/test_conformance.py
