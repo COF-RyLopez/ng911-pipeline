@@ -47,7 +47,8 @@ every sample row is checked against them: street types and directionals are the 
 | `nguid` | NGUID (**mandatory**) | `urn:emergency:uid:gis:SSAP:<GERS id>:<agency domain>`: the publisher's own ID next to the GERS ID |
 | `country`, `a1` | Country, A1 (**mandatory**) | `US`, `CA` |
 | `a2` | A2 | county, as the Census Bureau names it ("Fresno County") |
-| `a3` | A3 | the incorporated city the point falls in, from CDTFA's California city boundaries; empty in unincorporated areas (NENA puts communities there in A4, not filled) |
+| `a3` | A3 | the incorporated city the point falls in, from CDTFA's California city boundaries; empty in unincorporated areas |
+| `a4` | A4 | where A3 is empty, the Census Designated Place the point falls in (the Census Bureau's named unincorporated communities, from TIGERweb); empty outside both |
 | `add_number`, `addnum_suf` | Add_Number, AddNum_Suf | Overture `number`, split ("1025 1/2" → 1025, "1/2") |
 | `st_predir`, `st_pretyp`, `st_name`, `st_postyp`, `st_posdir` | St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir | Overture `street`, parsed: "HIGHWAY 41" → Highway / 41; "VIA MARIPOSA" → Via / MARIPOSA; "N BLACKSTONE AVE" → North / BLACKSTONE / Avenue; "TERRA VISTA PKWY W" → TERRA VISTA / Parkway / West |
 | `unit` | Unit | Overture `unit` |
@@ -57,7 +58,7 @@ every sample row is checked against them: street types and directionals are the 
 
 `road_segment_id` is itself a GERS ID, so the Extension links two reference themes, addresses and roads.
 
-Not filled yet: A4 (unincorporated community), Placement, ESN/MSAG (need the
+Not filled yet: Placement, ESN/MSAG (need the
 9-1-1 authority's service zones).
 
 ## Listing metadata (`manifest.json`, written with every data release)
