@@ -39,6 +39,7 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 | fire_district, fire_fdid (and _l/_r) | CAL FIRE California Local Fire Districts | evidence, not NENA fields; smallest polygon wins overlaps |
 | esn (not filled) | — | authority-assigned; never derive or invent it |
 | PSAP (not filled) | — | no open source: HIFLD's layer is offline, the FCC registry has no boundaries, Cal OES doesn't publish |
+| police / EMS (not filled) | — | no statewide layer; don't name agencies from A3 (contract cities) or use LEMSA as the responder |
 
 The polygon layers (CDTFA, TIGERweb, CAL FIRE) and the OpenAddresses source files are fetched at build time,
 one request each; the footprint file (1.8 GB) is fetched once per run and deleted after the county builds.
