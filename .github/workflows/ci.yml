@@ -104,6 +104,8 @@ jobs:
           uv pip install --system dbt-duckdb duckdb pydantic overture-schema pyarrow pandas requests fastapi uvicorn httpx boto3 tylertoo
 
       - name: Statewide Overture Scorecard (all California counties)
+        env:
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}  # free key: https://api.census.gov/data/key_signup.html
         run: |
           python scripts/statewide_overture_scorecard.py --state CA
 
