@@ -80,9 +80,12 @@ source table, and a refreshed sample.
 - Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture|hydrology`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
-- The overture-only job takes ~50 min against an 80 min timeout; check it when adding work. The runner has
-  ~9 GB of DuckDB temp space: the extension build ran out once when it copied the 13.6M-row `addr` table to
-  add a column. Keep per-feature lookups (`addr_city`, `seg_admin`) as small tables joined where used.
+- The overture-only job takes ~50 min against an 80 min timeout; check it when adding work. The extension
+  build spills ~9 GB of DuckDB temp files. DuckDB's own `max_temp_directory_size` cap (9.2 GiB on the runner,
+  though the disk has ~80 GB free) stopped it twice, so the script raises the cap to 40 GiB (`DUCKDB_MAX_TEMP`);
+  the job logs `df -h .`. It also ran out once when it
+  copied the 13.6M-row `addr` table to add a column: keep per-feature lookups (`addr_city`, `seg_admin`) as
+  small tables joined where used.
 
 ## Rules we've learned
 

@@ -116,6 +116,8 @@ jobs:
       # Prototype NG911 GERS Extensions (extensions/ng911-address, extensions/ng911-road-centerline, extensions/ng911-railroad) and their data, keyed on GERS IDs
       - name: Build the NG911 GERS Extension datasets and check package conformance
         run: |
+          # DuckDB spills ~9 GB building the statewide tables; the script raises its temp cap. Log the headroom.
+          df -h . || true
           python scripts/build_ng911_extension.py
           uv pip install --system ./extensions/ng911-address ./extensions/ng911-road-centerline ./extensions/ng911-railroad packaging
           python extensions/ng911-address/tests/test_conformance.py

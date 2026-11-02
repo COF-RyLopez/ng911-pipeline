@@ -415,6 +415,9 @@ def main():
     if not addr_files:
         sys.exit(f"No Overture-only builds under {BUILDS}; run overture_only_counties.py first")
     c = duckdb.connect()
+    # The 13.6M-row build spills ~9 GB of temp files. DuckDB capped that at 9.2 GiB on the CI runner (its
+    # max_temp_directory_size), though the disk had ~80 GB free, so raise the cap; it's a ceiling, not a reservation.
+    c.execute(f"SET max_temp_directory_size = '{os.environ.get('DUCKDB_MAX_TEMP', '40GiB')}'")
     c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2'; SET geometry_always_xy = true; SET preserve_insertion_order = false;")
     c.sql(f"CREATE TABLE addr AS SELECT *, {COUNTY_KEY} AS county_key FROM read_parquet({addr_files!r}, filename = true, union_by_name = true)")
     c.sql(f"""CREATE TABLE seg AS SELECT *, {COUNTY_KEY} AS county_key
