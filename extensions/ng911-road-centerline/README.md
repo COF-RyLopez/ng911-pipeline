@@ -37,6 +37,7 @@ NENA's GIS data model template); the model rejects anything else.
 | `st_predir`, `st_pretyp`, `st_postyp` | St_PreDir, St_PreTyp, St_PosTyp | NENA registry words: "North Blackstone Avenue" → North / BLACKSTONE / Avenue; "State Route 99" → State Route / 99 |
 | `roadclass` | RoadClass | Overture class: motorway → Primary; trunk, primary, secondary → Secondary; tertiary, residential, unclassified, living_street → Local; service → Service Drive; track → Vehicular Trail |
 | `a2_l/_r` | A2_L/R | the county the segment falls in |
+| `a3_l/_r` | A3_L/R | the most common CDTFA city among that side's addresses; a side with none takes the city at the segment's midpoint; empty outside cities |
 | `postcode_l/_r`, `postcomm_l/_r` | PostCode_L/R, PostComm_L/R | most common among that side's addresses |
 | `addr_count_l/_r` | (evidence, not NENA) | how many addresses each side's range rests on |
 | `source_url` | (lineage, not NENA) | the OpenStreetMap way, to fix the road at the source |
