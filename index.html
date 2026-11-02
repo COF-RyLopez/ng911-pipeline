@@ -2526,11 +2526,11 @@
       basemapSelectEl.value = initialBasemap;
     }
 
-    // Which of the three apps this is: ?app=open (Overture only, statewide), ?app=county (the county's own
+    // Which of the three apps this is: ?app=open (open data only, statewide), ?app=county (the county's own
     // sources vs open data and the state), or none (the full Fresno remediation hub)
     const APPS = {
       open: { title: "California NG911 · Open data only", view: [-119.4, 37.2, 5.6],
-              subtitle: "How far Overture addresses and roads alone get every California county toward NG911" },
+              subtitle: "How far open data gets every California county toward NG911: Overture addresses and roads, plus public state and federal layers" },
       county: { title: "County of Fresno · NG911 from county sources", view: [-119.65, 36.76, 9],
                 subtitle: "The county's own address, road and boundary layers, checked against open data and the state" },
     };
