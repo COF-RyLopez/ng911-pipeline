@@ -1,4 +1,5 @@
-"""The five GERS Extension conformance rules, plus "the sample parses against the package".
+"""The five GERS Extension conformance rules, the NENA-STA-006.3 mandatory fields and coded domains,
+and "the sample parses against the package".
 Runs under pytest or as `python tests/test_conformance.py`."""
 
 import json
@@ -7,11 +8,12 @@ import typing
 from importlib.metadata import version
 
 from packaging.specifiers import SpecifierSet
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from overture.schema.addresses import Address
 from overture.schema.system.ref import Id
-from overture_ext_ng911 import REFERENCE_SCHEMA, TARGET, Ng911AddressExtension
+
+from overture_ext_ng911 import NENA_REQUIRED, REFERENCE_SCHEMA, STANDARD, TARGET, Ng911AddressExtension, Ng911Address
 
 SAMPLE = pathlib.Path(__file__).parent.parent / "sample" / "ng911_address_sample.jsonl"
 
@@ -38,6 +40,26 @@ def test_4_never_redefines_a_reference_property():
 
 def test_5_declares_reference_schema_range():
     assert version("overture-schema-theme-addresses") in SpecifierSet(REFERENCE_SCHEMA)
+
+
+def test_nena_mandatory_fields_are_required():
+    """Every field NENA-STA-006.3 makes mandatory for this layer is present and required in the package."""
+    assert STANDARD == "NENA-STA-006.3-2026"
+    for name in NENA_REQUIRED:
+        assert name in Ng911Address.model_fields and Ng911Address.model_fields[name].is_required(), name
+
+
+def test_coded_values_outside_nena_domains_are_rejected():
+    """Street types must be NENA registry words: 'Avenue' parses, the abbreviation 'AVE' does not."""
+    row = json.loads(SAMPLE.read_text().splitlines()[0])
+    row["ng911"]["st_postyp"] = "Avenue"
+    Ng911AddressExtension.model_validate(row)
+    row["ng911"]["st_postyp"] = "AVE"
+    try:
+        Ng911AddressExtension.model_validate(row)
+    except ValidationError:
+        return
+    raise AssertionError("'AVE' was accepted as a NENA street type")
 
 
 def test_sample_parses():
