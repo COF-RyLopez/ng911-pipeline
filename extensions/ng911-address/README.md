@@ -53,14 +53,16 @@ every sample row is checked against them: street types and directionals are the 
 | `st_predir`, `st_pretyp`, `st_name`, `st_postyp`, `st_posdir` | St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir | Overture `street`, parsed: "HIGHWAY 41" → Highway / 41; "VIA MARIPOSA" → Via / MARIPOSA; "N BLACKSTONE AVE" → North / BLACKSTONE / Avenue; "TERRA VISTA PKWY W" → TERRA VISTA / Parkway / West |
 | `unit` | Unit | Overture `unit` |
 | `post_comm`, `post_code` | Post_Comm, Post_Code | Overture `address_levels` / `postcode` |
+| `msagcomm` | MSAGComm | a **candidate**: A3, else A4, else the postal community, upper-cased; the 911 authority's MSAG governs |
 | `placement` | Placement | the source's own method where OpenAddresses records one (accuracy 1 → Structure, 2 → Parcel, 3 → Geocoding); otherwise Structure when the point sits inside an Overture building footprint, else Unknown |
 | `road_match`, `road_distance_m`, `road_segment_id` | (validation, not NENA) | nearest same-named Overture `transportation/segment` within ~400 m: `OK` ≤ 50 m, `FAR`, `NO_NAMED_ROAD`; the segment's GERS ID |
+| `fire_district`, `fire_fdid` | (evidence, not NENA) | the local fire district the point is in, and its FDID, from CAL FIRE's statewide compilation; for mapping to the authority's ESN |
 | `source_url` | (lineage, not NENA) | the OpenAddresses source to fix upstream |
 
 `road_segment_id` is itself a GERS ID, so the Extension links two reference themes, addresses and roads.
 
-Not filled yet: ESN/MSAG (need the
-9-1-1 authority's service zones).
+Not filled: ESN. Each 911 authority assigns ESNs to its own emergency service zones, so a number derived from
+open data would match no real MSAG; `fire_district`/`fire_fdid` are carried instead as evidence for mapping to them.
 
 ## Listing metadata (`manifest.json`, written with every data release)
 

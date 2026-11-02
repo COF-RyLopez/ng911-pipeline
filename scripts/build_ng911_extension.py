@@ -71,29 +71,37 @@ CDTFA_CITIES = ("https://services3.arcgis.com/uknczv4rpevve42E/arcgis/rest/servi
 # boundaries; swap in a county's community-plan areas where it publishes them.
 CENSUS_CDPS = ("https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/"
                "MapServer/5/query?where=STATE%3D%2706%27&outFields=BASENAME&outSR=4326&f=geojson")
+# Emergency service zone evidence (not NENA fields): the local fire district a feature is in, from CAL FIRE's
+# statewide compilation (671 districts; generalized to ~10 m). ESN itself is assigned by each 911 authority to
+# its own zones, so it is left empty rather than invented; the district name and FDID let an authority map to it.
+CALFIRE_DISTRICTS = ("https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/arcgis/rest/services/California_Local_Fire_Districts/"
+                     "FeatureServer/0/query?where=1%3D1&outFields=Name,FDID&outSR=4326&maxAllowableOffset=0.0001&f=geojson")
 
 
-def load_places(c, table, url, field):
-    """Polygons from an ArcGIS geojson query as table <table>(name, geom); one request each (under the record limit)."""
+def load_places(c, table, url, field, code=None):
+    """Polygons from an ArcGIS geojson query as table <table>(name, code, geom); one request each (under the record limit)."""
     req = urllib.request.Request(url, headers={"User-Agent": "ng911-pipeline"})
     with urllib.request.urlopen(req, timeout=180) as resp:
         features = json.load(resp)["features"]
-    c.execute(f"CREATE TABLE {table}_raw (name VARCHAR, gj VARCHAR)")
-    c.executemany(f"INSERT INTO {table}_raw VALUES (?, ?)",
-                  [(f["properties"][field], json.dumps(f["geometry"])) for f in features])
-    c.sql(f"CREATE TABLE {table} AS SELECT name, ST_MakeValid(ST_GeomFromGeoJSON(gj)) AS geom FROM {table}_raw")
+    c.execute(f"CREATE TABLE {table}_raw (name VARCHAR, code VARCHAR, gj VARCHAR)")
+    c.executemany(f"INSERT INTO {table}_raw VALUES (?, ?, ?)",
+                  [(f["properties"][field], f["properties"].get(code), json.dumps(f["geometry"])) for f in features if f["geometry"]])
+    c.sql(f"""CREATE TABLE {table} AS SELECT name, code, geom, ST_Area(geom) AS area
+              FROM (SELECT name, code, ST_MakeValid(ST_GeomFromGeoJSON(gj)) AS geom FROM {table}_raw)""")
     print(f"  -> {len(features)} {table} parts, {c.execute(f'SELECT count(DISTINCT name) FROM {table}').fetchall()[0][0]} names")
 
 
 def add_admin(c):
     """addr_city / seg_admin (small lookup tables, joined where used, not copied into the 13M-row addr):
-    the city, else the CDP, each address and each segment's midpoint is in."""
+    the city, else the CDP, and the fire district, each address and each segment's midpoint is in."""
     def admin(table, pts, key):
-        def within(poly):  # inner spatial joins, so DuckDB plans them as spatial joins
-            return f"(SELECT p.{key}, any_value(t.name) AS name FROM {pts} p JOIN {poly} t ON ST_Intersects(t.geom, p.pt) GROUP BY 1)"
-        c.sql(f"""CREATE TABLE {table} AS SELECT {key}, ci.name AS a3, CASE WHEN ci.name IS NULL THEN cd.name END AS a4
+        def within(poly):  # inner spatial joins, so DuckDB plans them as spatial joins; the smallest polygon wins overlaps
+            return f"""(SELECT p.{key}, arg_min(t.name, t.area) AS name, arg_min(t.code, t.area) AS code
+                        FROM {pts} p JOIN {poly} t ON ST_Intersects(t.geom, p.pt) GROUP BY 1)"""
+        c.sql(f"""CREATE TABLE {table} AS SELECT {key}, ci.name AS a3, CASE WHEN ci.name IS NULL THEN cd.name END AS a4,
+                         fd.name AS fire_district, fd.code AS fire_fdid
                   FROM (SELECT DISTINCT {key} FROM {pts}) LEFT JOIN {within('city')} ci USING ({key})
-                  LEFT JOIN {within('cdp')} cd USING ({key})""")
+                  LEFT JOIN {within('cdp')} cd USING ({key}) LEFT JOIN {within('fire')} fd USING ({key})""")
     admin("addr_city", "(SELECT overture_id, geom AS pt FROM addr)", "overture_id")
     admin("seg_admin", """(SELECT overture_segment_id AS sc_seg, ST_LineInterpolatePoint(geom, 0.5) AS pt FROM seg
                            WHERE ST_GeometryType(geom) = 'LINESTRING')""", "sc_seg")
@@ -166,6 +174,8 @@ def address_dataset(c, updated):
             a2 := {COUNTY_NAME},
             a3 := a3,
             a4 := a4,
+            -- MSAG community candidate: the city, else the community, else the postal community (MSAG names are upper case)
+            msagcomm := upper(coalesce(a3, a4, community_name)),
             add_number := {ADD_NUMBER},
             addnum_suf := nullif(trim(regexp_replace(house_number, '^[0-9]+', '')), ''),
             st_predir := nena_dir_word(pre_directional),
@@ -178,6 +188,7 @@ def address_dataset(c, updated):
             post_code := postcode,
             -- the source's stated method first; else on a structure if inside an Overture footprint
             placement := coalesce(oa_placement, CASE WHEN {in_building} THEN 'Structure' ELSE 'Unknown' END),
+            fire_district := fire_district, fire_fdid := fire_fdid,
             road_match := RoadMatch,
             road_distance_m := DistanceM::DOUBLE,
             road_segment_id := RoadSegmentId,
@@ -191,7 +202,7 @@ def road_centerline_dataset(c, updated):
     # From/To follow the segment's digitized direction: numbers rising along it give From = min, To = max.
     c.sql(f"""CREATE TABLE side AS
         WITH p AS (
-            SELECT a.RoadSegmentId AS seg_id, {ADD_NUMBER} AS n, a.postcode, a.community_name, ac.a3, ac.a4, a.geom AS pt,
+            SELECT a.RoadSegmentId AS seg_id, {ADD_NUMBER} AS n, a.postcode, a.community_name, ac.a3, ac.a4, ac.fire_district, ac.fire_fdid, a.geom AS pt,
                    s.geom AS line, ST_LineLocatePoint(s.geom, a.geom) AS f
             FROM addr a LEFT JOIN addr_city ac USING (overture_id) JOIN seg s ON s.overture_segment_id = a.RoadSegmentId AND s.county_key = a.county_key
             WHERE a.RoadMatch = 'OK' AND ST_GeometryType(s.geom) = 'LINESTRING'),
@@ -199,7 +210,7 @@ def road_centerline_dataset(c, updated):
             SELECT *, ST_LineInterpolatePoint(line, greatest(f - 0.001, 0)) AS a0,
                       ST_LineInterpolatePoint(line, least(f + 0.001, 1)) AS a1
             FROM p WHERE n IS NOT NULL)
-        SELECT seg_id, n, f, postcode, community_name, a3, a4,
+        SELECT seg_id, n, f, postcode, community_name, a3, a4, fire_district, fire_fdid,
                CASE WHEN (ST_X(a1) - ST_X(a0)) * (ST_Y(pt) - ST_Y(a0)) - (ST_Y(a1) - ST_Y(a0)) * (ST_X(pt) - ST_X(a0)) > 0
                     THEN 'L' ELSE 'R' END AS side
         FROM d""")
@@ -208,7 +219,8 @@ def road_centerline_dataset(c, updated):
                CASE WHEN coalesce(corr(n, f), 0) >= 0 THEN min(n) ELSE max(n) END AS from_n,
                CASE WHEN coalesce(corr(n, f), 0) >= 0 THEN max(n) ELSE min(n) END AS to_n,
                CASE WHEN bool_and(n % 2 = 0) THEN 'E' WHEN bool_and(n % 2 = 1) THEN 'O' ELSE 'B' END AS parity,
-               mode(postcode) AS postcode, mode(community_name) AS postcomm, mode(a3) AS a3, mode(a4) AS a4
+               mode(postcode) AS postcode, mode(community_name) AS postcomm, mode(a3) AS a3, mode(a4) AS a4,
+               mode(fire_district) AS fire_district, mode(fire_fdid) AS fire_fdid
         FROM side GROUP BY ALL""")
     # ponytail: a segment crossing a county line is kept once, in the county where more of its addresses are,
     # and both sides take that county; per-side counties from the county polygons if border roads matter
@@ -233,6 +245,12 @@ def road_centerline_dataset(c, updated):
             a3_l := CASE WHEN l.k > 0 THEN l.a3 ELSE sc.a3 END, a3_r := CASE WHEN r.k > 0 THEN r.a3 ELSE sc.a3 END,
             a4_l := CASE WHEN l.k > 0 THEN (CASE WHEN l.a3 IS NULL THEN l.a4 END) ELSE sc.a4 END,
             a4_r := CASE WHEN r.k > 0 THEN (CASE WHEN r.a3 IS NULL THEN r.a4 END) ELSE sc.a4 END,
+            msagcomm_l := upper(CASE WHEN l.k > 0 THEN coalesce(l.a3, l.a4, l.postcomm) ELSE coalesce(sc.a3, sc.a4) END),
+            msagcomm_r := upper(CASE WHEN r.k > 0 THEN coalesce(r.a3, r.a4, r.postcomm) ELSE coalesce(sc.a3, sc.a4) END),
+            fire_district_l := CASE WHEN l.k > 0 THEN l.fire_district ELSE sc.fire_district END,
+            fire_district_r := CASE WHEN r.k > 0 THEN r.fire_district ELSE sc.fire_district END,
+            fire_fdid_l := CASE WHEN l.k > 0 THEN l.fire_fdid ELSE sc.fire_fdid END,
+            fire_fdid_r := CASE WHEN r.k > 0 THEN r.fire_fdid ELSE sc.fire_fdid END,
             postcode_l := l.postcode, postcode_r := r.postcode,
             postcomm_l := l.postcomm, postcomm_r := r.postcomm,
             roadclass := CASE WHEN s.road_class = 'motorway' THEN 'Primary'
@@ -303,7 +321,7 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
                             GROUP BY 1 ORDER BY 2 DESC LIMIT 10""").fetchall()
     manifest = {
         "extension": f"overture-extension-{package}",
-        "package_version": "0.5.0",
+        "package_version": "0.6.0",
         "status": "prototype",
         "target_feature_type": target,
         "join_key": "id (GERS ID)",
@@ -321,6 +339,8 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
                                  "checked by the package on every sample row",
                  "a3_source": "CDTFA city boundaries (CA state geoportal), fetched at build time; empty outside cities",
                  "a4_source": "Census Designated Places (Census TIGERweb), only where A3 is empty",
+                 "msagcomm_source": "candidate only: A3, else A4, else the postal community, upper-cased; the 911 authority's MSAG governs",
+                 "esn": "not filled: ESNs are assigned by each 911 authority; fire_district/fire_fdid (CAL FIRE local fire districts) are evidence for mapping to them",
                  "placement_source": "OpenAddresses source accuracy where stated (1 Structure, 2 Parcel, 3 Geocoding); else Structure inside an Overture building footprint, else Unknown",
                  "street_types_not_in_registry": dict(unmapped)},
         "files": {"data": f"{name}_ca.parquet", "sample": f"{name}_sample.jsonl"},
@@ -346,6 +366,7 @@ def main():
     nena_setup(c)
     load_places(c, "city", CDTFA_CITIES, "CDTFA_CITY")
     load_places(c, "cdp", CENSUS_CDPS, "BASENAME")
+    load_places(c, "fire", CALFIRE_DISTRICTS, "Name", "FDID")
     add_admin(c)
     load_oa_accuracy(c)
     updated = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")  # DateUpdate: when built
