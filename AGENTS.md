@@ -77,6 +77,10 @@ source table, and a refreshed sample.
   message naming the county.
 - `.github/workflows/hydrology.yml` builds the hydrology layers monthly (and when its script changes, ~40 min)
   and publishes the `supplemental/` part; `publish_to_r2.py`'s `PART_KEYS` keeps the other jobs from pruning it.
+- Publishing order after a merge: the county job puts `index.html` live in ~12 min, the overture-only job's tiles
+  follow at ~50 min, and hydrology's at ~40 min (its own workflow). A map layer added in the same PR as its tiles
+  points at a 404 until then, and headless checks that wait for `map.loaded()` time out ("map not loaded") even
+  though the map draws. Test live only after the tiles answer 206 to a range request.
 - Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture|hydrology`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
