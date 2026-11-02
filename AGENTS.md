@@ -47,6 +47,10 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 
 The polygon layers (CDTFA, TIGERweb, CAL FIRE) and the OpenAddresses source files are fetched at build time,
 one request each; the footprint file (1.8 GB) is fetched once per run and deleted after the county builds.
+Overture's `base/water` lists only OpenStreetMap in `sources`, but its `source_tags` show where OSM got it: in
+California (release `2026-09-23.1`) 797,151 of 907,052 water lines (88%) are NHD imports from 2001–2010
+(`source=NHD`, `nhd:com_id`, `nhd:reach_code`, `nhd:fdate`), 86% of them unnamed. Check `source_tags` before
+calling a base-theme layer "OSM"; this is the evidence behind the 3DHP dataset-approval request.
 A new NENA field goes in the package model, its README table, the manifest `nena` section, the main README's
 source table, and a refreshed sample.
 
