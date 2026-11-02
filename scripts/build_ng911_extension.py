@@ -185,7 +185,34 @@ def main():
     for name, build, *meta in DATASETS:
         build(c)
         write(c, name, *meta)
+        if name == "ng911_road_centerline":
+            road_tiles(c)
         c.sql("DROP TABLE ext")
+
+
+def road_tiles(c):
+    """Map layer for App 1: every named Overture road with its derived address ranges, from the segment geometry."""
+    import build_pmtiles as bp
+    engine = bp.pick_engine()
+    if engine is None:
+        print("[WARNING] Neither tylertoo nor tippecanoe is installed; skipping the road range map tiles.")
+        return
+    src = os.path.join(OUT_ROOT, "ng911_road_centerline", "_map_layer.parquet")
+    c.sql(f"""COPY (
+        SELECT trim(concat_ws(' ', e.ng911.st_predir, e.ng911.st_name, e.ng911.st_posttyp)) AS Name,
+               e.ng911.road_class AS Class,
+               CASE WHEN e.ng911.addr_count_l > 0 THEN e.ng911.fromaddr_l || '-' || e.ng911.toaddr_l || ' ' || e.ng911.parity_l END AS L,
+               CASE WHEN e.ng911.addr_count_r > 0 THEN e.ng911.fromaddr_r || '-' || e.ng911.toaddr_r || ' ' || e.ng911.parity_r END AS R,
+               e.ng911.addr_count_l AS LN, e.ng911.addr_count_r AS RN,
+               e.ng911.addr_count_l + e.ng911.addr_count_r > 0 AS Ranged,
+               s.geom
+        FROM ext e JOIN seg s ON s.overture_segment_id = e.id AND s.county_key = e.county_key
+    ) TO '{src}' (FORMAT PARQUET)""")
+    bp.build_layer(c, engine, "overture_only_roads", src, "Name, Class, L, R, LN, RN, Ranged", "geom",
+                   ["-Z10", "-z15", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping"],
+                   os.path.join(bp.TILES_DIR, "overture_only_road_centerlines.pmtiles"),
+                   attribution="Overture Maps Foundation (OpenStreetMap, OpenAddresses); ranges derived from matched addresses")
+    os.remove(src)  # ponytail: the map only needs the tiles; the dataset itself is the GeoParquet next to it
 
 
 if __name__ == "__main__":
