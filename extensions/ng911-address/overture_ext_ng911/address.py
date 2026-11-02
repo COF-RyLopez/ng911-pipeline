@@ -45,6 +45,7 @@ class Ng911Address(BaseModel):
     st_predir: Annotated[str | None, Field(description="Street name pre-directional (St_PreDir), e.g. 'N'.")] = None
     st_name: Annotated[str, Field(description="Street name (St_Name), parsed from Overture's street.")]
     st_posttyp: Annotated[str | None, Field(description="Street name post type (St_PosTyp), USPS abbreviation, e.g. 'AVE'.")] = None
+    st_posdir: Annotated[str | None, Field(description="Street name post-directional (St_PosDir), e.g. 'W' in 'TERRA VISTA PKWY W'.")] = None
     unit: Annotated[str | None, Field(description="Unit (Unit).")] = None
     post_comm: Annotated[str | None, Field(description="Postal community name (Post_Comm).")] = None
     post_code: Annotated[str | None, Field(description="Postal code (Post_Code).")] = None
