@@ -93,10 +93,3 @@ source table, and a refreshed sample.
   values (msagcomm, placement from footprints) as candidates or inferences, and carry evidence instead.
 - **Coverage is all 58 counties.** Don't exclude counties that also have a county-GIS build.
 - Overture transportation is ODbL; keep it out of county deliverables.
-
-## When using Bend
-
-- run `bend guide` to learn it
-- use `LAWS.bend` to keep important rules
-- run `bend PROOF.bend` before committing
-- parallelize the code whenever possible
