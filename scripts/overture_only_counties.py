@@ -75,7 +75,7 @@ def build(feature, dbt_bin):
         c.sql("LOAD spatial")
         # each point carries its fishbone result (same-named road within 50 m / farther / none) for the map
         c.sql(f"""COPY (
-            SELECT p.*, trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type)) AS Address,
+            SELECT p.*, trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type, p.post_directional)) AS Address,
                    CASE WHEN f.overture_id IS NULL THEN 'NO_NAMED_ROAD'
                         WHEN f.is_excessive_offset THEN 'FAR' ELSE 'OK' END AS RoadMatch,
                    f.distance_meters AS DistanceM,

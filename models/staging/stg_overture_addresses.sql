@@ -27,6 +27,17 @@ WITH raw_overture AS (
     {% endif %}
 ),
 
+-- a direction after the street type ("TERRA VISTA PKWY W") is NENA's post-directional: split it off so the type
+-- parses. Only after a recognised type, so a street named for its letter ("AVENUE N", Lancaster) keeps it.
+cleaned AS (
+    SELECT *, CASE WHEN post_dir IS NOT NULL THEN regexp_replace(s0, ' +(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)$', '') ELSE s0 END AS street_core
+    FROM (
+        SELECT *, CASE WHEN regexp_matches(s0, '{{ sfx[:-1] }} +(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)$')
+                       THEN regexp_extract(s0, ' +(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)$', 1) END AS post_dir
+        FROM (SELECT *, regexp_replace(upper(trim(overture_street)), '[.]+$', '') AS s0 FROM raw_overture)
+    )
+),
+
 -- street is read with trailing periods dropped: some sources write types as "ST." (Glenn: 'SHASTA ST.'),
 -- which the type-suffix regex below would otherwise miss, leaving the type in the street name
 parsed_overture AS (
@@ -34,12 +45,13 @@ parsed_overture AS (
         overture_id,
         upper(trim(overture_number)) AS house_number,
         -- type suffix comes off first, so "E ST" (E Street) keeps "E" as its name rather than "ST"
-        {{ normalize_direction("nullif(regexp_extract(regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), '" ~ sfx ~ "', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
+        {{ normalize_direction("nullif(regexp_extract(regexp_replace(street_core, '" ~ sfx ~ "', ''), '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', 1), '')") }} AS pre_directional,
         nullif(trim(regexp_replace(
-            regexp_replace(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), '{{ sfx }}', ''),
+            regexp_replace(street_core, '{{ sfx }}', ''),
             '^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST) +', ''
         )), '') AS street_name,
-        {{ normalize_street_type("nullif(regexp_extract(regexp_replace(upper(trim(overture_street)), '[.]+$', ''), '" ~ sfx ~ "', 1), '')") }} AS street_type,
+        {{ normalize_street_type("nullif(regexp_extract(street_core, '" ~ sfx ~ "', 1), '')") }} AS street_type,
+        {{ normalize_direction("post_dir") }} AS post_directional,
         nullif(upper(trim(overture_unit)), '') AS unit,
         coalesce(upper(trim(overture_city)), '{{ county("name") }}') AS community_name,
         nullif(trim(overture_postcode), '') AS postcode,
@@ -52,7 +64,7 @@ parsed_overture AS (
         'OVERTURE' AS source_agency,
         source_dataset,     -- lineage: the dataset Overture republished (an OpenAddresses source path)
         source_record_id
-    FROM raw_overture
+    FROM cleaned
     WHERE overture_number IS NOT NULL
 ),
 

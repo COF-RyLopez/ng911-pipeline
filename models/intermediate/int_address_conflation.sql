@@ -105,7 +105,7 @@ overture_only_records AS (
         o.pre_directional,
         o.street_name,
         o.street_type,
-        NULL::VARCHAR AS post_directional,
+        o.post_directional,
         NULL::VARCHAR AS unit,
         o.community_name,
         o.postcode,
