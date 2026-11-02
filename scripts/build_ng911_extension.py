@@ -80,10 +80,9 @@ def load_cities(c):
 
 
 def add_a3(c):
-    """addr.a3 = the city each address is in; seg_city = the city at each segment's midpoint."""
+    """addr_city.a3 = the city each address is in (joined in, not copied into the 13M-row addr); seg_city = the city at each segment's midpoint."""
     c.sql("""CREATE TABLE addr_city AS SELECT a.overture_id, any_value(c.name) AS a3
              FROM addr a JOIN city c ON ST_Intersects(c.geom, a.geom) GROUP BY 1""")
-    c.sql("CREATE OR REPLACE TABLE addr AS SELECT addr.*, ac.a3 FROM addr LEFT JOIN addr_city ac USING (overture_id)")
     c.sql("""CREATE TABLE seg_city AS SELECT s.overture_segment_id AS sc_seg, s.county_key AS sc_county, any_value(c.name) AS a3
              FROM seg s JOIN city c ON ST_Intersects(c.geom, ST_LineInterpolatePoint(s.geom, 0.5))
              WHERE ST_GeometryType(s.geom) = 'LINESTRING' GROUP BY 1, 2""")
@@ -118,7 +117,8 @@ def address_dataset(c, updated):
     # ponytail: the agency domain is a placeholder (<county>.ca.gov) until a 9-1-1 authority publishes against this
     c.sql(f"""CREATE TABLE ext AS
         WITH a AS (SELECT *, nena_type_word(street_type) AS postyp,
-                          nena_pretype_raw(street_name, nena_type_word(street_type)) AS pre_raw FROM addr)
+                          nena_pretype_raw(street_name, nena_type_word(street_type)) AS pre_raw
+                   FROM addr LEFT JOIN addr_city USING (overture_id))
         SELECT overture_id AS id, county_key, street_type AS raw_postyp, struct_pack(
             discrpagid := county_key || '.ca.gov',
             dateupdate := '{updated}',
@@ -150,9 +150,9 @@ def road_centerline_dataset(c, updated):
     # From/To follow the segment's digitized direction: numbers rising along it give From = min, To = max.
     c.sql(f"""CREATE TABLE side AS
         WITH p AS (
-            SELECT a.RoadSegmentId AS seg_id, {ADD_NUMBER} AS n, a.postcode, a.community_name, a.a3, a.geom AS pt,
+            SELECT a.RoadSegmentId AS seg_id, {ADD_NUMBER} AS n, a.postcode, a.community_name, ac.a3, a.geom AS pt,
                    s.geom AS line, ST_LineLocatePoint(s.geom, a.geom) AS f
-            FROM addr a JOIN seg s ON s.overture_segment_id = a.RoadSegmentId AND s.county_key = a.county_key
+            FROM addr a LEFT JOIN addr_city ac USING (overture_id) JOIN seg s ON s.overture_segment_id = a.RoadSegmentId AND s.county_key = a.county_key
             WHERE a.RoadMatch = 'OK' AND ST_GeometryType(s.geom) = 'LINESTRING'),
         d AS (
             SELECT *, ST_LineInterpolatePoint(line, greatest(f - 0.001, 0)) AS a0,
@@ -294,7 +294,7 @@ def main():
     if not addr_files:
         sys.exit(f"No Overture-only builds under {BUILDS}; run overture_only_counties.py first")
     c = duckdb.connect()
-    c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2'; SET geometry_always_xy = true;")
+    c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2'; SET geometry_always_xy = true; SET preserve_insertion_order = false;")
     c.sql(f"CREATE TABLE addr AS SELECT *, {COUNTY_KEY} AS county_key FROM read_parquet({addr_files!r}, filename = true, union_by_name = true)")
     c.sql(f"""CREATE TABLE seg AS SELECT *, {COUNTY_KEY} AS county_key
               FROM read_parquet({glob.glob(os.path.join(BUILDS, 'road_centerlines.parquet'))!r}, filename = true, union_by_name = true)""")
