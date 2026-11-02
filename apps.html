@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NG911 from open data</title>
+  <meta name="description" content="Three steps toward NG911-ready address and road data: open data alone, the county's own sources, and full remediation.">
+  <style>
+    :root { --bg: #0b1120; --card: #111a2e; --border: rgba(148, 163, 184, 0.22); --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 1040px; margin: 0 auto; padding: 48px 16px 64px; }
+    h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.01em; }
+    .lede { color: var(--muted); max-width: 680px; margin: 0 0 36px; }
+    .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    a.app { display: flex; flex-direction: column; gap: 10px; padding: 22px; border: 1px solid var(--border); border-radius: 14px;
+            background: var(--card); color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+    a.app:hover, a.app:focus-visible { border-color: var(--accent); transform: translateY(-2px); outline: none; }
+    .step { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+    .app h2 { font-size: 20px; margin: 0; }
+    .app p { margin: 0; color: var(--muted); }
+    .app ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+    .go { margin-top: auto; font-weight: 600; color: var(--accent); }
+    footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>How far does open data get NG911?</h1>
+    <p class="lede">Every 911 authority keeps address points and road centerlines to the NENA NG9-1-1 standard.
+      These three maps show how much of that work is already done: first from open data alone, then from the
+      county's own sources, then with full remediation.</p>
+    <div class="apps">
+      <a class="app" href="index.html?app=open">
+        <span class="step">1 · Open data only</span>
+        <h2>Every California county, from Overture</h2>
+        <p>Overture addresses and roads, with no county involved.</p>
+        <ul>
+          <li>Statewide readiness by county</li>
+          <li>56 counties built as NG911 layers</li>
+          <li>Each address checked against a same-named road</li>
+        </ul>
+        <span class="go">Open map →</span>
+      </a>
+      <a class="app" href="index.html?app=county">
+        <span class="step">2 · County sources</span>
+        <h2>The county's own data, checked</h2>
+        <p>Fresno County's published address, road and boundary layers, compared with open data and the state.</p>
+        <ul>
+          <li>County roads vs Overture's open road map</li>
+          <li>City and county lines vs the state (CDTFA)</li>
+          <li>Road fixes to send back to OpenStreetMap</li>
+        </ul>
+        <span class="go">Open map →</span>
+      </a>
+      <a class="app" href="index.html">
+        <span class="step">3 · Remediation</span>
+        <h2>Fresno NG911 remediation hub</h2>
+        <p>Everything together, plus the tools to fix what's flagged.</p>
+        <ul>
+          <li>Cal OES readiness gates</li>
+          <li>Address-to-road links, buildings and parcels</li>
+          <li>Street-level imagery and fix changesets</li>
+        </ul>
+        <span class="go">Open map →</span>
+      </a>
+    </div>
+    <footer>Built from Overture Maps, OpenAddresses, OpenStreetMap and County of Fresno open data.
+      Source: <a href="https://github.com/COF-RyLopez/ng911-pipeline">github.com/COF-RyLopez/ng911-pipeline</a></footer>
+  </main>
+</body>
+</html>
