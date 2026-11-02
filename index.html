@@ -1796,6 +1796,12 @@
             <input type="checkbox" id="toggle-oo-points"><span class="slider"></span>
           </label>
         </div>
+        <div class="overlap-label" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>Road centerlines with address ranges derived from those points (zoom 10+):</span>
+          <label class="layer-switch" title="Show Overture roads with the left/right address ranges derived from matched addresses">
+            <input type="checkbox" id="toggle-oo-roads"><span class="slider"></span>
+          </label>
+        </div>
         <div style="max-height:220px;overflow-y:auto">
         <table class="compare-table">
           <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th></th></tr></thead>
@@ -2173,6 +2179,14 @@
       <span class="color-dot" style="background: #ef4444;"></span>
       <span>No road with that name nearby</span>
     </div>
+    <div class="legend-item">
+      <span style="width: 14px; height: 3px; background: #6366f1; border-radius: 2px;"></span>
+      <span>Road with derived address ranges</span>
+    </div>
+    <div class="legend-item">
+      <span style="width: 14px; height: 3px; background: #94a3b8; border-radius: 2px;"></span>
+      <span>Road with no matched addresses</span>
+    </div>
   </div>
 
   <!-- Wallet & Reputation Modal -->
@@ -2353,6 +2367,15 @@
     const countyBounds = {};  // county key (e.g. "los_angeles") -> [[w, s], [e, n]], from the statewide layer
     let ooClickBound = false;
     function addOoLayer() {
+      if (!map.getSource("oo_roads_src")) {
+        map.addSource("oo_roads_src", { type: "vector", url: `pmtiles://${R2_BASE}/tiles/overture_only_road_centerlines.pmtiles` });
+      }
+      if (!map.getLayer("oo_roads")) {
+        map.addLayer({ id: "oo_roads", type: "line", source: "oo_roads_src", "source-layer": "overture_only_roads", minzoom: 10,
+                       layout: { visibility: getToggleState("toggle-oo-roads", false) ? "visible" : "none", "line-cap": "round" },
+                       paint: { "line-color": ["case", ["to-boolean", ["get", "Ranged"]], "#6366f1", "#94a3b8"],
+                                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 4] } });
+      }
       if (!map.getSource("oo_points_src")) {
         map.addSource("oo_points_src", { type: "vector", url: `pmtiles://${R2_BASE}/tiles/overture_only_address_points.pmtiles` });
       }
@@ -2376,12 +2399,35 @@
         ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
         new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
       });
+      map.on("click", "oo_roads", (e) => {
+        if (map.queryRenderedFeatures(e.point, { layers: ["oo_points"] }).length) return;  // a point under the click wins
+        const p = e.features[0].properties;
+        const side = (range, n) => range ? `${range} (${n} address${n == 1 ? "" : "es"})` : "no matched addresses";
+        const div = document.createElement("div");
+        div.style.cssText = "font-size:12px;max-width:260px;color:#0f172a";
+        [["b", p.Name || "(unnamed)"],
+         ["div", `NENA road class: ${p.Class}`],
+         ["div", `Left: ${side(p.L, p.LN)}`],
+         ["div", `Right: ${side(p.R, p.RN)}`],
+         ["div", "Ranges derived from the Overture addresses matched to this road (E even, O odd, B both)"]
+        ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+        new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+      });
+    }
+    function updateOoLegend() {
+      const on = getToggleState("toggle-oo-points", false) || getToggleState("toggle-oo-roads", false);
+      document.getElementById("legend-oo").classList.toggle("off", !on);
+      document.getElementById("legend-county").classList.toggle("off", on);
     }
     function setOoVisible(on) {
       document.getElementById("toggle-oo-points").checked = on;
       if (map.getLayer("oo_points")) map.setLayoutProperty("oo_points", "visibility", on ? "visible" : "none");
-      document.getElementById("legend-oo").classList.toggle("off", !on);
-      document.getElementById("legend-county").classList.toggle("off", on);
+      updateOoLegend();
+    }
+    function setOoRoadsVisible(on) {
+      document.getElementById("toggle-oo-roads").checked = on;
+      if (map.getLayer("oo_roads")) map.setLayoutProperty("oo_roads", "visibility", on ? "visible" : "none");
+      updateOoLegend();
     }
     function showOoCounty(key) {
       setOoVisible(true);
@@ -2456,7 +2502,7 @@
       document.querySelectorAll(".app-part").forEach(el => {
         if (getComputedStyle(el).display === "none") el.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = false; });
       });
-      if (APP === "open") ["toggle-statewide", "toggle-oo-points"].forEach(id => { document.getElementById(id).checked = true; });
+      if (APP === "open") ["toggle-statewide", "toggle-oo-points", "toggle-oo-roads"].forEach(id => { document.getElementById(id).checked = true; });
     }
     const [appLng, appLat, appZoom] = APPS[APP]?.view || [-119.7871, 36.7468, 15.5];
     const initialLat = parseFloat(urlParams.get("lat")) || appLat;
@@ -2882,7 +2928,8 @@
       const swVis = getToggleState("toggle-statewide", false) ? "visible" : "none";
       if (!map.getLayer("statewide_fill")) {
         map.addLayer({ id: "statewide_fill", type: "fill", source: "statewide_src", layout: { visibility: swVis },
-                       paint: { "fill-color": STATEWIDE_COLOR, "fill-opacity": 0.45 } });
+                       paint: { "fill-color": STATEWIDE_COLOR,  // fades at street zoom so the roads and points read
+                                "fill-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.45, 11, 0.12] } });
       }
       if (!map.getLayer("statewide_line")) {
         map.addLayer({ id: "statewide_line", type: "line", source: "statewide_src", layout: { visibility: swVis },
@@ -2890,7 +2937,8 @@
       }
 
       addOoLayer();  // Overture-only address points for every built county (off until shown)
-      setOoVisible(getToggleState("toggle-oo-points", false));  // restore the saved toggle and its legend
+      setOoVisible(getToggleState("toggle-oo-points", false));  // restore the saved toggles and their legend
+      setOoRoadsVisible(getToggleState("toggle-oo-roads", false));
 
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
@@ -3650,6 +3698,9 @@
       if (e.target.checked) map.fitBounds([[-124.5, 32.5], [-114.1, 42.1]], { padding: 40, duration: 900 });
     });
     map.on("click", "statewide_fill", (e) => {
+      // an Overture-only road or point under the click has its own popup
+      const oo = ["oo_points", "oo_roads"].filter(id => map.getLayer(id));
+      if (oo.length && map.queryRenderedFeatures(e.point, { layers: oo }).length) return;
       const p = e.features[0].properties;
       const pct = v => (v == null || v === "null") ? "—" : `${v}%`;
       const div = document.createElement("div");
@@ -5415,6 +5466,7 @@
         });
         document.getElementById("oo-builds").style.display = "";
         document.getElementById("toggle-oo-points").addEventListener("change", e => setOoVisible(e.target.checked));
+        document.getElementById("toggle-oo-roads").addEventListener("change", e => setOoRoadsVisible(e.target.checked));
       })
       .catch(() => {});  // not in this pipeline run yet
 
