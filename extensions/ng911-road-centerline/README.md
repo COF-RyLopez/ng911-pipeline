@@ -19,22 +19,27 @@ matched to each segment.
 
 Same five rules and sample check as the address package, in `tests/test_conformance.py`: it targets
 `transportation/segment`, adds properties not features, joins on `id`, keeps everything under `ng911` (Overture
-`names` → `st_predir`/`st_name`/`st_posttyp`, `class` → `road_class`), and declares
+`names` → `st_predir`/`st_pretyp`/`st_name`/`st_postyp`, `class` → `roadclass`), and declares
 `overture-schema-theme-transportation >=2.0,<3`.
 
-## Properties (`ng911.*`, NENA STA-006 names, lower-cased)
+## Properties (`ng911.*`, NENA-STA-006.3-2026 Road Centerline names, lower-cased)
+
+Coded fields hold NENA domain values (`overture_ext_ng911_rcl/nena_sta006_3_domains.json`, vendored from
+NENA's GIS data model template); the model rejects anything else.
 
 | Field | NENA | How |
 |---|---|---|
-| `nguid` | NGUID | `urn:emergency:uid:gis:RCL:<GERS id>:<agency domain>` |
-| `st_predir`, `st_name`, `st_posttyp` | St_PreDir, St_Name, St_PosTyp | Overture `names.primary`, parsed the same way as addresses ("North Blackstone Avenue" → N / BLACKSTONE / AVE) |
-| `road_class` | RoadClass | Overture class: motorway → Primary; trunk, primary, secondary → Secondary; tertiary, residential, unclassified, living_street → Local; service → Service Drive; track → Vehicular Trail |
-| `fromaddr_l/_r`, `toaddr_l/_r` | FromAddr_L/R, ToAddr_L/R | from the addresses matched to the segment (same name, within 50 m), ordered along the segment's direction |
-| `parity_l/_r` | Parity_L/R | E, O, B, or Z for no addresses on that side |
-| `addr_count_l/_r` | (provenance) | how many addresses each side's range rests on |
+| `discrpagid`, `dateupdate`, `nguid` | DiscrpAgID, DateUpdate, NGUID (**mandatory**) | as in the address package; NGUID `urn:emergency:uid:gis:RCL:<GERS id>:<agency domain>` |
+| `fromaddr_l/_r`, `toaddr_l/_r` | FromAddr_L/R, ToAddr_L/R (**mandatory**) | from the addresses matched to the segment (same name, within 50 m), ordered along the segment's direction; 0–0 when a side has none |
+| `parity_l/_r` | Parity_L/R (**mandatory**) | E, O, B, or Z for 0–0 |
+| `st_name` | St_Name (**mandatory**) | Overture `names.primary`, parsed the same way as addresses |
+| `country_l/_r`, `a1_l/_r` | Country_L/R, A1_L/R (**mandatory**) | `US`, `CA` |
+| `st_predir`, `st_pretyp`, `st_postyp` | St_PreDir, St_PreTyp, St_PosTyp | NENA registry words: "North Blackstone Avenue" → North / BLACKSTONE / Avenue; "State Route 99" → State Route / 99 |
+| `roadclass` | RoadClass | Overture class: motorway → Primary; trunk, primary, secondary → Secondary; tertiary, residential, unclassified, living_street → Local; service → Service Drive; track → Vehicular Trail |
+| `a2_l/_r` | A2_L/R | the county the segment falls in |
 | `postcode_l/_r`, `postcomm_l/_r` | PostCode_L/R, PostComm_L/R | most common among that side's addresses |
-| `county_*`, `state_*`, `country_*` | County_L/R, State_L/R, Country_L/R | the county build the segment falls in |
-| `source_url` | (lineage) | the OpenStreetMap way, to fix the road at the source |
+| `addr_count_l/_r` | (evidence, not NENA) | how many addresses each side's range rests on |
+| `source_url` | (lineage, not NENA) | the OpenStreetMap way, to fix the road at the source |
 
 **How sides are decided:** each matched address is projected onto its segment. The sign of the cross product
 with the segment's direction at that point puts it on the left or the right. In a two-county test, 94% of sides

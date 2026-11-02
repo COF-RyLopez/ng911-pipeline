@@ -1,6 +1,6 @@
 [project]
 name = "overture-extension-ng911-road-centerline"
-version = "0.1.0"
+version = "0.2.0"
 description = "Prototype GERS Extension: NENA NG9-1-1 (STA-006) road centerline properties for Overture road segments"
 requires-python = ">=3.10"
 dependencies = ["overture-schema-theme-transportation>=2.0,<3", "pydantic>=2"]
@@ -14,3 +14,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["overture_ext_ng911_rcl"]
+
+[tool.setuptools.package-data]
+overture_ext_ng911_rcl = ["nena_sta006_3_domains.json"]
