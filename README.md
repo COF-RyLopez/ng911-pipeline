@@ -73,8 +73,12 @@ LIMIT 10;
 | DiscrpAgID, NGUID | placeholder agency domain (`<county>.ca.gov`) until a 9-1-1 authority publishes |
 
 Not an Extension: **hydrology.** NENA's Hydrology layers would attach to Overture's `base/water`, but base-theme
-IDs aren't stable GERS IDs. A supplemental Hydrology Line/Polygon dataset from the USGS 3D Hydrography Program
-(3DHP), which has persistent IDs and GNIS names, is in progress.
+IDs aren't stable GERS IDs. Instead a supplemental dataset carries NENA Hydrology Line and Polygon layers, with
+geometry, from the USGS 3D Hydrography Program (3DHP): 315,387 named streams and 112,598 waterbodies across all
+58 counties, keyed on 3DHP's persistent `id3dhp`, with GNIS names
+([`supplemental/ng911_hydrology/`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/supplemental/ng911_hydrology/manifest.json)
+on R2, and a Hydrology toggle in App 1). `scripts/build_ng911_hydrology.py` takes ~40 minutes against the USGS
+service, so `.github/workflows/hydrology.yml` runs it monthly rather than on every build.
 
 Not filled: **ESN**. Each 911 authority assigns ESNs to its own emergency service zones, so a number derived
 from open data would match no real MSAG. Each record carries its CAL FIRE local fire district and FDID
