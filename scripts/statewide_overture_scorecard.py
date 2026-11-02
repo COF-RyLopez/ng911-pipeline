@@ -11,6 +11,7 @@ Usage: python scripts/statewide_overture_scorecard.py [--state CA]
 import argparse
 import json
 import os
+import urllib.parse
 import urllib.request
 
 import duckdb
@@ -27,6 +28,8 @@ PUBLIC_CLASSES = ("motorway", "trunk", "primary", "secondary", "tertiary", "resi
 def census_housing_units(fips):
     """2020 Census housing units by county name ('Fresno County'); {} if the API is unreachable."""
     url = f"https://api.census.gov/data/2020/dec/pl?get=NAME,H1_001N&for=county:*&in=state:{fips}"
+    if os.environ.get("CENSUS_API_KEY"):  # the API asks for a key from CI runners; optional locally
+        url += "&key=" + urllib.parse.quote(os.environ["CENSUS_API_KEY"])
     body = b""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "ng911-pipeline statewide scorecard"})
