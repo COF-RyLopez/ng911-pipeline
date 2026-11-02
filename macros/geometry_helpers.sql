@@ -61,6 +61,9 @@
         WHEN 'PW' THEN 'PKWY'  -- Alameda: 'PASEO PADRE PW'
         WHEN 'TRAIL' THEN 'TRL'
         WHEN 'TR' THEN 'TRL'  -- Placer: 'MINERAL SPRING TR'
+        WHEN 'TERRACE' THEN 'TER'
+        WHEN 'ALLEY' THEN 'ALY'
+        WHEN 'PLAZA' THEN 'PLZ'
         WHEN 'LOOP' THEN 'LOOP'
         WHEN 'LP' THEN 'LOOP'  -- Placer: 'IMPRESSIONIST LP'
         ELSE rtrim(upper(trim({{ type_col }})), '.')
