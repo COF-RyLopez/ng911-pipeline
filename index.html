@@ -265,6 +265,8 @@
       position: relative;
       width: 34px;
       height: 18px;
+      flex-shrink: 0;  /* a long label next to it in a flex row would otherwise squeeze it past the card edge */
+      margin-left: 8px;
     }
 
     .layer-switch input {
