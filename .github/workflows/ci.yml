@@ -73,10 +73,10 @@ jobs:
           python scripts/publish_to_r2.py --part county
 
   # Product 1 at state scale, in parallel with the county jobs: the statewide Overture scorecard, then
-  # the Overture-only build (oo_* models) for all 56 counties not built from county GIS, weakest first.
+  # the Overture-only build (oo_* models) for all 58 counties, weakest first.
   # Needs only Overture data, and publishes only its own R2 keys (publish_to_r2.py --part overture).
   overture-only:
-    name: Statewide Scorecard & Overture-only Build (56 counties)
+    name: Statewide Scorecard & Overture-only Build (58 counties)
     runs-on: ubuntu-24.04
     timeout-minutes: 60  # a normal run takes ~35 min
     steps:
@@ -109,9 +109,9 @@ jobs:
         run: |
           python scripts/statewide_overture_scorecard.py --state CA
 
-      - name: Overture-only build for the 56 counties
+      - name: Overture-only build for all 58 counties
         run: |
-          python scripts/overture_only_counties.py --top 56
+          python scripts/overture_only_counties.py --top 58
 
       # Prototype NG911 GERS Extensions (extensions/ng911-address, extensions/ng911-road-centerline) and their data, keyed on GERS IDs
       - name: Build the NG911 GERS Extension datasets and check package conformance
