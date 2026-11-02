@@ -6,8 +6,8 @@ NENA-STA-006.3 Hydrology Line and Hydrology Polygon layers for California from t
 (3DHP, public domain). This is a supplemental dataset, not a GERS Extension: Overture's base/water IDs aren't
 stable GERS IDs, so the layers carry their own geometry and 3DHP's persistent `id3dhp`.
 
-Writes data/output/extensions/ng911_hydrology/{ng911_hydrology_line_ca,ng911_hydrology_polygon_ca}.parquet
-(GeoParquet) and manifest.json. Usage: python scripts/build_ng911_hydrology.py
+Writes data/output/supplemental/ng911_hydrology/{ng911_hydrology_line_ca,ng911_hydrology_polygon_ca}.parquet
+(GeoParquet) and manifest.json. Usage: python scripts/build_ng911_hydrology.py   (~40 min; run by .github/workflows/hydrology.yml monthly)
 """
 import datetime
 import json
@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import duckdb
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_ng911_extension import OUT_ROOT, TIGER_COUNTIES, load_places  # noqa: E402
+from build_ng911_extension import PROJECT_DIR, TIGER_COUNTIES, load_places  # noqa: E402
 
 SERVICE = "https://hydro.nationalmap.gov/arcgis/rest/services/3DHP_all/FeatureServer"
 # ponytail: named flowlines only (372K in CA); all flowlines run to millions, mostly unnamed channels a 911
@@ -62,7 +62,7 @@ def fetch_tile(layer, where, x, y, size=1.0):
 
 def main():
     updated = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
-    out = os.path.join(OUT_ROOT, "ng911_hydrology")
+    out = os.path.join(PROJECT_DIR, "data", "output", "supplemental", "ng911_hydrology")  # its own R2 part
     os.makedirs(out, exist_ok=True)
     c = duckdb.connect()
     c.sql("INSTALL spatial; LOAD spatial; SET geometry_always_xy = true;")
