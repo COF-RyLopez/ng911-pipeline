@@ -1066,6 +1066,8 @@
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     }
 
+    .legend-panel.off { display: none; }
+
     .legend-item {
       display: flex;
       align-items: center;
@@ -2112,8 +2114,8 @@
     </div>
   </aside>
 
-  <!-- Bottom Legend -->
-  <div class="legend-panel">
+  <!-- Bottom Legend (Fresno layers; swapped for the Overture-only legend while those points are on) -->
+  <div class="legend-panel" id="legend-county">
     <div class="legend-item">
       <span class="color-dot" style="background: #10b981;"></span>
       <span>Valid (Inside Footprint)</span>
@@ -2141,6 +2143,21 @@
     <div class="legend-item">
       <span style="width: 12px; height: 10px; background: rgba(148, 163, 184, 0.35); border: 1px solid #64748b; border-radius: 2px;"></span>
       <span>Building Footprint</span>
+    </div>
+  </div>
+  <div class="legend-panel off" id="legend-oo">
+    <div class="legend-item"><b>Overture-only address points</b></div>
+    <div class="legend-item">
+      <span class="color-dot" style="background: #22c55e;"></span>
+      <span>Same-named road within 50 m</span>
+    </div>
+    <div class="legend-item">
+      <span class="color-dot" style="background: #f59e0b;"></span>
+      <span>Same-named road over 50 m away</span>
+    </div>
+    <div class="legend-item">
+      <span class="color-dot" style="background: #ef4444;"></span>
+      <span>No road with that name nearby</span>
     </div>
   </div>
 
@@ -2349,6 +2366,8 @@
     function setOoVisible(on) {
       document.getElementById("toggle-oo-points").checked = on;
       if (map.getLayer("oo_points")) map.setLayoutProperty("oo_points", "visibility", on ? "visible" : "none");
+      document.getElementById("legend-oo").classList.toggle("off", !on);
+      document.getElementById("legend-county").classList.toggle("off", on);
     }
     function showOoCounty(key) {
       setOoVisible(true);
@@ -2835,6 +2854,7 @@
       }
 
       addOoLayer();  // Overture-only address points for every built county (off until shown)
+      setOoVisible(getToggleState("toggle-oo-points", false));  // restore the saved toggle and its legend
 
       // 3.1 Buildings Footprints PMTiles (Visible at zoom 13+ to inspect parcel containment)
       if (!map.getSource("fresno_buildings_src")) {
