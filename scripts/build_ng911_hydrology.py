@@ -95,6 +95,7 @@ def main():
                         "file": os.path.basename(path), "rows": n, "named_pct": round(100.0 * named / n, 1) if n else None,
                         "counties": counties, f"{p}_type_counts": types}
         print(f"[ng911_hydrology {kind}] {n:,} features, {counties} counties, types {types}")
+    tiles(c, out)
     manifest = {
         "dataset": "ng911-hydrology", "status": "prototype", "kind": "supplemental dataset (not a GERS Extension)",
         "why_not_an_extension": "Overture base/water IDs aren't stable GERS IDs; 3DHP's id3dhp is persistent",
@@ -106,6 +107,22 @@ def main():
     }
     with open(os.path.join(out, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=1)
+
+
+def tiles(c, out):
+    """App 1 map layers: hydrology lines and polygons as PMTiles next to the data (same R2 part)."""
+    import build_pmtiles as bp
+    engine = bp.pick_engine()
+    if engine is None:
+        print("[WARNING] Neither tylertoo nor tippecanoe is installed; skipping the hydrology map tiles.")
+        return
+    attribution = "USGS 3D Hydrography Program (3DHP)"
+    bp.build_layer(c, engine, "hydrology_lines", f"{out}/ng911_hydrology_line_ca.parquet",
+                   "hs_name AS Name, hs_type AS Type, id3dhp", "geometry",
+                   ["-Z9", "-z14", "--drop-densest-as-needed"], f"{out}/tiles/hydrology_lines.pmtiles", attribution=attribution)
+    bp.build_layer(c, engine, "hydrology_polygons", f"{out}/ng911_hydrology_polygon_ca.parquet",
+                   "hp_name AS Name, hp_type AS Type, id3dhp", "geometry",
+                   ["-Z7", "-z14", "--coalesce-densest-as-needed"], f"{out}/tiles/hydrology_polygons.pmtiles", attribution=attribution)
 
 
 if __name__ == "__main__":
