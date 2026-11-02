@@ -265,6 +265,8 @@
       position: relative;
       width: 34px;
       height: 18px;
+      flex-shrink: 0;  /* a long label next to it in a flex row would otherwise squeeze it past the card edge */
+      margin-left: 8px;
     }
 
     .layer-switch input {
@@ -1778,11 +1780,11 @@
       </div>
       <div class="overlap-label" id="statewide-summary">Loading…</div>
       <table class="compare-table">
-        <thead><tr><th style="text-align:left">Weakest counties</th><th title="Address points with a house number and street">Addr. complete</th><th title="Share of public road length with a name">Roads named</th></tr></thead>
+        <thead><tr><th style="text-align:left" title="Ranked by the lower of the two scores">Weakest counties</th><th title="Address points with a house number and street">Addr. complete</th><th title="Share of public road length with a name">Roads named</th></tr></thead>
         <tbody id="statewide-rows"><tr><td colspan="3">Loading…</td></tr></tbody>
       </table>
       <div class="ban-card-footnote">
-        Map colour = the lower of the two:
+        Ranked, and coloured on the map, by the lower of the two (shown in colour; the other is dimmed):
         <span class="p2-dot" style="background:#22c55e"></span>≥ 90%
         <span class="p2-dot" style="background:#eab308"></span>80–90%
         <span class="p2-dot" style="background:#f97316"></span>70–80%
@@ -5440,8 +5442,17 @@
         tbody.textContent = "";
         rows.sort((a, b) => score(a) - score(b)).slice(0, 6).forEach(r => {
           const tr = document.createElement("tr");
-          [r.County.replace(/ County$/, ""), `${r.PctNumberAndStreet ?? "—"}%`, `${r.PctPublicRoadKmNamed ?? "—"}%`].forEach((t, i) => {
-            const td = document.createElement("td"); td.textContent = t; if (i === 0) td.style.textAlign = "left"; tr.appendChild(td);
+          const a = r.PctNumberAndStreet, n = r.PctPublicRoadKmNamed;
+          const colour = v => v >= 90 ? "#22c55e" : v >= 80 ? "#eab308" : v >= 70 ? "#f97316" : "#ef4444";  // map palette
+          [[r.County.replace(/ County$/, "")], [a, a <= n], [n, n < a]].forEach(([v, limiting], i) => {
+            const td = document.createElement("td");
+            if (i === 0) { td.textContent = v; td.style.textAlign = "left"; }
+            else {
+              td.textContent = `${v ?? "—"}%`;
+              if (limiting) { td.style.color = colour(v ?? 0); td.style.fontWeight = "700"; }
+              else td.style.opacity = "0.45";  // not what ranks this county
+            }
+            tr.appendChild(td);
           });
           tbody.appendChild(tr);
         });
