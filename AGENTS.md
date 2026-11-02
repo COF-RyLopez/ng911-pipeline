@@ -70,6 +70,10 @@ source table, and a refreshed sample.
 
 - `.github/workflows/ci.yml` runs on PRs and `main`: the county matrix (06019 Fresno, 06031 Kings) and a
   parallel `overture-only` job (statewide scorecard, all 58 counties, Extension datasets + conformance).
+- External sources (county ArcGIS services, Census TIGERweb, CAL FIRE, USGS 3DHP) are sometimes down for a few
+  minutes, and a CI job fails with them. Check the log names an outside host, re-run the failed job once, and
+  treat a second failure as real. A county whose address service returns nothing stops `run_pilot.py` with a
+  message naming the county.
 - Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
