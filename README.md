@@ -68,8 +68,15 @@ LIMIT 10;
 
 Not filled: **ESN**. Each 911 authority assigns ESNs to its own emergency service zones, so a number derived
 from open data would match no real MSAG. Each record carries its CAL FIRE local fire district and FDID
-instead (not NENA fields), as evidence for mapping to the authority's ESN. PSAP, police and EMS boundaries
-aren't in open data.
+instead (not NENA fields), as evidence for mapping to the authority's ESN.
+
+Not available: **PSAP, police and EMS boundaries.** The national HIFLD PSAP boundary layer is no longer
+online, and the FCC Master PSAP Registry lists PSAPs with no boundaries. Cal OES maintains California's PSAP
+layer but doesn't publish it. There is no statewide police or EMS service-area layer either: A3 already
+tells city from unincorporated (county sheriff) jurisdiction, but many cities contract with the sheriff, and
+the public county-to-LEMSA list names the EMS regulator, not the responding ambulance. These layers, from Cal
+OES, counties or the 911 authority, as supplemental datasets addresses and roads could reference, are the
+piece open data can't supply.
 
 ## Fixing open data
 
