@@ -45,6 +45,7 @@ def address_dataset(c):
             st_predir := pre_directional,
             st_name := street_name,
             st_posttyp := street_type,
+            st_posdir := post_directional,
             unit := {"nullif(trim(unit), '')" if has_unit else "NULL::VARCHAR"},
             post_comm := community_name,
             post_code := postcode,

@@ -62,6 +62,15 @@
         WHEN 'TRAIL' THEN 'TRL'
         WHEN 'TR' THEN 'TRL'  -- Placer: 'MINERAL SPRING TR'
         WHEN 'TERRACE' THEN 'TER'
+        WHEN 'TE' THEN 'TER'  -- Alameda: 'BROADWAY TE'
+        WHEN 'CRESCENT' THEN 'CRES'
+        WHEN 'COMMON' THEN 'CMN'
+        WHEN 'CM' THEN 'CMN'  -- Alameda: 'STEVENSON CM'
+        WHEN 'GLEN' THEN 'GLN'
+        WHEN 'SQUARE' THEN 'SQ'
+        WHEN 'PKY' THEN 'PKWY'
+        WHEN 'TL' THEN 'TRL'  -- Calaveras: 'HANGTREE TL'
+        WHEN 'CR' THEN 'CIR'  -- Calaveras: 'HOKAN CR'
         WHEN 'ALLEY' THEN 'ALY'
         WHEN 'PLAZA' THEN 'PLZ'
         WHEN 'LOOP' THEN 'LOOP'
@@ -116,6 +125,11 @@ END)
                     'EIGHTEENTH','NINETEENTH','TWENTIETH'] -%}
 {%- set suffix = {1: 'ST', 2: 'ND', 3: 'RD'} -%}
 {%- set ns = namespace(sql="' ' || " ~ expr ~ " || ' '") -%}
+{#- ST FRANCIS (address) vs SAINT FRANCIS (OpenStreetMap), VIA MARIPOSA W vs VIA MARIPOSA WEST -#}
+{%- for full, abbr in [('SAINT','ST'),('MOUNT','MT'),('FORT','FT'),('NORTHEAST','NE'),('NORTHWEST','NW'),('SOUTHEAST','SE'),
+                         ('SOUTHWEST','SW'),('NORTH','N'),('SOUTH','S'),('EAST','E'),('WEST','W')] -%}
+{%- set ns.sql = "replace(" ~ ns.sql ~ ", ' " ~ full ~ " ', ' " ~ abbr ~ " ')" -%}
+{%- endfor -%}
 {%- for w in ordinals -%}
 {%- set n = loop.index -%}
 {%- set ns.sql = "replace(" ~ ns.sql ~ ", ' " ~ w ~ " ', ' " ~ n ~ (suffix.get(n, 'TH') if n not in (11, 12, 13) else 'TH') ~ " ')" -%}
@@ -148,4 +162,4 @@ CASE WHEN regexp_matches({{ dataset }}, '^[a-z]{2}/[a-z0-9_/]+$')
 
 {#- street type suffixes, abbreviated or spelled out (31% of California streets spell it out: 'PARK AVENUE');
     shared by Overture addresses and Overture road names so both parse the same way -#}
-{% macro street_type_suffix_regex() %}{{ return(' +(ST|STREET|AVE|AV|AVENUE|BLVD|BL|BOULEVARD|RD|ROAD|DR|DRIVE|LN|LANE|WAY|WY|CT|COURT|PL|PLACE|CIR|CI|CIRCLE|HWY|HIGHWAY|PKWY|PW|PARKWAY|TRL|TR|TRAIL|TER|TERRACE|ALY|ALLEY|PLZ|PLAZA|LOOP|LP)$') }}{% endmacro %}
+{% macro street_type_suffix_regex() %}{{ return(' +(ST|STREET|AVE|AV|AVENUE|BLVD|BL|BOULEVARD|RD|ROAD|DR|DRIVE|LN|LANE|WAY|WY|CT|COURT|PL|PLACE|CIR|CI|CIRCLE|HWY|HIGHWAY|PKWY|PW|PARKWAY|TRL|TR|TRAIL|TER|TE|TERRACE|ALY|ALLEY|PLZ|PLAZA|LOOP|LP|CRES|CRESCENT|CMN|CM|COMMON|GLN|GLEN|SQ|SQUARE|PKY|PT|CV|COVE|WALK|TL|RDG|CR|XING)$') }}{% endmacro %}
