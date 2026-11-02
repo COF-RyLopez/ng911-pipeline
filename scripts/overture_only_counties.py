@@ -33,6 +33,7 @@ PROJECT_DIR = county_config.PROJECT_DIR
 OUT_DIR = os.path.join(PROJECT_DIR, "data", "output", "overture_only")
 STATEWIDE = os.path.join(PROJECT_DIR, "data", "output", "statewide", "ca_overture_county_scorecard.geojson")
 SWAPPED = ["overture_addresses.parquet", "overture_transportation.parquet", "overture_divisions.parquet"]  # county-extent caches
+CA_BUILDINGS = os.path.join(fpd.CACHE_DIR, "ca_overture_buildings.parquet")  # footprints only, for the Placement test
 MODELS = "+oo_fishbones oo_localities"  # oo_fishbones pulls in the boundary, points and centerlines
 
 
@@ -48,6 +49,17 @@ def weakest(top):
     feats = json.load(open(STATEWIDE))["features"]
     score = lambda p: min(p["PctNumberAndStreet"] or 0, p["PctPublicRoadKmNamed"] or 0)
     return sorted(feats, key=lambda f: score(f["properties"]))[:top]
+
+
+def fetch_ca_buildings():
+    """Every Overture building footprint in California, once per run (bbox + geometry only)."""
+    if os.path.exists(CA_BUILDINGS):
+        return
+    with duckdb.connect() as c:
+        c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
+        c.sql(f"""COPY (SELECT bbox, geometry FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
+                  WHERE bbox.xmin >= -124.5 AND bbox.xmax <= -114.1 AND bbox.ymin >= 32.5 AND bbox.ymax <= 42.1)
+                  TO '{CA_BUILDINGS}' (FORMAT PARQUET, COMPRESSION ZSTD)""")
 
 
 def build(feature, dbt_bin):
@@ -75,11 +87,15 @@ def build(feature, dbt_bin):
         c.sql("LOAD spatial")
         # each point carries its fishbone result (same-named road within 50 m / farther / none) for the map
         c.sql(f"""COPY (
+            WITH b AS (SELECT geometry FROM read_parquet('{CA_BUILDINGS}')
+                       WHERE bbox.xmax >= {b[0]} AND bbox.xmin <= {b[2]} AND bbox.ymax >= {b[1]} AND bbox.ymin <= {b[3]})
             SELECT p.*, trim(concat_ws(' ', p.house_number, p.pre_directional, p.street_name, p.street_type, p.post_directional)) AS Address,
                    CASE WHEN f.overture_id IS NULL THEN 'NO_NAMED_ROAD'
                         WHEN f.is_excessive_offset THEN 'FAR' ELSE 'OK' END AS RoadMatch,
                    f.distance_meters AS DistanceM,
-                   f.overture_segment_id AS RoadSegmentId  -- GERS ID of the matched transportation segment
+                   f.overture_segment_id AS RoadSegmentId,  -- GERS ID of the matched transportation segment
+                   p.overture_id IN (SELECT q.overture_id FROM oo_address_points q JOIN b ON ST_Intersects(b.geometry, q.geom))
+                       AS InBuilding  -- inside an Overture building footprint (the NENA Placement test)
             FROM oo_address_points p LEFT JOIN oo_fishbones f USING (overture_id)
         ) TO '{out}/address_points.parquet' (FORMAT PARQUET)""")
         c.sql(f"COPY oo_road_centerlines TO '{out}/road_centerlines.parquet' (FORMAT PARQUET)")
@@ -124,6 +140,7 @@ def main():
         p = os.path.join(fpd.CACHE_DIR, f)
         if os.path.exists(p):
             shutil.move(p, p + ".bak")
+    fetch_ca_buildings()
     try:
         rows = [s for s in (build(f, dbt_bin) for f in weakest(top)) if s]
     finally:
@@ -131,6 +148,8 @@ def main():
             p = os.path.join(fpd.CACHE_DIR, f)
             if os.path.exists(p + ".bak"):
                 shutil.move(p + ".bak", p)
+        if os.path.exists(CA_BUILDINGS):  # 1.8 GB; free the runner's disk for the extension build
+            os.remove(CA_BUILDINGS)
 
     if rows:
         with open(os.path.join(OUT_DIR, "counties_summary.csv"), "w", newline="") as fh:

@@ -123,13 +123,40 @@ def nena_setup(c):
     c.sql(f"CREATE MACRO nena_pretype_word(raw) AS {_case('raw', NENA_PRETYPE)}")
 
 
+# NENA Placement from OpenAddresses' per-source "accuracy" (1 rooftop, 2 parcel, 3 interpolated), where a source states one
+OA_ACCURACY_PLACEMENT = {1: "Structure", 2: "Parcel", 3: "Geocoding"}
+
+
+def load_oa_accuracy(c):
+    """Table oa_accuracy(source_url, placement) from each OpenAddresses source file the addresses point to."""
+    rows = []
+    for (url,) in c.execute("SELECT DISTINCT source_url FROM addr WHERE source_url LIKE 'https://github.com/openaddresses/%'").fetchall():
+        raw = url.replace("github.com/openaddresses/openaddresses/blob/", "raw.githubusercontent.com/openaddresses/openaddresses/")
+        try:
+            with urllib.request.urlopen(urllib.request.Request(raw, headers={"User-Agent": "ng911-pipeline"}), timeout=60) as r:
+                layers = json.load(r).get("layers", {}).get("addresses", [])
+        except Exception as e:  # one unreachable source leaves its addresses to the footprint test
+            print(f"  [WARNING] {raw}: {e}")
+            continue
+        acc = next((l.get("conform", {}).get("accuracy") for l in layers if l.get("conform", {}).get("accuracy")), None)
+        if acc in OA_ACCURACY_PLACEMENT:
+            rows.append((url, OA_ACCURACY_PLACEMENT[acc]))
+    c.execute("CREATE TABLE oa_accuracy (source_url VARCHAR, placement VARCHAR)")
+    if rows:
+        c.executemany("INSERT INTO oa_accuracy VALUES (?, ?)", rows)
+    print(f"  -> {len(rows)} OpenAddresses sources state a placement accuracy")
+
+
 def address_dataset(c, updated):
-    has_unit = "unit" in [r[0] for r in c.execute("DESCRIBE addr").fetchall()]  # carried once the parse keeps units
+    cols = [r[0] for r in c.execute("DESCRIBE addr").fetchall()]
+    has_unit = "unit" in cols  # carried once the parse keeps units
+    in_building = "InBuilding" if "InBuilding" in cols else "NULL::BOOLEAN"  # builds before the footprint test lack it
     # ponytail: the agency domain is a placeholder (<county>.ca.gov) until a 9-1-1 authority publishes against this
     c.sql(f"""CREATE TABLE ext AS
         WITH a AS (SELECT *, nena_type_word(street_type) AS postyp,
                           nena_pretype_raw(street_name, nena_type_word(street_type)) AS pre_raw
-                   FROM addr LEFT JOIN addr_city USING (overture_id))
+                   FROM addr LEFT JOIN addr_city USING (overture_id)
+                   LEFT JOIN (SELECT source_url, placement AS oa_placement FROM oa_accuracy) USING (source_url))
         SELECT overture_id AS id, county_key, street_type AS raw_postyp, struct_pack(
             discrpagid := county_key || '.ca.gov',
             dateupdate := '{updated}',
@@ -149,6 +176,8 @@ def address_dataset(c, updated):
             unit := {"nullif(trim(unit), '')" if has_unit else "NULL::VARCHAR"},
             post_comm := community_name,
             post_code := postcode,
+            -- the source's stated method first; else on a structure if inside an Overture footprint
+            placement := coalesce(oa_placement, CASE WHEN {in_building} THEN 'Structure' ELSE 'Unknown' END),
             road_match := RoadMatch,
             road_distance_m := DistanceM::DOUBLE,
             road_segment_id := RoadSegmentId,
@@ -274,7 +303,7 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
                             GROUP BY 1 ORDER BY 2 DESC LIMIT 10""").fetchall()
     manifest = {
         "extension": f"overture-extension-{package}",
-        "package_version": "0.4.0",
+        "package_version": "0.5.0",
         "status": "prototype",
         "target_feature_type": target,
         "join_key": "id (GERS ID)",
@@ -292,6 +321,7 @@ def write(c, name, package, release_path, target, schema_pkg, nena_layer, nena_r
                                  "checked by the package on every sample row",
                  "a3_source": "CDTFA city boundaries (CA state geoportal), fetched at build time; empty outside cities",
                  "a4_source": "Census Designated Places (Census TIGERweb), only where A3 is empty",
+                 "placement_source": "OpenAddresses source accuracy where stated (1 Structure, 2 Parcel, 3 Geocoding); else Structure inside an Overture building footprint, else Unknown",
                  "street_types_not_in_registry": dict(unmapped)},
         "files": {"data": f"{name}_ca.parquet", "sample": f"{name}_sample.jsonl"},
         "license_note": license_note,  # ponytail: the license is the publisher's call
@@ -317,6 +347,7 @@ def main():
     load_places(c, "city", CDTFA_CITIES, "CDTFA_CITY")
     load_places(c, "cdp", CENSUS_CDPS, "BASENAME")
     add_admin(c)
+    load_oa_accuracy(c)
     updated = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")  # DateUpdate: when built
     for name, build, *meta in DATASETS:
         build(c, updated)

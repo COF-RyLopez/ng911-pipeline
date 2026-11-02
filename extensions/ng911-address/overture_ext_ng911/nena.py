@@ -26,3 +26,4 @@ RoadClass = Annotated[str, _in("RoadClass")]
 Parity = Annotated[str, _in("Parity")]                         # E, O, B, Z
 Country = Annotated[str, _in("AdministrativeLevels0")]          # US
 State = Annotated[str, _in("AdministrativeLevels1")]            # CA (ISO 3166-2 / USPS)
+Placement = Annotated[str, _in("PlacementMethodPoint")]        # Structure, Parcel, Geocoding, Unknown, ...
