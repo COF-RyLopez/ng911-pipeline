@@ -54,7 +54,9 @@ def main():
     load_places(c, "county", TIGER_COUNTIES, "BASENAME")
     load_places(c, "fire", CALFIRE_DISTRICTS, "Name", "FDID")
     load_places(c, "dpa", DPA, "DPA_AGENCY", "NWCG_UNITID")
-    c.create_function("display_name", display_name, ["VARCHAR", "VARCHAR"], "VARCHAR", null_handling="special")  # unit can be NULL
+    c.execute("CREATE TABLE dpa_label (name VARCHAR, code VARCHAR, label VARCHAR)")  # a lookup, not a UDF (no numpy in CI)
+    c.executemany("INSERT INTO dpa_label VALUES (?, ?, ?)",
+                  [(a, u, display_name(a, u)) for a, u in c.execute("SELECT DISTINCT name, code FROM dpa").fetchall()])
     c.sql("CREATE TABLE ca AS SELECT ST_Union_Agg(ST_MakeValid(geom)) AS g FROM county")
     c.sql("CREATE TABLE fd_all AS SELECT ST_Union_Agg(geom) AS g FROM fire")
     # one polygon (set) per district and per wildland agency unit; the wildland part is what no district covers
@@ -64,7 +66,7 @@ def main():
                ST_Union_Agg(geom) AS geom
         FROM fire GROUP BY coalesce(code, name)  -- one per FDID (a few FDIDs carry two spellings of a name)
         UNION ALL
-        SELECT 'wildland_dpa', display_name(name, code), NULL, name, code, 'DPA-' || name || '-' || coalesce(code, 'NA'),
+        SELECT 'wildland_dpa', (SELECT label FROM dpa_label l WHERE l.name = dpa.name AND l.code IS NOT DISTINCT FROM dpa.code), NULL, name, code, 'DPA-' || name || '-' || coalesce(code, 'NA'),
                ST_Intersection(ST_Difference(ST_Union_Agg(geom), (SELECT g FROM fd_all)), (SELECT g FROM ca))
         FROM dpa GROUP BY name, code""")
     c.sql("DELETE FROM fb WHERE ST_IsEmpty(geom) OR ST_Area(geom) < 1e-9")
