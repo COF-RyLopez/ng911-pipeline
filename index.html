@@ -1810,6 +1810,12 @@
             <input type="checkbox" id="toggle-hydro"><span class="slider"></span>
           </label>
         </div>
+        <div class="overlap-label" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">
+          <span><span class="p2-dot" style="background:#f97316"></span>Fire boundary candidate: <span style="color:#c2410c">local districts</span>, else <span style="color:#15803d">wildland agency</span> (CAL FIRE data, NENA FirePolygon):</span>
+          <label class="layer-switch" title="Show the candidate NENA FirePolygon layer: CAL FIRE local fire districts, else the Direct Protection Area agency. A draft for the 911 authority, not its layer.">
+            <input type="checkbox" id="toggle-fire"><span class="slider"></span>
+          </label>
+        </div>
         <div style="max-height:220px;overflow-y:auto">
         <table class="compare-table">
           <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th></th></tr></thead>
@@ -2405,6 +2411,40 @@
         new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
       }));
     }
+    // Candidate NENA FirePolygon (supplemental; build_ng911_fire_boundary.py, monthly with hydrology)
+    let fireClickBound = false;
+    function addFireLayers() {
+      const vis = getToggleState("toggle-fire", false) ? "visible" : "none";
+      if (!map.getSource("fire_src")) map.addSource("fire_src", { type: "vector", url: `pmtiles://${R2_BASE}/supplemental/ng911_fire/tiles/fire_boundary_candidate.pmtiles` });
+      const color = ["match", ["get", "Basis"], "local_fire_district", "#f97316", "#16a34a"];
+      if (!map.getLayer("fire_fill")) {
+        map.addLayer({ id: "fire_fill", type: "fill", source: "fire_src", "source-layer": "fire_boundary_candidate",
+                       layout: { visibility: vis }, paint: { "fill-color": color, "fill-opacity": 0.18 } });
+        map.addLayer({ id: "fire_line", type: "line", source: "fire_src", "source-layer": "fire_boundary_candidate",
+                       layout: { visibility: vis },
+                       paint: { "line-color": ["match", ["get", "Basis"], "local_fire_district", "#c2410c", "#15803d"],
+                                "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.3, 12, 1.5] } });
+      }
+      if (fireClickBound) return;
+      fireClickBound = true;
+      map.on("click", "fire_fill", (e) => {
+        const others = ["oo_points", "oo_roads", "hydro_line", "hydro_poly"].filter(id => map.getLayer(id));
+        if (others.length && map.queryRenderedFeatures(e.point, { layers: others }).length) return;  // those have their own popups
+        const p = e.features[0].properties;
+        const local = p.Basis === "local_fire_district";
+        const div = document.createElement("div");
+        div.style.cssText = "font-size:12px;max-width:260px;color:#0f172a";
+        [["b", p.Name],
+         ["div", local ? `Local fire district${p.FDID ? ` · FDID ${p.FDID}` : ""}` : "Wildland protection agency (Direct Protection Area); no local district on file"],
+         ["div", "Candidate NENA FirePolygon from CAL FIRE data, not the 911 authority's layer; Agency_ID and service URIs are left for the authority"]
+        ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+        new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+      });
+    }
+    function setFireVisible(on) {
+      document.getElementById("toggle-fire").checked = on;
+      ["fire_fill", "fire_line"].forEach(id => map.getLayer(id) && map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
+    }
     function setHydroVisible(on) {
       document.getElementById("toggle-hydro").checked = on;
       ["hydro_poly", "hydro_line"].forEach(id => map.getLayer(id) && map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
@@ -2979,6 +3019,8 @@
                        paint: { "line-color": "#0f172a", "line-width": 0.8 } });
       }
 
+      addFireLayers();  // under hydrology, roads and points
+      setFireVisible(getToggleState("toggle-fire", false));
       addHydroLayers();  // under the Overture-only roads and points
       setHydroVisible(getToggleState("toggle-hydro", false));
       addOoLayer();  // Overture-only address points for every built county (off until shown)
@@ -3744,7 +3786,7 @@
     });
     map.on("click", "statewide_fill", (e) => {
       // an Overture-only road or point under the click has its own popup
-      const oo = ["oo_points", "oo_roads", "hydro_line", "hydro_poly"].filter(id => map.getLayer(id));
+      const oo = ["oo_points", "oo_roads", "hydro_line", "hydro_poly", "fire_fill"].filter(id => map.getLayer(id));
       if (oo.length && map.queryRenderedFeatures(e.point, { layers: oo }).length) return;
       const p = e.features[0].properties;
       const pct = v => (v == null || v === "null") ? "—" : `${v}%`;
@@ -5522,6 +5564,7 @@
         document.getElementById("toggle-oo-points").addEventListener("change", e => setOoVisible(e.target.checked));
         document.getElementById("toggle-oo-roads").addEventListener("change", e => setOoRoadsVisible(e.target.checked));
         document.getElementById("toggle-hydro").addEventListener("change", e => setHydroVisible(e.target.checked));
+        document.getElementById("toggle-fire").addEventListener("change", e => setFireVisible(e.target.checked));
       })
       .catch(() => {});  // not in this pipeline run yet
 
