@@ -118,7 +118,7 @@ upstream with a PR. `scripts/oa_conform_audit.py` checks every California OpenAd
 
 - `.github/workflows/ci.yml` runs on every PR and on `main`: the county jobs (Fresno, Kings) and a parallel
   Overture-only job (statewide scorecard, 58 counties, Extension datasets and conformance tests, map tiles;
-  about 50 minutes against an 80-minute timeout).
+  about 76 minutes on `main` against a 100-minute timeout).
 - Only `main` publishes to R2; each job publishes and prunes only its own files.
 - Locally: `uv pip install dbt-duckdb duckdb pyarrow pandas boto3 tylertoo overture-schema`, then the
   scripts above. See [`AGENTS.md`](AGENTS.md) for the details (DuckDB 2.0 notes, running one county,

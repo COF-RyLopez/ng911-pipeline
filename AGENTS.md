@@ -86,13 +86,14 @@ source table, and a refreshed sample.
 - `.github/workflows/hydrology.yml` builds the hydrology layers and the fire boundary candidate monthly (and when
   either script changes, ~45 min) and publishes the `supplemental/` part as a whole (both in one run); `publish_to_r2.py`'s `PART_KEYS` keeps the other jobs from pruning it.
 - Publishing order after a merge: the county job puts `index.html` live in ~12 min, the overture-only job's tiles
-  follow at ~50 min, and hydrology's at ~40 min (its own workflow). A map layer added in the same PR as its tiles
+  follow at ~76 min, and hydrology's at ~40 min (its own workflow). A map layer added in the same PR as its tiles
   points at a 404 until then, and headless checks that wait for `map.loaded()` time out ("map not loaded") even
   though the map draws. Test live only after the tiles answer 206 to a range request.
 - Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture|supplemental`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
-- The overture-only job takes ~50 min against an 80 min timeout; check it when adding work. The extension
+- The overture-only job takes ~76 min on `main` (~67 on a PR, which doesn't publish) against a 100 min timeout;
+  check it when adding work. The 58 county builds are ~48 min of it, the extension datasets ~22, publishing ~6. The extension
   build spills ~9 GB of DuckDB temp files. DuckDB's own `max_temp_directory_size` cap (9.2 GiB on the runner,
   though the disk has ~80 GB free) stopped it twice, so the script raises the cap to 40 GiB (`DUCKDB_MAX_TEMP`);
   the job logs `df -h .`. It also ran out once when it
