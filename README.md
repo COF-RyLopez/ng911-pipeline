@@ -25,6 +25,10 @@ Published by CI to Cloudflare R2. The landing page links all three:
   address points parsed into NENA street parts, Overture road centerlines, and an address-to-road check (the
   nearest same-named road within ~400 m; "OK" within 50 m). Counties built from county GIS (Fresno, Kings)
   get an Overture-only build too, for comparison.
+  It also flags **buildings with no address**: Overture footprints of 60 m² and up (sheds, garages and other
+  outbuildings left out) with no Overture address point within ~30 m, split into those with an address
+  within ~200 m (often a second building on an addressed parcel) and isolated ones (likely a missing
+  address). Per-county counts go in `counties_summary`, and App 1 has a map layer and a "No addr." column.
 - Statewide (Overture release 2026-09-23.1): 13,597,208 addresses and 1,650,872 named road segments; in most
   counties 80–99% of addresses match a same-named road, and about half of road segments carry address ranges.
 - NENA marks, statewide: 100% of address points and road centerlines carry every STA-006.3 mandatory field,

@@ -48,6 +48,9 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 
 The polygon layers (CDTFA, TIGERweb, CAL FIRE) and the OpenAddresses source files are fetched at build time,
 one request each; the footprint file (1.8 GB) is fetched once per run and deleted after the county builds.
+The same footprints feed the unaddressed-buildings check in `overture_only_counties.build` (no address within
+~30 m; `Isolated` when none within ~200 m). It's a hint where addresses may be missing, not a count of
+missing addresses: machine-traced footprints have no class, so barns and big outbuildings still count.
 Overture's `base/water` lists only OpenStreetMap in `sources`, but its `source_tags` show where OSM got it: in
 California (release `2026-09-23.1`) 797,151 of 907,052 water lines (88%) are NHD imports from 2001–2010
 (`source=NHD`, `nhd:com_id`, `nhd:reach_code`, `nhd:fdate`), 86% of them unnamed. Check `source_tags` before
