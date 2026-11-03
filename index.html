@@ -1401,6 +1401,7 @@
     .compare-table th { text-align: right; color: var(--text-muted); font-weight: 600; padding: 2px 0 4px 10px; white-space: nowrap; }
     .compare-table td { text-align: right; padding: 3px 0 3px 10px; color: #ffffff; font-weight: 600; border-top: 1px solid var(--border-subtle); white-space: nowrap; }
     .compare-table th:first-child, .compare-table td:first-child { text-align: left; color: var(--text-muted); font-weight: 400; white-space: normal; padding-left: 0; }
+    #oo-builds-table th, #oo-builds-table td { padding-left: 5px; }  /* five columns in the side panel */
     .overlap-stat { display: flex; align-items: baseline; gap: 8px; margin: 6px 0; }
     .overlap-value { font-size: 22px; font-weight: 700; color: #c4b5fd; white-space: nowrap; }
     .overlap-label { font-size: 11px; color: var(--text-muted); }
@@ -1805,6 +1806,12 @@
           </label>
         </div>
         <div class="overlap-label" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>Buildings with no address within 30 m (zoom 10+): <span class="p2-dot" style="background:#c026d3"></span>none within 200 m <span class="p2-dot" style="background:#c4b5fd"></span>30–200 m</span>
+          <label class="layer-switch" title="Overture building footprints (60 m² and up, sheds and garages left out) with no Overture address point within 30 m: where the address layer may have holes">
+            <input type="checkbox" id="toggle-ub"><span class="slider"></span>
+          </label>
+        </div>
+        <div class="overlap-label" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">
           <span><span class="p2-dot" style="background:#0ea5e9"></span>Hydrology: named streams and waterbodies (USGS 3DHP, NENA Hydrology layers):</span>
           <label class="layer-switch" title="Show NENA Hydrology Line and Polygon layers from the USGS 3D Hydrography Program">
             <input type="checkbox" id="toggle-hydro"><span class="slider"></span>
@@ -1817,8 +1824,8 @@
           </label>
         </div>
         <div style="max-height:220px;overflow-y:auto">
-        <table class="compare-table">
-          <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th></th></tr></thead>
+        <table class="compare-table" id="oo-builds-table">
+          <thead><tr><th style="text-align:left">County</th><th title="Address points with number and street">Points</th><th title="Matched to a same-named road within 50 m">On road</th><th title="Buildings (60 m² and up) with no address point within 30 m">No addr.</th><th></th></tr></thead>
           <tbody id="oo-builds-rows"></tbody>
         </table>
         </div>
@@ -2399,7 +2406,7 @@
       if (hydroClickBound) return;
       hydroClickBound = true;
       ["hydro_line", "hydro_poly"].forEach(layer => map.on("click", layer, (e) => {
-        const others = ["oo_points", "oo_roads"].concat(layer === "hydro_poly" ? ["hydro_line"] : []).filter(id => map.getLayer(id));
+        const others = ["oo_points", "oo_roads", "ub_points"].concat(layer === "hydro_poly" ? ["hydro_line"] : []).filter(id => map.getLayer(id));
         if (others.length && map.queryRenderedFeatures(e.point, { layers: others }).length) return;  // points, roads, streams win
         const p = e.features[0].properties;
         const div = document.createElement("div");
@@ -2428,7 +2435,7 @@
       if (fireClickBound) return;
       fireClickBound = true;
       map.on("click", "fire_fill", (e) => {
-        const others = ["oo_points", "oo_roads", "hydro_line", "hydro_poly"].filter(id => map.getLayer(id));
+        const others = ["oo_points", "oo_roads", "ub_points", "hydro_line", "hydro_poly"].filter(id => map.getLayer(id));
         if (others.length && map.queryRenderedFeatures(e.point, { layers: others }).length) return;  // those have their own popups
         const p = e.features[0].properties;
         const local = p.Basis === "local_fire_district";
@@ -2448,6 +2455,35 @@
     function setHydroVisible(on) {
       document.getElementById("toggle-hydro").checked = on;
       ["hydro_poly", "hydro_line"].forEach(id => map.getLayer(id) && map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
+    }
+    // Buildings with no address point within ~30 m (overture_only_counties.py); isolated = none within ~200 m
+    let ubClickBound = false;
+    function addUbLayer() {
+      if (!map.getSource("ub_src")) map.addSource("ub_src", { type: "vector", url: `pmtiles://${R2_BASE}/tiles/overture_only_unaddressed_buildings.pmtiles` });
+      if (!map.getLayer("ub_points")) {
+        map.addLayer({ id: "ub_points", type: "circle", source: "ub_src", "source-layer": "unaddressed_buildings", minzoom: 10,
+                       layout: { visibility: getToggleState("toggle-ub", false) ? "visible" : "none" },
+                       paint: { "circle-color": ["case", ["to-boolean", ["get", "Isolated"]], "#c026d3", "#c4b5fd"],
+                                "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 15, 5],
+                                "circle-stroke-color": "#4a044e", "circle-stroke-width": 0.4 } });
+      }
+      if (ubClickBound) return;
+      ubClickBound = true;
+      map.on("click", "ub_points", (e) => {
+        const p = e.features[0].properties;
+        const iso = p.Isolated === true || p.Isolated === "true";
+        const div = document.createElement("div");
+        div.style.cssText = "font-size:12px;max-width:260px;color:#0f172a";
+        [["b", `Building, ~${Math.round(p.AreaM2)} m²${p.Class ? ` (${p.Class})` : ""}`],
+         ["div", "No Overture address point within 30 m"],
+         ["div", iso ? "None within 200 m either: likely a missing address" : `Nearest address ~${Math.round(p.NearestAddressM)} m: may be a second building on an addressed parcel`]
+        ].forEach(([tag, text]) => { const el = document.createElement(tag); el.textContent = text; div.appendChild(el); });
+        new maplibregl.Popup().setLngLat(e.lngLat).setDOMContent(div).addTo(map);
+      });
+    }
+    function setUbVisible(on) {
+      document.getElementById("toggle-ub").checked = on;
+      if (map.getLayer("ub_points")) map.setLayoutProperty("ub_points", "visibility", on ? "visible" : "none");
     }
     function addOoLayer() {
       if (!map.getSource("oo_roads_src")) {
@@ -3023,6 +3059,8 @@
       setFireVisible(getToggleState("toggle-fire", false));
       addHydroLayers();  // under the Overture-only roads and points
       setHydroVisible(getToggleState("toggle-hydro", false));
+      addUbLayer();  // under the address points
+      setUbVisible(getToggleState("toggle-ub", false));
       addOoLayer();  // Overture-only address points for every built county (off until shown)
       setOoVisible(getToggleState("toggle-oo-points", false));  // restore the saved toggles and their legend
       setOoRoadsVisible(getToggleState("toggle-oo-roads", false));
@@ -3786,7 +3824,7 @@
     });
     map.on("click", "statewide_fill", (e) => {
       // an Overture-only road or point under the click has its own popup
-      const oo = ["oo_points", "oo_roads", "hydro_line", "hydro_poly", "fire_fill"].filter(id => map.getLayer(id));
+      const oo = ["oo_points", "oo_roads", "ub_points", "hydro_line", "hydro_poly", "fire_fill"].filter(id => map.getLayer(id));
       if (oo.length && map.queryRenderedFeatures(e.point, { layers: oo }).length) return;
       const p = e.features[0].properties;
       const pct = v => (v == null || v === "null") ? "—" : `${v}%`;
@@ -5553,10 +5591,11 @@
         rows.forEach(r => {
           const tr = document.createElement("tr");
           [r.County.replace(/ County, CA$/, ""), Number(r.AddressPoints).toLocaleString(),
-           r.PctMatchedToNamedRoad == null ? "—" : `${Math.round(r.PctMatchedToNamedRoad * r.PctMatchedWithin50m / 100)}%`
+           r.PctMatchedToNamedRoad == null ? "—" : `${Math.round(r.PctMatchedToNamedRoad * r.PctMatchedWithin50m / 100)}%`,
+           r.PctBuildingsUnaddressed == null ? "—" : `${Math.round(r.PctBuildingsUnaddressed)}%`
           ].forEach((t, i) => { const td = document.createElement("td"); td.textContent = t; if (i === 0) td.style.textAlign = "left"; tr.appendChild(td); });
           const td = document.createElement("td"), b = document.createElement("button");
-          b.textContent = "Map"; b.style.cssText = "font-size:10px;padding:1px 6px;cursor:pointer";
+          b.textContent = "Map"; b.style.cssText = "font-size:10px;padding:1px 3px;cursor:pointer";
           b.addEventListener("click", () => showOoCounty(r.Key));
           td.appendChild(b); tr.appendChild(td); tbody.appendChild(tr);
         });
@@ -5565,6 +5604,7 @@
         document.getElementById("toggle-oo-roads").addEventListener("change", e => setOoRoadsVisible(e.target.checked));
         document.getElementById("toggle-hydro").addEventListener("change", e => setHydroVisible(e.target.checked));
         document.getElementById("toggle-fire").addEventListener("change", e => setFireVisible(e.target.checked));
+        document.getElementById("toggle-ub").addEventListener("change", e => setUbVisible(e.target.checked));
       })
       .catch(() => {});  // not in this pipeline run yet
 

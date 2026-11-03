@@ -33,7 +33,16 @@ PROJECT_DIR = county_config.PROJECT_DIR
 OUT_DIR = os.path.join(PROJECT_DIR, "data", "output", "overture_only")
 STATEWIDE = os.path.join(PROJECT_DIR, "data", "output", "statewide", "ca_overture_county_scorecard.geojson")
 SWAPPED = ["overture_addresses.parquet", "overture_transportation.parquet", "overture_divisions.parquet"]  # county-extent caches
-CA_BUILDINGS = os.path.join(fpd.CACHE_DIR, "ca_overture_buildings.parquet")  # footprints only, for the Placement test
+CA_BUILDINGS = os.path.join(fpd.CACHE_DIR, "ca_overture_buildings.parquet")  # footprints, for Placement and unaddressed buildings
+# Unaddressed-buildings check: a building with no address point inside it or within ~30 m is where the address
+# layer likely has a hole. ponytail: a size floor and Overture's class/subtype drop most sheds and garages, but
+# ML footprints have no class, so barns and big outbuildings still count; read it per county, not per building.
+MIN_BUILDING_M2 = 60
+NEAR_DEG = 0.0003  # ~30 m: closer than this, the building has an address
+FAR_DEG = 0.002  # ~200 m: farther than this from any address, an isolated building (likely a real gap; nearer
+                 # ones are often a second building on an addressed parcel)
+NOT_ADDRESSABLE = ("garage", "garages", "shed", "carport", "greenhouse", "hut", "roof", "storage_tank", "silo",
+                   "transformer_tower", "toilets", "service")
 MODELS = "+oo_fishbones oo_localities"  # oo_fishbones pulls in the boundary, points and centerlines
 
 
@@ -57,7 +66,7 @@ def fetch_ca_buildings():
         return
     with duckdb.connect() as c:
         c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
-        c.sql(f"""COPY (SELECT bbox, geometry FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
+        c.sql(f"""COPY (SELECT bbox, geometry, class, subtype FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
                   WHERE bbox.xmin >= -124.5 AND bbox.xmax <= -114.1 AND bbox.ymin >= 32.5 AND bbox.ymax <= 42.1)
                   TO '{CA_BUILDINGS}' (FORMAT PARQUET, COMPRESSION ZSTD)""")
 
@@ -99,6 +108,28 @@ def build(feature, dbt_bin):
             FROM oo_address_points p LEFT JOIN oo_fishbones f USING (overture_id)
         ) TO '{out}/address_points.parquet' (FORMAT PARQUET)""")
         c.sql(f"COPY oo_road_centerlines TO '{out}/road_centerlines.parquet' (FORMAT PARQUET)")
+        skip = ", ".join(f"'{k}'" for k in NOT_ADDRESSABLE)
+        buildings = f"""
+            b AS (SELECT row_number() OVER () AS bid, ST_GeomFromWKB(ST_AsWKB(geometry)) AS g, class, subtype
+                  FROM read_parquet('{CA_BUILDINGS}')
+                  WHERE bbox.xmax >= {b[0]} AND bbox.xmin <= {b[2]} AND bbox.ymax >= {b[1]} AND bbox.ymin <= {b[3]}
+                    AND coalesce(subtype, '') <> 'outbuilding' AND coalesce(class, '') NOT IN ({skip})),
+            bc AS (SELECT b.*, ST_Area(g) * 1.2392e10 * cos(radians(ST_Y(ST_Centroid(g)))) AS area_m2  -- deg² -> m²
+                   FROM b, oo_county_boundary c WHERE ST_Intersects(c.geom, ST_Centroid(b.g))),
+            bq AS (SELECT * FROM bc WHERE area_m2 >= {MIN_BUILDING_M2})"""
+        c.sql(f"""COPY (
+            WITH {buildings},
+                 near AS (SELECT DISTINCT bq.bid FROM bq JOIN oo_address_points p ON ST_DWithin(bq.g, p.geom, {NEAR_DEG})),
+                 u AS (SELECT * FROM bq WHERE bid NOT IN (SELECT bid FROM near)),
+                 d AS (SELECT u.bid, min(ST_Distance(u.g, p.geom)) AS deg FROM u JOIN oo_address_points p
+                       ON ST_DWithin(u.g, p.geom, {FAR_DEG}) GROUP BY 1)
+            SELECT ST_Centroid(u.g) AS geom, round(area_m2) AS AreaM2, class AS Class, subtype AS Subtype,
+                   round(d.deg * 111320) AS NearestAddressM,  -- NULL: none within ~200 m
+                   d.bid IS NULL AS Isolated
+            FROM u LEFT JOIN d USING (bid)
+        ) TO '{out}/unaddressed_buildings.parquet' (FORMAT PARQUET)""")
+        n_bldg = c.execute(f"WITH {buildings} SELECT count(*) FROM bq").fetchall()[0][0]
+        n_unaddr, n_iso = c.execute(f"SELECT count(*), count(*) FILTER (Isolated) FROM read_parquet('{out}/unaddressed_buildings.parquet')").fetchall()[0]
         row = c.execute("""
             WITH a AS (SELECT count(*) AS n, count(*) FILTER (WHERE house_number IS NULL) AS no_num FROM oo_address_points),
                  f AS (SELECT count(*) AS n, count(*) FILTER (WHERE NOT is_excessive_offset) AS near FROM oo_fishbones),
@@ -109,7 +140,9 @@ def build(feature, dbt_bin):
             FROM a, f, r""").fetchall()[0]
     cols = ["AddressPoints", "PctMissingNumber", "PctMatchedToNamedRoad", "PctMatchedWithin50m",
             "RoadSegments", "RoadKm", "Localities"]
-    summary = {"County": entry["label"], "Key": key, **dict(zip(cols, row))}
+    summary = {"County": entry["label"], "Key": key, **dict(zip(cols, row)), "Buildings": n_bldg,
+               "UnaddressedBuildings": n_unaddr, "PctBuildingsUnaddressed": round(100.0 * n_unaddr / n_bldg, 1) if n_bldg else None,
+               "IsolatedBuildings": n_iso}
     print(f"[{name}] {summary}")
     return summary if row[0] else None  # no address points: the county polygon or a fetch came back empty
 
@@ -128,6 +161,10 @@ def build_map_tiles():
                        ["-Z8", "-z15", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping"],
                        os.path.join(bp.TILES_DIR, "overture_only_address_points.pmtiles"),
                        attribution="Overture Maps Foundation (OpenAddresses, OpenStreetMap)")
+        bp.build_layer(c, engine, "unaddressed_buildings", os.path.join(OUT_DIR, "*", "unaddressed_buildings.parquet"),
+                       "AreaM2, Class, Subtype, NearestAddressM, Isolated", "geom", ["-Z10", "-z15", "--drop-densest-as-needed"],
+                       os.path.join(bp.TILES_DIR, "overture_only_unaddressed_buildings.pmtiles"),
+                       attribution="Overture Maps Foundation (buildings, addresses)")
 
 
 def main():
