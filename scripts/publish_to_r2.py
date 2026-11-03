@@ -21,7 +21,7 @@ DEFAULT_PUBLIC_URL = "https://pub-152dce9299c94555bb415d992fe120e7.r2.dev"
 # Keys the separate overture-only CI job builds and publishes; the county job leaves them alone.
 OVERTURE_ONLY_KEYS = ("statewide/", "overture_only/", "tiles/overture_only_", "extensions/")
 # Keys each non-county part owns: it publishes and prunes only these; the county part owns everything else.
-PART_KEYS = {"overture": OVERTURE_ONLY_KEYS, "hydrology": ("supplemental/",)}  # hydrology: monthly workflow
+PART_KEYS = {"overture": OVERTURE_ONLY_KEYS, "supplemental": ("supplemental/",)}  # hydrology + fire: monthly workflow
 
 
 def get_content_type(file_path):
@@ -65,7 +65,7 @@ def resolve_r2_endpoint(raw_account_id):
 
 
 def main():
-    # --part overture|hydrology: publish (and prune) only that part's PART_KEYS; --part county (default): the rest
+    # --part overture|supplemental: publish (and prune) only that part's PART_KEYS; --part county (default): the rest
     part = sys.argv[sys.argv.index("--part") + 1] if "--part" in sys.argv else "county"
     others = tuple(k for keys in PART_KEYS.values() for k in keys)
     owned = (lambda key: not key.startswith(others)) if part == "county" else (lambda key: key.startswith(PART_KEYS[part]))

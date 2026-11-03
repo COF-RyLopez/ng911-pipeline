@@ -23,7 +23,7 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 - `macros/geometry_helpers.sql` street parsing helpers: `street_type_suffix_regex`, `normalize_street_type`,
   `normalize_direction`, `street_match_key` (both sides of an address-to-road match go through it).
 - `scripts/` Python entry points: `fetch_pilot_data.py`, `run_pilot.py`, `overture_only_counties.py`,
-  `statewide_overture_scorecard.py`, `build_ng911_extension.py`, `build_ng911_hydrology.py`, `build_pmtiles.py`,
+  `statewide_overture_scorecard.py`, `build_ng911_extension.py`, `build_ng911_hydrology.py`, `build_ng911_fire_boundary.py`, `build_pmtiles.py`,
   `publish_to_r2.py`.
 - `extensions/ng911-address`, `extensions/ng911-road-centerline`, `extensions/ng911-railroad`: GERS Extension packages (Pydantic on
   `overture-schema` v2) with conformance tests; the address and road packages vendor the NENA-STA-006.3 domains.
@@ -42,6 +42,7 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 | rlown, rlname (railroad) | FRA North American Rail Network (owner, nearest line ≤ ~30 m); Overture rail names | built statewide in `railroad_dataset`, not from the county builds; California counties only |
 | esn (not filled) | — | authority-assigned; never derive or invent it |
 | hs_/hp_ type and name (hydrology) | USGS 3DHP feature service, tiled 1° with backoff and tile splitting | a supplemental dataset with geometry, not an Extension: Overture `base/water` IDs aren't stable GERS IDs; NGUID from `id3dhp` |
+| FirePolygon (candidate) | CAL FIRE Local Fire Districts, else CAL FIRE/NIFC Direct Protection Areas (wildland agency) | `build_ng911_fire_boundary.py`, supplemental; Agency_ID, ServiceURI, AVcard_URI left empty (authority-assigned); `candidate` true |
 | PSAP (not filled) | — | no open source: HIFLD's layer is offline, the FCC registry has no boundaries, Cal OES doesn't publish |
 | police / EMS (not filled) | — | no statewide layer; don't name agencies from A3 (contract cities) or use LEMSA as the responder |
 
@@ -79,13 +80,13 @@ source table, and a refreshed sample.
   minutes, and a CI job fails with them. Check the log names an outside host, re-run the failed job once, and
   treat a second failure as real. A county whose address service returns nothing stops `run_pilot.py` with a
   message naming the county.
-- `.github/workflows/hydrology.yml` builds the hydrology layers monthly (and when its script changes, ~40 min)
-  and publishes the `supplemental/` part; `publish_to_r2.py`'s `PART_KEYS` keeps the other jobs from pruning it.
+- `.github/workflows/hydrology.yml` builds the hydrology layers and the fire boundary candidate monthly (and when
+  either script changes, ~45 min) and publishes the `supplemental/` part as a whole (both in one run); `publish_to_r2.py`'s `PART_KEYS` keeps the other jobs from pruning it.
 - Publishing order after a merge: the county job puts `index.html` live in ~12 min, the overture-only job's tiles
   follow at ~50 min, and hydrology's at ~40 min (its own workflow). A map layer added in the same PR as its tiles
   points at a 404 until then, and headless checks that wait for `map.loaded()` time out ("map not loaded") even
   though the map draws. Test live only after the tiles answer 206 to a range request.
-- Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture|hydrology`) and
+- Only `main` publishes. Each job publishes its own R2 keys (`publish_to_r2.py --part county|overture|supplemental`) and
   prunes only those: the overture part owns `statewide/`, `overture_only/`, `tiles/overture_only_*`,
   `extensions/`. A new output under another prefix belongs to the county part unless added there.
 - The overture-only job takes ~50 min against an 80 min timeout; check it when adding work. The extension

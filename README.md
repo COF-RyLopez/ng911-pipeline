@@ -80,11 +80,21 @@ geometry, from the USGS 3D Hydrography Program (3DHP): 315,387 named streams and
 on R2, and a Hydrology toggle in App 1). `scripts/build_ng911_hydrology.py` takes ~40 minutes against the USGS
 service, so `.github/workflows/hydrology.yml` runs it monthly rather than on every build.
 
+Candidate: **fire boundaries** (FirePolygon, a REQUIRED NENA layer). `scripts/build_ng911_fire_boundary.py`
+builds a candidate statewide layer from two public CAL FIRE layers: the local fire districts where one is on
+file (651, with FDIDs), else the agency with wildland protection responsibility from the Direct Protection
+Areas (CAL FIRE units and contract counties, USFS, NPS, BLM, ...). Together they cover 96.5% of California's
+area (districts alone 77.2%); the remaining 14,922 km² is local responsibility with no district on file.
+NENA's Agency_ID, ServiceURI and AVcard_URI are assigned by each agency or 911 authority, so they're left empty.
+It's a draft for the authority to check, not its layer: structure response in wildland areas can differ
+([`supplemental/ng911_fire/`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/supplemental/ng911_fire/manifest.json)
+on R2; built monthly with hydrology).
+
 Not filled: **ESN**. Each 911 authority assigns ESNs to its own emergency service zones, so a number derived
 from open data would match no real MSAG. Each record carries its CAL FIRE local fire district and FDID
 instead (not NENA fields), as evidence for mapping to the authority's ESN.
 
-Not available: **PSAP, police and EMS boundaries.** The national HIFLD PSAP boundary layer is no longer
+Not available: **PSAP, police and EMS boundaries** (REQUIRED NENA layers). The national HIFLD PSAP boundary layer is no longer
 online, and the FCC Master PSAP Registry lists PSAPs with no boundaries. Cal OES maintains California's PSAP
 layer but doesn't publish it. There is no statewide police or EMS service-area layer either: A3 already
 tells city from unincorporated (county sheriff) jurisdiction, but many cities contract with the sheriff, and
