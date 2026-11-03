@@ -43,7 +43,7 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 | esn (not filled) | — | authority-assigned; never derive or invent it |
 | hs_/hp_ type and name (hydrology) | USGS 3DHP feature service, tiled 1° with backoff and tile splitting | a supplemental dataset with geometry, not an Extension: Overture `base/water` IDs aren't stable GERS IDs; NGUID from `id3dhp` |
 | FirePolygon (candidate) | CAL FIRE Local Fire Districts, else CAL FIRE/NIFC Direct Protection Areas (wildland agency) | `build_ng911_fire_boundary.py`, supplemental; Agency_ID, ServiceURI, AVcard_URI left empty (authority-assigned); `candidate` true |
-| PSAP (not filled) | — | no open source: HIFLD's layer is offline, the FCC registry has no boundaries, Cal OES doesn't publish |
+| PSAP (not filled) | — | no open source: HIFLD's layer is offline, the FCC registry has no boundaries, Cal OES doesn't publish. NENA's Enhanced PSAP Registry has boundaries under restricted terms: never use it, or anything derived from it, in published outputs |
 | police / EMS (not filled) | — | no statewide layer; don't name agencies from A3 (contract cities) or use LEMSA as the responder |
 
 The polygon layers (CDTFA, TIGERweb, CAL FIRE) and the OpenAddresses source files are fetched at build time,

@@ -95,7 +95,9 @@ from open data would match no real MSAG. Each record carries its CAL FIRE local 
 instead (not NENA fields), as evidence for mapping to the authority's ESN.
 
 Not available: **PSAP, police and EMS boundaries** (REQUIRED NENA layers). The national HIFLD PSAP boundary layer is no longer
-online, and the FCC Master PSAP Registry lists PSAPs with no boundaries. Cal OES maintains California's PSAP
+online, and the FCC Master PSAP Registry lists PSAPs with no boundaries. National PSAP boundaries do exist in
+NENA's Enhanced PSAP Registry, but it's an account-based database whose terms restrict use and redistribution,
+so an open dataset can't carry them, or anything derived from them. Cal OES maintains California's PSAP
 layer but doesn't publish it. There is no statewide police or EMS service-area layer either: A3 already
 tells city from unincorporated (county sheriff) jurisdiction, but many cities contract with the sheriff, and
 the public county-to-LEMSA list names the EMS regulator, not the responding ambulance. These layers, from Cal
