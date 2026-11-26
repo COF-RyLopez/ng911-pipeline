@@ -67,7 +67,7 @@ open data would match no real MSAG; `fire_district`/`fire_fdid` are carried inst
 ## Listing metadata (`manifest.json`, written with every data release)
 
 GERS ID coverage is **reported, not gated**: the share of `id`s that resolve in the stated release
-(currently `2026-09-23.1`), along with rows, counties and per-field fill rates.
+(currently `2026-11-18.0`), along with rows, counties and per-field fill rates.
 
 ## Open questions for the working group
 

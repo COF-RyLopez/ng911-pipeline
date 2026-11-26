@@ -61,8 +61,12 @@ source table, and a refreshed sample.
 ## Running things
 
 - Python 3.12+, `uv pip install dbt-duckdb duckdb pyarrow pandas boto3 tylertoo overture-schema`.
-- Overture is read anonymously from `s3://overturemaps-us-west-2/release/<release>`; the release is pinned
-  in `statewide_overture_scorecard.py` and `fetch_pilot_data.py` (keep them in step).
+- Overture is read anonymously from `s3://overturemaps-us-west-2/release/<release>`. Every build reads the
+  release `scripts/overture_release.py` resolves: `$OVERTURE_RELEASE` if set, else the newest release from
+  Overture's STAC catalog (falling back to a listing of the S3 `release/` prefix). Don't hard-code a release:
+  Overture keeps only about two on S3, so a pin goes stale within about two months and every job then fails
+  with "No files found that match the pattern". Pin one with `OVERTURE_RELEASE=2026-11-18.0` to reproduce a
+  build. dbt models that read S3 directly use `env_var('OVERTURE_RELEASE')`, which `run_pilot.py` sets.
 - One county, Overture only: call `overture_only_counties.build(feature, "dbt")` with a feature from the
   statewide scorecard GeoJSON (County names end in " County"). Build in a git worktree so the main
   checkout's caches and `ng911_database.duckdb` aren't touched.

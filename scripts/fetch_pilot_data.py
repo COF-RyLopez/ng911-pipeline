@@ -25,7 +25,9 @@ import pandas as pd
 from fetch_county_parcels import fetch_parcels
 import fetch_mapillary_coverage
 import county_config
+import overture_release
 
+RELEASE = overture_release.release_path()  # the newest release unless OVERTURE_RELEASE pins one
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -428,7 +430,7 @@ def fetch_overture_addresses():
             bbox.xmax AS maxx,
             bbox.ymin AS miny,
             bbox.ymax AS maxy
-        FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=addresses/type=address/*.parquet')
+        FROM read_parquet('{RELEASE}/theme=addresses/type=address/*.parquet')
         WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
           AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
     ) TO '{output_parquet}' (FORMAT PARQUET);
@@ -458,7 +460,7 @@ def fetch_overture_transportation():
             bbox.xmax AS maxx,
             bbox.ymin AS miny,
             bbox.ymax AS maxy
-        FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=transportation/type=segment/*.parquet')
+        FROM read_parquet('{RELEASE}/theme=transportation/type=segment/*.parquet')
         WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
           AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
     ) TO '{output_parquet}' (FORMAT PARQUET);
@@ -484,7 +486,7 @@ def fetch_overture_divisions():
             class,
             [s.record_id FOR s IN sources IF s.dataset = 'OpenStreetMap'][1] AS osm_record_id,  -- e.g. r396492@32
             geometry AS geom
-        FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=divisions/type=division_area/*.parquet')
+        FROM read_parquet('{RELEASE}/theme=divisions/type=division_area/*.parquet')
         WHERE country = 'US' AND region = 'US-CA' AND subtype IN ('county', 'locality')
           -- overlap, not containment: counties extend past each other's boxes
           AND bbox.xmax >= {OVERTURE_BBOX['minx']} AND bbox.xmin <= {OVERTURE_BBOX['maxx']}
@@ -512,7 +514,7 @@ def fetch_overture_places():
             geometry AS geom,
             ST_X(geometry) AS longitude,
             ST_Y(geometry) AS latitude
-        FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=places/type=place/*.parquet')
+        FROM read_parquet('{RELEASE}/theme=places/type=place/*.parquet')
         WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
           AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
           AND (
@@ -545,7 +547,7 @@ def fetch_overture_buildings():
                 num_floors,
                 class AS building_class,
                 geometry AS geom
-            FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
+            FROM read_parquet('{RELEASE}/theme=buildings/type=building/*.parquet')
             WHERE bbox.xmin >= {OVERTURE_BBOX['minx']} AND bbox.xmax <= {OVERTURE_BBOX['maxx']}
               AND bbox.ymin >= {OVERTURE_BBOX['miny']} AND bbox.ymax <= {OVERTURE_BBOX['maxy']}
         ) TO '{output_parquet}' (FORMAT PARQUET);
