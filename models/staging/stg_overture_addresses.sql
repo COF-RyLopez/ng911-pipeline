@@ -20,7 +20,7 @@ WITH raw_overture AS (
         bbox.xmax AS maxx,
         bbox.ymin AS miny,
         bbox.ymax AS maxy
-    FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=addresses/type=address/*.parquet')
+    FROM read_parquet('s3://overturemaps-us-west-2/release/{{ env_var('OVERTURE_RELEASE') }}/theme=addresses/type=address/*.parquet')
     {%- set b = county('bbox') %}
     WHERE bbox.xmin >= {{ b[0] }} AND bbox.xmax <= {{ b[2] }}
       AND bbox.ymin >= {{ b[1] }} AND bbox.ymax <= {{ b[3] }}

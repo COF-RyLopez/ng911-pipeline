@@ -20,6 +20,7 @@ import json
 import argparse
 import urllib.request
 import county_config
+import overture_release
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -89,6 +90,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--county", help="5-digit FIPS from the dbt_project.yml counties registry")
     county = county_config.get(parser.parse_args().county)
+    overture_release.release_id()  # resolve once; fetch_pilot_data.py and dbt inherit OVERTURE_RELEASE
     dbt_vars = ["--vars", json.dumps({"county": county["fips"]})]
 
     print("=" * 75)

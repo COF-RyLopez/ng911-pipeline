@@ -16,9 +16,11 @@ import urllib.request
 
 import duckdb
 
+import overture_release
+
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(PROJECT_DIR, "data", "output", "statewide")
-RELEASE = "s3://overturemaps-us-west-2/release/2026-09-23.1"  # keep in step with fetch_pilot_data.py
+RELEASE = overture_release.release_path()  # the newest release unless OVERTURE_RELEASE pins one
 STATE_FIPS = {"CA": "06"}  # ponytail: add a state here (and its bbox below) to score it
 STATE_BBOX = {"CA": (-124.5, 32.5, -114.1, 42.1)}
 # Road classes a 911 centerline layer carries; tracks, service roads, driveways and paths are left out
