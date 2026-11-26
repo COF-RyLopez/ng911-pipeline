@@ -12,7 +12,8 @@ _Avoid_: jurisdiction, data provider
 
 **911 authority**:
 The body responsible for the NG9-1-1 GIS dataset for an area, usually a county or regional 911 board and
-in some states the state itself. It is the **Recipient** of a **Package**.
+in some states the state itself. It is the **Recipient** of one **Package** per county or census division it
+covers.
 _Avoid_: jurisdiction, PSAP, customer
 
 **Recipient**:
@@ -22,8 +23,9 @@ _Avoid_: client, subscriber
 ## What we produce
 
 **Package**:
-The NG9-1-1 dataset for one **911 authority**: every **Source agency**'s layers inside its area,
-reshaped to NENA, checked, and filled in with **Gap-fill candidates**.
+The NG9-1-1 dataset for one county (in Canada, one census division): every **Source agency**'s layers
+inside it, reshaped to NENA, checked, and filled in with **Gap-fill candidates**. A **911 authority**
+covering several gets several, shown together on its page.
 _Avoid_: deliverable, ADMS, export
 
 **Record**:
@@ -37,8 +39,9 @@ A feature from Overture (or another open source) placed where no **Record** exis
 _Avoid_: suggestion, Overture point
 
 **Review layer**:
-Flags derived from OpenStreetMap-based data that point a **Source agency** at something to check, kept
-apart from the **Records** because of its license.
+Flags derived from OpenStreetMap-based data that point a **Source agency** at a place and say what to
+check, never geometry or names to copy. Built only for an opted-in **Package**, given to that agency alone,
+and kept apart from the **Records** and the public catalogue because of its license.
 _Avoid_: OSM fixes
 
 **Address UID**:
