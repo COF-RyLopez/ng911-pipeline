@@ -55,7 +55,7 @@ registry. Join to Overture on `id`:
 
 ```sql
 SELECT a.id, a.number, a.street, e.ng911.st_name, e.ng911.st_postyp, e.ng911.road_match
-FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=addresses/type=address/*.parquet') a
+FROM read_parquet('s3://overturemaps-us-west-2/release/2026-11-18.0/theme=addresses/type=address/*.parquet') a
 JOIN read_parquet('https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/ng911_address_ca.parquet') e USING (id)
 WHERE a.bbox.xmin BETWEEN -124.5 AND -114.1 AND a.bbox.ymin BETWEEN 32.5 AND 42.1
 LIMIT 10;

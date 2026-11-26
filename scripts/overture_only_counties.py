@@ -66,7 +66,7 @@ def fetch_ca_buildings():
         return
     with duckdb.connect() as c:
         c.sql("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
-        c.sql(f"""COPY (SELECT bbox, geometry, class, subtype FROM read_parquet('s3://overturemaps-us-west-2/release/2026-09-23.1/theme=buildings/type=building/*.parquet')
+        c.sql(f"""COPY (SELECT bbox, geometry, class, subtype FROM read_parquet('s3://overturemaps-us-west-2/release/2026-11-18.0/theme=buildings/type=building/*.parquet')
                   WHERE bbox.xmin >= -124.5 AND bbox.xmax <= -114.1 AND bbox.ymin >= 32.5 AND bbox.ymax <= 42.1)
                   TO '{CA_BUILDINGS}' (FORMAT PARQUET, COMPRESSION ZSTD)""")
 
