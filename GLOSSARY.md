@@ -53,3 +53,10 @@ A **Source agency** or **911 authority** choosing, through the project's opt-in 
 **Package** or take one of the sharing paths (NAD submission, a clearer license, sharing with Overture or
 Esri Community Maps).
 _Avoid_: subscription, sign-up
+
+**Sharing path**:
+One of the routes a **Source agency** can take to publish its own data further: the NAD (through its
+state address program, else nad@dot.gov), Overture (addresses through OpenAddresses), or Esri Community
+Maps with sharing turned on (buildings, roads, boundaries). The agency takes the step; we prepare and
+track it.
+_Avoid_: submission (we never submit), distribution
