@@ -1,0 +1,6 @@
+overture-schema-theme-addresses<3,>=2.0
+pydantic>=2
+
+[test]
+pytest
+packaging

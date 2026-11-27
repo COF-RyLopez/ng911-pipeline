@@ -69,6 +69,16 @@ def test_sample_parses():
         Ng911AddressExtension.model_validate(row)
 
 
+def test_us_unit_is_unitpretyp_and_unitvalue():
+    """CLDXF-US removes the single Unit field and splits it into UnitPreTyp + UnitValue: the package has the two
+    US fields and no `unit`, and every sample row carries them."""
+    fields = set(Ng911Address.model_fields)
+    assert {"unitpretyp", "unitvalue"} <= fields and "unit" not in fields
+    for line in SAMPLE.read_text().splitlines():
+        ng911 = json.loads(line)["ng911"]
+        assert "unit" not in ng911 and {"unitpretyp", "unitvalue"} <= set(ng911)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

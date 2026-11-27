@@ -51,7 +51,7 @@ every sample row is checked against them: street types and directionals are the 
 | `a4` | A4 | where A3 is empty, the Census Designated Place the point falls in (the Census Bureau's named unincorporated communities, from TIGERweb); empty outside both |
 | `add_number`, `addnum_suf` | Add_Number, AddNum_Suf | Overture `number`, split ("1025 1/2" → 1025, "1/2") |
 | `st_predir`, `st_pretyp`, `st_name`, `st_postyp`, `st_posdir` | St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir | Overture `street`, parsed: "HIGHWAY 41" → Highway / 41; "VIA MARIPOSA" → Via / MARIPOSA; "N BLACKSTONE AVE" → North / BLACKSTONE / Avenue; "TERRA VISTA PKWY W" → TERRA VISTA / Parkway / West |
-| `unit` | Unit | Overture `unit` |
+| `unitpretyp`, `unitvalue` | UnitPreTyp, UnitValue | Overture `unit`, split the CLDXF-US way: "APT 4B" → Apartment / 4B; "#4" → (empty) / 4. CLDXF-US has no single Unit field |
 | `post_comm`, `post_code` | Post_Comm, Post_Code | Overture `address_levels` / `postcode` |
 | `msagcomm` | MSAGComm | a **candidate**: A3, else A4, else the postal community, upper-cased; the 911 authority's MSAG governs |
 | `placement` | Placement | the source's own method where OpenAddresses records one (accuracy 1 → Structure, 2 → Parcel, 3 → Geocoding); otherwise Structure when the point sits inside an Overture building footprint, else Unknown |

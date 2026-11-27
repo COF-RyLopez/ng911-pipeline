@@ -60,6 +60,15 @@ NENA_PRETYPE = {"UNITED STATES HIGHWAY": "United States Highway", "US HIGHWAY": 
                 "RTE": "Route", "CALLE": "Calle", "CAMINO": "Camino", "VIA": "Via", "PASEO": "Paseo",
                 "AVENIDA": "Avenida", "CORTE": "Corte"}
 SPANISH_PRETYPES = ("CALLE", "CAMINO", "VIA", "PASEO", "AVENIDA", "CORTE")
+# US secondary unit designators (USPS Publication 28) -> the word CLDXF-US writes in UnitPreTyp ("APT 4B" ->
+# "Apartment" + "4B"). CLDXF-US has no single Unit field. A unit with no designator ("4B", "#4") keeps an empty
+# UnitPreTyp rather than a guessed one. Ported from open-ng911-addresses (nena/__init__.py UNIT_TYPES, ADR 0008).
+UNIT_TYPES = {"APT": "Apartment", "APARTMENT": "Apartment", "STE": "Suite", "SUITE": "Suite", "UNIT": "Unit",
+              "RM": "Room", "ROOM": "Room", "FL": "Floor", "FLR": "Floor", "FLOOR": "Floor", "BLDG": "Building",
+              "BUILDING": "Building", "LOT": "Lot", "SPC": "Space", "SPACE": "Space", "TRLR": "Trailer",
+              "TRAILER": "Trailer", "DEPT": "Department", "OFC": "Office", "OFFICE": "Office", "HNGR": "Hangar",
+              "PH": "Penthouse", "SLIP": "Slip", "PIER": "Pier", "BSMT": "Basement", "FRNT": "Front",
+              "LBBY": "Lobby", "LOWR": "Lower", "UPPR": "Upper", "REAR": "Rear", "SIDE": "Side"}
 # A3 (NENA-STA-006.3 "Administrative Level 3", formerly Incorporated Municipality): the city a feature is in,
 # from the state's CDTFA city boundaries (CA state geoportal, public domain; all 483 incorporated cities).
 # Outside every city A3 stays empty: STA-006.3 has no "unincorporated" value, unincorporated communities are A4.
@@ -143,6 +152,12 @@ def nena_setup(c):
                  WHEN postyp IS NULL AND regexp_matches(n, '^({spanish}) +[A-Z0-9]') THEN regexp_extract(n, '^({spanish}) +', 1)
               END""")
     c.sql(f"CREATE MACRO nena_pretype_word(raw) AS {_case('raw', NENA_PRETYPE)}")
+    # a unit as UnitPreTyp + UnitValue: 'APT 4B', 'Apt. 4B', 'Apartment #4B' -> Apartment, 4B; '#4' -> NULL, 4
+    units = "|".join(sorted(UNIT_TYPES, key=len, reverse=True))
+    c.sql(f"""CREATE MACRO nena_unit_type(u) AS
+                 {_case(f"regexp_extract(upper(trim(u)), '^({units})\\b', 1)", UNIT_TYPES)}""")
+    c.sql(f"""CREATE MACRO nena_unit_value(u) AS nullif(trim(regexp_replace(
+                 regexp_replace(upper(trim(u)), '^({units})\\b[.]?', ''), '^ *#? *', '')), '')""")
 
 
 # NENA Placement from OpenAddresses' per-source "accuracy" (1 rooftop, 2 parcel, 3 interpolated), where a source states one
@@ -197,7 +212,9 @@ def address_dataset(c, updated):
             st_name := CASE WHEN pre_raw IS NULL THEN street_name ELSE trim(street_name[length(pre_raw) + 1:]) END,
             st_postyp := postyp,
             st_posdir := nena_dir_word(post_directional),
-            unit := {"nullif(trim(unit), '')" if has_unit else "NULL::VARCHAR"},
+            -- CLDXF-US splits the unit: UnitPreTyp (the designator's word) + UnitValue
+            unitpretyp := {"nena_unit_type(nullif(trim(unit), ''))" if has_unit else "NULL::VARCHAR"},
+            unitvalue := {"nena_unit_value(nullif(trim(unit), ''))" if has_unit else "NULL::VARCHAR"},
             post_comm := community_name,
             post_code := postcode,
             -- the source's stated method first; else on a structure if inside an Overture footprint
