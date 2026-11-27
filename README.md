@@ -45,7 +45,7 @@ and the NENA-STA-006.3 coded domains its layer uses.
 
 | Package | Extends | Adds | Data |
 |---|---|---|---|
-| [`extensions/ng911-address`](extensions/ng911-address) | `addresses/address` | NENA Site/Structure Address Point fields: street parts as NENA registry words, unit, postal fields, city (A3) and community (A4), MSAG community candidate, placement method, NGUID, the road check, fire-district evidence | [`ng911_address_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/ng911_address_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/manifest.json) |
+| [`extensions/ng911-address`](extensions/ng911-address) | `addresses/address` | NENA Site/Structure Address Point fields: street parts as NENA registry words, unit (UnitPreTyp + UnitValue), postal fields, city (A3) and community (A4), MSAG community candidate, placement method, NGUID, the road check, fire-district evidence | [`ng911_address_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/ng911_address_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_address/manifest.json) |
 | [`extensions/ng911-road-centerline`](extensions/ng911-road-centerline) | `transportation/segment` | NENA Road Centerline fields: left/right address ranges and parity derived from matched addresses, NENA road class, street parts, city/community and MSAG community candidate per side, fire-district evidence per side | [`ng911_road_centerline_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/ng911_road_centerline_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_road_centerline/manifest.json) |
 | [`extensions/ng911-railroad`](extensions/ng911-railroad) | `transportation/segment` (rail) | NENA Railroad Centerline fields: rail line owner (FRA reporting mark, from FRA's North American Rail Network) and name; 23,598 California segments, 68.7% with an owner | [`ng911_railroad_ca.parquet`](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_railroad/ng911_railroad_ca.parquet) · [manifest](https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/extensions/ng911_railroad/manifest.json) |
 
@@ -65,7 +65,7 @@ LIMIT 10;
 
 | NENA field | Source |
 |---|---|
-| Street parts (St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir), Add_Number, Unit, Post_Comm, Post_Code | Overture `addresses` (OpenAddresses), parsed into NENA registry words |
+| Street parts (St_PreDir, St_PreTyp, St_Name, St_PosTyp, St_PosDir), Add_Number, UnitPreTyp + UnitValue (CLDXF-US; split from Overture `unit`), Post_Comm, Post_Code | Overture `addresses` (OpenAddresses), parsed into NENA registry words |
 | FromAddr/ToAddr, Parity (left/right) | derived from the addresses matched to each Overture road segment; 0-0 / Z when a side has none |
 | RoadClass | Overture `transportation` class |
 | A1 (state), A2 (county) | fixed / the county each feature is built for |

@@ -61,7 +61,8 @@ class Ng911Address(BaseModel):
     st_name: Annotated[str, Field(description="Street name (St_Name), parsed from Overture's street.")]
     st_postyp: Annotated[StreetNameType | None, Field(description="Street name post type (St_PosTyp), NENA registry word, e.g. 'Avenue'.")] = None
     st_posdir: Annotated[StreetNameDirectional | None, Field(description="Street name post-directional (St_PosDir), e.g. 'West' in 'Terra Vista Parkway West'.")] = None
-    unit: Annotated[str | None, Field(description="Unit (Unit).")] = None
+    unitpretyp: Annotated[str | None, Field(description="Unit pre type (UnitPreTyp), CLDXF-US: the unit designator as a word, e.g. 'Apartment' from Overture's 'APT 4B'; empty where the unit has no designator.")] = None
+    unitvalue: Annotated[str | None, Field(description="Unit value (UnitValue), CLDXF-US: the unit's number or letter, e.g. '4B'. CLDXF-US has no single Unit field.")] = None
     post_comm: Annotated[str | None, Field(description="Postal community name (Post_Comm).")] = None
     post_code: Annotated[str | None, Field(description="Postal code (Post_Code).")] = None
     placement: Annotated[Placement | None, Field(description="Placement method (Placement): the source's stated method (OpenAddresses accuracy) where it has one, else Structure when the point sits inside an Overture building footprint, else Unknown.")] = None

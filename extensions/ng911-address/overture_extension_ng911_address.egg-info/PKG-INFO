@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: overture-extension-ng911-address
+Version: 0.8.0
+Summary: Prototype GERS Extension: NENA NG9-1-1 (STA-006) address-point properties for Overture addresses
+Requires-Python: >=3.10
+Requires-Dist: overture-schema-theme-addresses<3,>=2.0
+Requires-Dist: pydantic>=2
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: packaging; extra == "test"

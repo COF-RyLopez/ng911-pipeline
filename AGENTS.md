@@ -33,7 +33,7 @@ Published: `https://pub-152dce9299c94555bb415d992fe120e7.r2.dev/` (R2, written o
 
 | Field(s) | Source | Notes |
 |---|---|---|
-| street parts, add_number, unit, post_comm, post_code | Overture addresses, parsed by the dbt models | registry words via `nena_setup` macros |
+| street parts, add_number, unitpretyp + unitvalue, post_comm, post_code | Overture addresses, parsed by the dbt models | registry words via `nena_setup` macros; the unit split the CLDXF-US way (`UNIT_TYPES`) |
 | fromaddr/toaddr, parity (L/R) | addresses matched to each segment (same name, ≤ 50 m) | sides from the cross product; 0–0/Z when empty |
 | a3 / a4 (and _l/_r) | CDTFA cities, else Census Designated Places (TIGERweb) | `load_places` + `add_admin`; a4 only where a3 is empty |
 | msagcomm (and _l/_r) | a3, else a4, else postal community, upper-cased | a **candidate**; the 911 authority's MSAG governs |
