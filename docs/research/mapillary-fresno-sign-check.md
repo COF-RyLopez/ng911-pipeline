@@ -38,7 +38,7 @@ state routes) becomes the second comparison when we have one.
 
 ## Method
 
-1. **Tiles.** z14 tiles covering the county's road centerlines (about 6,000 tiles for Fresno County's
+1. **Tiles.** z14 tiles covering the county's road centerlines (about 4,000 tiles for Fresno County's
    15,500 km², most of them empty foothill and mountain tiles that come back blank).
 2. **Snap.** Same rules as the national note: segments within 20 m; travel bearing = facing + 180°,
    within 30° of the segment bearing (FT or TF); near an intersection, the approach whose end bearing
